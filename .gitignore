@@ -1,3 +1,8 @@
+## zuliprc file
+zuliprc
+## generic image file that gets uploaded
+im.png
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]

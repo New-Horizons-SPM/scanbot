@@ -41,6 +41,27 @@ class ScanBot(object):
         except:
             print('no whitelist')
     
+    def send_plot(self, bot_handler, message, scan_data, scan_direction='up'):
+        fig, ax = plt.subplots(1,1)
+        ## light image processing
+        if scan_direction == 'up':
+            scan_data = np.flipud(scan_data)
+        mask = np.isnan(scan_data)
+        scan_data[mask == True] = np.nanmean(scan_data)
+        scan_data = nap.plane_fit_2d(scan_data)
+        vmin, vmax = nap.filter_sigma(scan_data)
+    
+        ax.imshow(scan_data, origin='lower', cmap='Blues_r', vmin=vmin, vmax=vmax)
+        ax.axis('off')
+        fig.savefig('im.png', dpi=60, bbox_inches='tight', pad_inches=0)
+        plt.close('all')
+        path = os.getcwd() + '/im.png'
+        path = Path(path)
+        path = path.resolve()
+        upload = bot_handler.upload_file_from_path(str(path))
+        uploaded_file_reply = "[{}]({})".format(path.name, upload["uri"])
+        bot_handler.send_reply(message, uploaded_file_reply)
+    
     def survey_function(self, bot_handler, message):
         IP = str(bot_handler.storage.get('IP'))
         PORT = int(bot_handler.storage.get('PORT'))
@@ -71,23 +92,25 @@ class ScanBot(object):
                 timeout_status, file_path_size, file_path = scan.WaitEndOfScan()
                 channel_name,scan_data,scan_direction = scan.FrameDataGrab(14, 1) ## 14 is Z
                 
-                fig, ax = plt.subplots(1,1)
-                ## light image processing
-                mask = np.isnan(scan_data)
-                scan_data[mask == True] = np.nanmean(scan_data)
-                scan_data = nap.plane_fit_2d(scan_data)
-                vmin, vmax = nap.filter_sigma(scan_data)
+                self.send_plot(bot_handler, message, scan_data, scan_direction)
                 
-                ax.imshow(scan_data, origin='lower', cmap='Blues_r', vmin=vmin, vmax=vmax)
-                ax.axis('off')
-                fig.savefig('im.png', dpi=60, bbox_inches='tight', pad_inches=0)
-                plt.close('all')
-                path = os.getcwd() + '/im.png'
-                path = Path(path)
-                path = path.resolve()
-                upload = bot_handler.upload_file_from_path(str(path))
-                uploaded_file_reply = "[{}]({})".format(path.name, upload["uri"])
-                bot_handler.send_reply(message, uploaded_file_reply)
+                # fig, ax = plt.subplots(1,1)
+                # ## light image processing
+                # mask = np.isnan(scan_data)
+                # scan_data[mask == True] = np.nanmean(scan_data)
+                # scan_data = nap.plane_fit_2d(scan_data)
+                # vmin, vmax = nap.filter_sigma(scan_data)
+                #
+                # ax.imshow(scan_data, origin='lower', cmap='Blues_r', vmin=vmin, vmax=vmax)
+                # ax.axis('off')
+                # fig.savefig('im.png', dpi=60, bbox_inches='tight', pad_inches=0)
+                # plt.close('all')
+                # path = os.getcwd() + '/im.png'
+                # path = Path(path)
+                # path = path.resolve()
+                # upload = bot_handler.upload_file_from_path(str(path))
+                # uploaded_file_reply = "[{}]({})".format(path.name, upload["uri"])
+                # bot_handler.send_reply(message, uploaded_file_reply)
         NTCP.close_connection()
         bot_handler.send_reply(message, 'survey done')
     
@@ -155,12 +178,23 @@ class ScanBot(object):
                 scan.Action('stop')
                 NTCP.close_connection()
             except Exception as e:
-                print(e)
+                bot_handler.send_reply(message, e)
             
             while len(tasks) > 0:
                 running.clear()
                 tasks.pop().join()
-
+                
+        if message['content'].find('plot') > -1:
+            try:
+                IP = str(bot_handler.storage.get('IP'))
+                PORT = int(bot_handler.storage.get('PORT'))
+                NTCP = nanonisTCP(IP, PORT)
+                scan = Scan(NTCP)
+                channel_name,scan_data,scan_direction = scan.FrameDataGrab(14, 1) ## 14 is Z
+                self.send_plot(bot_handler, message, scan_data)
+                NTCP.close_connection()
+            except Exception as e:
+                bot_handler.send_reply(message, e)
                 
             
         

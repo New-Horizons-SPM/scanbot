@@ -35,7 +35,7 @@ class ScanBot(object):
         ## read in list of authorised users from whitelist.txt:
         self.whitelist = []
         try:
-            path = os.path.expanduser('~') + '/scanbot/whitelist.txt' ## assumes you've pulled scanbot in your home directory
+            path = os.getenv("WHITELISTPATH") ## env variable set with bash: export WHITELISTPATH='~/whitelist.txt'
             with open(path, 'r') as f:
                 d = f.read()
                 self.whitelist = d.split('\n')[:-1]

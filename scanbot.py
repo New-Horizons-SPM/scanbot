@@ -7,11 +7,17 @@ Created on Mon May  2 14:51:27 2022
 """
 
 import os
+import signal
 import time
 from pathlib import Path
 import threading
 
+import numpy as np
+
+import matplotlib
+matplotlib.use('Agg')
 import matplotlib.pyplot as plt
+
 
 from nanonisTCP import nanonisTCP
 from nanonisTCP.Scan import Scan
@@ -19,39 +25,52 @@ from nanonisTCP.Scan import Scan
 
 class ScanBot(object):
     
-    def survey_function(self):
+    global tasks ## queue of threads
+    tasks = []
+    global running
+    running = threading.Event() # event to stop threads
+    
+    def survey_function(self, bot_handler, message):
         IP = str(bot_handler.storage.get('IP'))
         PORT = int(bot_handler.storage.get('PORT'))
         NTCP = nanonisTCP(IP, PORT)
         scan = Scan(NTCP)
-        frames = [[0,0,100e-9,100e-9], ## x,y,w,h,angle=0
-                  [100e-9,100e-9,100e-9,100e-9],
-                  [200e-9,100e-9,100e-9,100e-9],
-                  [200e-9,-100e-9,100e-9,100e-9],
-            ]
 
+        frames = [] ## x,y,w,h,angle=0
+        dx = 150e-9
+        scansize = 100e-9
+        for ii in range(-2,2):
+            for jj in range(-2,2):
+                frames.append([ii*dx, jj*dx, scansize, scansize])
+            
         for frame in frames:
-            reply = 'running scan' + str(frame)
-            bot_handler.send_reply(message, reply)
-            scan.FrameSet(*frame)
-            scan.Action('start')
-            time.sleep(10)
-            scan.Action('start')
-            timeout_status, file_path_size, file_path = scan.WaitEndOfScan()
-            channel_name,scan_data,scan_direction = scan.FrameDataGrab(14, 1) ## 14 is Z
-            fig, ax = plt.subplots(1,1)
-            ax.imshow(scan_data, origin='lower', cmap='Blues')
-            ax.axis('off')
-            fig.savefig('im.png', dpi=200, bbox_inches='tight', pad_inches=0)
-            plt.close('all')
-            path = os.getcwd() + '/im.png'
-            path = Path(path)
-            path = path.resolve()
-            upload = bot_handler.upload_file_from_path(str(path))
-            uploaded_file_reply = "[{}]({})".format(path.name, upload["uri"])
-            bot_handler.send_reply(message, uploaded_file_reply)
+            if running.is_set():
+                reply = 'running scan' + str(frame)
+                bot_handler.send_reply(message, reply)
+                scan.FrameSet(*frame)
+                scan.Action('start')
+                if not running.is_set(): break
+                time.sleep(10)
+                if not running.is_set(): break
+                scan.Action('start')
+                timeout_status, file_path_size, file_path = scan.WaitEndOfScan()
+                channel_name,scan_data,scan_direction = scan.FrameDataGrab(14, 1) ## 14 is Z
+                fig, ax = plt.subplots(1,1)
+                ax.imshow(scan_data, origin='lower', cmap='Blues')
+                ax.axis('off')
+                fig.savefig('im.png', dpi=60, bbox_inches='tight', pad_inches=0)
+                plt.close('all')
+                path = os.getcwd() + '/im.png'
+                path = Path(path)
+                path = path.resolve()
+                upload = bot_handler.upload_file_from_path(str(path))
+                uploaded_file_reply = "[{}]({})".format(path.name, upload["uri"])
+                bot_handler.send_reply(message, uploaded_file_reply)
+        NTCP.close_connection()
+        bot_handler.send_reply(message, 'survey done')
     
     def handle_message(self, message, bot_handler):
+
         if message['content'].find('set_IP') > -1:
             IP = message['content'].split('set_IP ')[1].split('\n')[0]
             bot_handler.storage.put('IP',IP)
@@ -65,6 +84,10 @@ class ScanBot(object):
             PORT = message['content'].split('set_PORT ')[1].split('\n')[0]
             bot_handler.storage.put('PORT',PORT)
             
+        if message['content'].find('set_stop_PORT') > -1:
+            PORT = message['content'].split('set_stop_PORT ')[1].split('\n')[0]
+            bot_handler.storage.put('stop_PORT',PORT)
+            
         if message['content'].find('get_PORT') > -1:
             PORT = bot_handler.storage.get('PORT')
             reply_message = 'PORT is: ' + str(PORT)
@@ -73,8 +96,34 @@ class ScanBot(object):
         # if message['content'].find('auto approach') > -1:
         
         if message['content'].find('survey') > -1:
-            t = threading.Thread(target=survey_function)
-            t.start()
+            if not running.is_set():
+                running.set()
+                t = threading.Thread(target=lambda : self.survey_function(bot_handler, message))
+                tasks.append(t)
+                t.start()
+            else:
+                bot_handler.send_reply(message, 'error: something already running')
+            
+        if message['content'].find('stop') > -1:
+            ## press the stop button
+            IP = str(bot_handler.storage.get('IP'))
+            try:
+                PORT = int(bot_handler.storage.get('stop_PORT'))
+            except:
+                PORT = 6504
+            try:
+                NTCP = nanonisTCP(IP, PORT)
+                scan = Scan(NTCP)
+                scan.Action('stop')
+                NTCP.close_connection()
+            except Exception as e:
+                print(e)
+            
+            while len(tasks) > 0:
+                running.clear()
+                tasks.pop().join()
+
+                
             
         
 handler_class = ScanBot

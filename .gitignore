@@ -1,7 +1,12 @@
+## OSX files
+.DS_Store
+
 ## zuliprc file
 zuliprc
 ## generic image file that gets uploaded
 im.png
+## whitelist file of authors communicators with scanbot
+whitelist.txt
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

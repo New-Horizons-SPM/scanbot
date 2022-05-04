@@ -30,6 +30,16 @@ class ScanBot(object):
     global running
     running = threading.Event() # event to stop threads
     
+    def __init__(self):
+        ## read in list of authorised users from whitelist.txt:
+        self.whitelist = []
+        try:
+            with open('whitelist.txt', 'r') as f:
+                d = f.read()
+                self.whitelist = d.split('\n')[:-1]
+        except:
+            print('no whitelist')
+    
     def survey_function(self, bot_handler, message):
         IP = str(bot_handler.storage.get('IP'))
         PORT = int(bot_handler.storage.get('PORT'))
@@ -70,7 +80,23 @@ class ScanBot(object):
         bot_handler.send_reply(message, 'survey done')
     
     def handle_message(self, message, bot_handler):
-
+        if message['sender_email'] not in self.whitelist and self.whitelist:
+            bot_handler.send_reply(message, 'access denied')
+            return
+            
+        if message['content'].find('add_user') > -1:
+            try:
+                user = message['content'].split('add_user ')[1].split('\n')[0]
+                self.whitelist.append(user)
+                with open('whitelist.txt', 'w') as f:
+                    for w in self.whitelist:
+                        f.write(w+'\n')
+            except Exception as e:
+                bot_handler.send_reply(message, e)
+            
+        if message['content'].find('list_users') > -1:
+            bot_handler.send_reply(message, str(self.whitelist))
+        
         if message['content'].find('set_IP') > -1:
             IP = message['content'].split('set_IP ')[1].split('\n')[0]
             bot_handler.storage.put('IP',IP)

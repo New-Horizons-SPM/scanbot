@@ -13,6 +13,7 @@ from pathlib import Path
 import threading
 
 import numpy as np
+import nanonispyfit as napfit
 
 import matplotlib
 matplotlib.use('Agg')
@@ -49,9 +50,13 @@ class ScanBot(object):
         frames = [] ## x,y,w,h,angle=0
         dx = 150e-9
         scansize = 100e-9
-        for ii in range(-2,2):
-            for jj in range(-2,2):
-                frames.append([ii*dx, jj*dx, scansize, scansize])
+        for ii in range(-2,3):
+            if ii % 2 == 0:
+                for jj in range(-2,3):
+                    frames.append([ii*dx, jj*dx, scansize, scansize])
+            else:
+                for jj in range(-2,3):
+                    frames.append([-ii*dx, jj*dx, scansize, scansize])
             
         for frame in frames:
             if running.is_set():
@@ -65,8 +70,13 @@ class ScanBot(object):
                 scan.Action('start')
                 timeout_status, file_path_size, file_path = scan.WaitEndOfScan()
                 channel_name,scan_data,scan_direction = scan.FrameDataGrab(14, 1) ## 14 is Z
+                
                 fig, ax = plt.subplots(1,1)
-                ax.imshow(scan_data, origin='lower', cmap='Blues')
+                ## light image processing
+                scan_data = nap.plane_fit_2d(scan_data)
+                vmin, vmax = nap.filter_sigma(scan_data)
+                
+                ax.imshow(scan_data, origin='lower', cmap='Blues_r', vmin=vmin, vmax=vmax)
                 ax.axis('off')
                 fig.savefig('im.png', dpi=60, bbox_inches='tight', pad_inches=0)
                 plt.close('all')

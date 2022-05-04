@@ -53,10 +53,10 @@ class ScanBot(object):
         for ii in range(-2,3):
             if ii % 2 == 0:
                 for jj in range(-2,3):
-                    frames.append([ii*dx, jj*dx, scansize, scansize])
+                    frames.append([jj*dx, ii*dx, scansize, scansize])
             else:
                 for jj in range(-2,3):
-                    frames.append([-ii*dx, jj*dx, scansize, scansize])
+                    frames.append([-jj*dx, ii*dx, scansize, scansize])
             
         for frame in frames:
             if running.is_set():

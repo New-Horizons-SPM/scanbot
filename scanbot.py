@@ -13,7 +13,7 @@ from pathlib import Path
 import threading
 
 import numpy as np
-import nanonispyfit as napfit
+import nanonispyfit as nap
 
 import matplotlib
 matplotlib.use('Agg')
@@ -35,7 +35,8 @@ class ScanBot(object):
         ## read in list of authorised users from whitelist.txt:
         self.whitelist = []
         try:
-            with open('whitelist.txt', 'r') as f:
+            path = os.getcwd() + '/whitelist.txt'
+            with open(path, 'r') as f:
                 d = f.read()
                 self.whitelist = d.split('\n')[:-1]
         except:
@@ -73,6 +74,8 @@ class ScanBot(object):
                 
                 fig, ax = plt.subplots(1,1)
                 ## light image processing
+                mask = np.isnan(scan_data)
+                scan_data[mask == True] = np.nanmean(scan_data)
                 scan_data = nap.plane_fit_2d(scan_data)
                 vmin, vmax = nap.filter_sigma(scan_data)
                 

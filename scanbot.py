@@ -13,6 +13,11 @@ import time
 from pathlib import Path
 import threading
 
+
+## these are needed if uploading png to google firebase
+import firebase_admin
+from firebase_admin import credentials, storage
+
 import numpy as np
 import nanonispyfit as nap
 
@@ -43,6 +48,14 @@ class ScanBot(object):
                 self.whitelist = d.split('\n')[:-1]
         except:
             print('no whitelist')
+            
+        try:
+            cred = credentials.Certificate('firebase.json')
+            firebase_admin.initialize_app(cred, {
+                'storageBucket': 'g80live.appspot.com'
+            })
+        except:
+            pass
     
     def send_plot(self, bot_handler, message, scan_data, scan_direction='up', file_path=None):
         fig, ax = plt.subplots(1,1)
@@ -68,10 +81,27 @@ class ScanBot(object):
         path = os.getcwd() + '/' + filename
         path = Path(path)
         path = path.resolve()
-        upload = bot_handler.upload_file_from_path(str(path))
-        uploaded_file_reply = "[{}]({})".format(path.name, upload["uri"])
-        bot_handler.send_reply(message, uploaded_file_reply)
-        bot_handler.send_reply(message, filename)
+        
+        try:
+            image_upload = bot_handler.storage.get('upload_method')
+        except:
+            image_upload = 'zulip'
+        
+        if image_upload == 'zulip':
+            upload = bot_handler.upload_file_from_path(str(path))
+            uploaded_file_reply = "[{}]({})".format(path.name, upload["uri"])
+            bot_handler.send_reply(message, uploaded_file_reply)
+            bot_handler.send_reply(message, filename)
+            
+        if image_upload == 'firebase':
+
+            bucket = storage.bucket()
+            blob   = bucket.blob('scanbot/' + filename)
+            blob.upload_from_filename(path)
+
+            url = blob.generate_signed_url(expiration=9000000000)
+            bot_handler.send_reply(message, url)
+        
         os.remove(path)
     
     def survey_function(self, bot_handler, message, N_scans=5, suffix=""):
@@ -167,6 +197,10 @@ class ScanBot(object):
             PORT = bot_handler.storage.get('PORT')
             reply_message = 'PORT is: ' + str(PORT)
             bot_handler.send_reply(message, reply_message)
+            
+        if message['content'].find('set_upload_method') > -1:
+            upload_method = message['content'].split('set_upload_method ')[1].split('\n')[0]
+            bot_handler.storage.put('upload_method', upload_method)
         
         if message['content'].find('survey') > -1:
             N_scans = 5

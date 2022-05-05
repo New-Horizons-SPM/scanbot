@@ -71,7 +71,7 @@ class ScanBot(object):
         ax.axis('off')
         
         filename = 'im.png'
-        if ntpath.split(file_path)[1] == '':
+        if file_path == '':
             filename = 'im.png'
         else:
             filename = ntpath.split(file_path)[1] + '.png'

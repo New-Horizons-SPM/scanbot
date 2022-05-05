@@ -42,6 +42,7 @@ class ScanBot(object):
     def __init__(self):
         ## read in list of authorised users from whitelist.txt:
         self.whitelist = []
+        self.portlist = [6501,6502,6503,6504]
         try:
             with open('whitelist.txt', 'r') as f:
                 d = f.read()
@@ -107,7 +108,11 @@ class ScanBot(object):
     
     def survey_function(self, bot_handler, message, N_scans=5, suffix=""):
         IP = str(bot_handler.storage.get('IP'))
-        PORT = int(bot_handler.storage.get('PORT'))
+        try:
+            PORT = self.portlist.pop()
+        except:
+            bot_handler.send_reply(message, "No ports available")
+            return
         NTCP = nanonisTCP(IP, PORT)
         scan = Scan(NTCP)
         
@@ -157,6 +162,7 @@ class ScanBot(object):
         scan.PropsSet(series_name=savename)
         
         NTCP.close_connection()
+        self.portlist.append(PORT)
         bot_handler.send_reply(message, 'survey done')
     
     def handle_message(self, message, bot_handler):
@@ -186,17 +192,11 @@ class ScanBot(object):
             reply_message = 'IP is: ' + IP
             bot_handler.send_reply(message, reply_message)
             
-        if message['content'].find('set_PORT') > -1:
-            PORT = message['content'].split('set_PORT ')[1].split('\n')[0]
-            bot_handler.storage.put('PORT',PORT)
+        if message['content'].find('set_PORTLIST') > -1:
+            self.portlist = [int(x) for x in message['content'].split('set_PORTLIST ')[1].split(' ')]
             
-        if message['content'].find('set_stop_PORT') > -1:
-            PORT = message['content'].split('set_stop_PORT ')[1].split('\n')[0]
-            bot_handler.storage.put('stop_PORT',PORT)
-            
-        if message['content'].find('get_PORT') > -1:
-            PORT = bot_handler.storage.get('PORT')
-            reply_message = 'PORT is: ' + str(PORT)
+        if message['content'].find('get_PORTLIST') > -1:
+            reply_message = 'Available ports: ' + str(self.portlist)
             bot_handler.send_reply(message, reply_message)
             
         if message['content'].find('set_upload_method') > -1:
@@ -222,9 +222,10 @@ class ScanBot(object):
             ## press the stop button
             IP = str(bot_handler.storage.get('IP'))
             try:
-                PORT = int(bot_handler.storage.get('stop_PORT'))
+                PORT = self.portlist.pop()
             except:
-                PORT = 6504
+                bot_handler.send_reply(message, "No ports available")
+                return
             try:
                 NTCP = nanonisTCP(IP, PORT)
                 scan = Scan(NTCP)
@@ -232,6 +233,8 @@ class ScanBot(object):
                 NTCP.close_connection()
             except Exception as e:
                 bot_handler.send_reply(message, e)
+            finally:
+                self.portlist.append(PORT)
             
             while len(tasks) > 0:
                 running.clear()
@@ -246,7 +249,11 @@ class ScanBot(object):
         if message['content'].find('plot') > -1:
             try:
                 IP = str(bot_handler.storage.get('IP'))
-                PORT = int(bot_handler.storage.get('PORT'))
+                try:
+                    PORT = self.portlist.pop()
+                except:
+                    bot_handler.send_reply(message, "No ports available")
+                    return
                 NTCP = nanonisTCP(IP, PORT)
                 scan = Scan(NTCP)
                 channel_name,scan_data,scan_direction = scan.FrameDataGrab(14, 1) ## 14 is Z
@@ -254,6 +261,8 @@ class ScanBot(object):
                 NTCP.close_connection()
             except Exception as e:
                 bot_handler.send_reply(message, e)
+            finally:
+                self.portlist.append(PORT)
                 
             
         

@@ -74,21 +74,28 @@ class ScanBot(object):
         bot_handler.send_reply(message, filename)
         os.remove(path)
     
-    def survey_function(self, bot_handler, message):
+    def survey_function(self, bot_handler, message, N_scans=5, suffix=""):
         IP = str(bot_handler.storage.get('IP'))
         PORT = int(bot_handler.storage.get('PORT'))
         NTCP = nanonisTCP(IP, PORT)
         scan = Scan(NTCP)
+        
+        ## get current scan savename
+        savename = scan.PropsGet()[3]
+        bot_handler.storage.put('savename', savename)
+        if suffix: savename += '_' + suffix + '_'
+        scan.PropsSet(series_name=savename)
 
         frames = [] ## x,y,w,h,angle=0
         dx = 150e-9
         scansize = 100e-9
-        for ii in range(-2,3):
+        N_scans = int(N_scans/2)
+        for ii in range(-N_scans,N_scans+1):
             if ii % 2 == 0:
-                for jj in range(-2,3):
+                for jj in range(-N_scans,N_scans+1):
                     frames.append([jj*dx, ii*dx, scansize, scansize])
             else:
-                for jj in range(-2,3):
+                for jj in range(-N_scans,N_scans+1):
                     frames.append([-jj*dx, ii*dx, scansize, scansize])
             
         for frame in frames:
@@ -112,7 +119,11 @@ class ScanBot(object):
                 channel_name,scan_data,scan_direction = scan.FrameDataGrab(14, 1) ## 14 is Z
                 
                 self.send_plot(bot_handler, message, scan_data, scan_direction, file_path)
-                
+        
+        ## reset the scan savename
+        savename = bot_handler.storage.get('savename')
+        scan.PropsSet(series_name=savename)
+        
         NTCP.close_connection()
         bot_handler.send_reply(message, 'survey done')
     
@@ -157,9 +168,15 @@ class ScanBot(object):
             bot_handler.send_reply(message, reply_message)
         
         if message['content'].find('survey') > -1:
+            N_scans = 5
+            if message['content'].find('-N=') > -1:
+                N_scans = int(message['content'].split('-N=')[1].split(' ')[0])
+            suffix = ''
+            if message['content'].find('-S=') > -1:
+                suffix = str(message['content'].split('-S=')[1].split(' ')[0])
             if not running.is_set():
                 running.set()
-                t = threading.Thread(target=lambda : self.survey_function(bot_handler, message))
+                t = threading.Thread(target=lambda : self.survey_function(bot_handler, message, N_scans, suffix))
                 tasks.append(t)
                 t.start()
             else:

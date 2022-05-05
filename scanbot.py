@@ -57,7 +57,7 @@ class ScanBot(object):
         except:
             pass
     
-    def send_plot(self, bot_handler, message, scan_data, scan_direction='up', file_path=None):
+    def send_plot(self, bot_handler, message, scan_data, scan_direction='up', file_path=''):
         fig, ax = plt.subplots(1,1)
         ## light image processing
         if scan_direction == 'up':
@@ -70,6 +70,7 @@ class ScanBot(object):
         ax.imshow(scan_data, origin='lower', cmap='Blues_r', vmin=vmin, vmax=vmax)
         ax.axis('off')
         
+        filename = 'im.png'
         if ntpath.split(file_path)[1] == '':
             filename = 'im.png'
         else:
@@ -148,7 +149,7 @@ class ScanBot(object):
                 timeout_status, file_path_size, file_path = scan.WaitEndOfScan()
                 channel_name,scan_data,scan_direction = scan.FrameDataGrab(14, 1) ## 14 is Z
                 if timeout_status != 'EOS':
-                    filepath = None
+                    filepath = ''
                 self.send_plot(bot_handler, message, scan_data, scan_direction, file_path)
         
         ## reset the scan savename
@@ -249,7 +250,7 @@ class ScanBot(object):
                 NTCP = nanonisTCP(IP, PORT)
                 scan = Scan(NTCP)
                 channel_name,scan_data,scan_direction = scan.FrameDataGrab(14, 1) ## 14 is Z
-                self.send_plot(bot_handler, message, scan_data, scan_direction, file_path=None)
+                self.send_plot(bot_handler, message, scan_data, scan_direction, file_path='')
                 NTCP.close_connection()
             except Exception as e:
                 bot_handler.send_reply(message, e)

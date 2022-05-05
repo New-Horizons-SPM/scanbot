@@ -148,8 +148,8 @@ class ScanBot(object):
                 scan.Action('start')
                 timeout_status, file_path_size, file_path = scan.WaitEndOfScan()
                 channel_name,scan_data,scan_direction = scan.FrameDataGrab(14, 1) ## 14 is Z
-                if timeout_status != 'EOS':
-                    filepath = ''
+                if timeout_status:
+                    file_path = ''
                 self.send_plot(bot_handler, message, scan_data, scan_direction, file_path)
         
         ## reset the scan savename

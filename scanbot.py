@@ -31,6 +31,8 @@ class ScanBot(object):
     tasks = []
     global running
     running = threading.Event() # event to stop threads
+    global pause
+    pause = threading.Event() # event to pause threads
     
     def __init__(self):
         ## read in list of authorised users from whitelist.txt:
@@ -90,14 +92,21 @@ class ScanBot(object):
                     frames.append([-jj*dx, ii*dx, scansize, scansize])
             
         for frame in frames:
+            while pause.is_set():
+                time.sleep(2)
+                
             if running.is_set():
                 reply = 'running scan' + str(frame)
                 bot_handler.send_reply(message, reply)
                 scan.FrameSet(*frame)
                 scan.Action('start')
                 if not running.is_set(): break
+                while pause.is_set():
+                    time.sleep(2)
                 time.sleep(10)
                 if not running.is_set(): break
+                while pause.is_set():
+                    time.sleep(2)
                 scan.Action('start')
                 timeout_status, file_path_size, file_path = scan.WaitEndOfScan()
                 channel_name,scan_data,scan_direction = scan.FrameDataGrab(14, 1) ## 14 is Z
@@ -146,8 +155,6 @@ class ScanBot(object):
             PORT = bot_handler.storage.get('PORT')
             reply_message = 'PORT is: ' + str(PORT)
             bot_handler.send_reply(message, reply_message)
-            
-        # if message['content'].find('auto approach') > -1:
         
         if message['content'].find('survey') > -1:
             if not running.is_set():
@@ -176,6 +183,12 @@ class ScanBot(object):
             while len(tasks) > 0:
                 running.clear()
                 tasks.pop().join()
+                
+        if message['content'].find('pause') > -1:
+            pause.set()
+            
+        if message['content'].find('resume') > -1:
+            pause.clear()
                 
         if message['content'].find('plot') > -1:
             try:

@@ -98,7 +98,7 @@ class ScanBot(object):
 
             bucket = storage.bucket()
             blob   = bucket.blob('scanbot/' + filename)
-            blob.upload_from_filename(path)
+            blob.upload_from_filename(str(path))
 
             url = blob.generate_signed_url(expiration=9000000000)
             bot_handler.send_reply(message, url)

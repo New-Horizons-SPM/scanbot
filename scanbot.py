@@ -70,7 +70,7 @@ class ScanBot(object):
         ax.imshow(scan_data, origin='lower', cmap='Blues_r', vmin=vmin, vmax=vmax)
         ax.axis('off')
         
-        if file_path == None:
+        if ntpath.split(file_path)[1] == '':
             filename = 'im.png'
         else:
             filename = ntpath.split(file_path)[1] + '.png'

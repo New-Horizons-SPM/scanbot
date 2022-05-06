@@ -40,6 +40,8 @@ class Scanbot():
         pngFilename = self.makePNG(scanData, scanDirection)                     # Generate a png from the scan data
         self.interface.sendPNG(pngFilename)                                     # Send a png over zulip
         
+        self.close_connection(NTCP)                                             # Close the TCP connection
+        
     def stop(self,args):
         NTCP,connection_error = self.connect()                                  # Connect to nanonis via TCP
         if(connection_error): return connection_error                           # Return error message if there was a problem connecting        

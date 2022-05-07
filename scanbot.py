@@ -8,7 +8,6 @@ Created on Mon May  2 14:51:27 2022
 
 import os
 import ntpath # os.path but for windows paths
-import signal
 import time
 from pathlib import Path
 import threading
@@ -92,8 +91,9 @@ class ScanBot(object):
         if image_upload == 'zulip':
             upload = bot_handler.upload_file_from_path(str(path))
             uploaded_file_reply = "[{}]({})".format(path.name, upload["uri"])
-            bot_handler.send_reply(message, uploaded_file_reply)
             bot_handler.send_reply(message, filename)
+            bot_handler.send_reply(message, uploaded_file_reply)
+            
             
         if image_upload == 'firebase':
 
@@ -102,6 +102,7 @@ class ScanBot(object):
             blob.upload_from_filename(str(path))
 
             url = blob.generate_signed_url(expiration=9000000000)
+            bot_handler.send_reply(message, filename)
             bot_handler.send_reply(message, url)
         
         os.remove(path)

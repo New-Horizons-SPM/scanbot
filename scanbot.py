@@ -19,8 +19,9 @@ import nanonispyfit as nap
 import time
 import ntpath                                                                   # os.path but for windows paths
 
+import global_
+
 class Scanbot():
-    
 ###############################################################################
 # Constructor
 ###############################################################################
@@ -40,8 +41,9 @@ class Scanbot():
         pngFilename = self.makePNG(scanData, scanDirection)                     # Generate a png from the scan data
         self.interface.sendPNG(pngFilename)                                     # Send a png over zulip
         
-        self.close_connection(NTCP)                                             # Close the TCP connection
-        
+        self.disconnect(NTCP)                                                   # Close the TCP connection
+        return ""
+    
     def stop(self,args):
         NTCP,connection_error = self.connect()                                  # Connect to nanonis via TCP
         if(connection_error): return connection_error                           # Return error message if there was a problem connecting        
@@ -50,7 +52,7 @@ class Scanbot():
         
         for arg in args:                                                        # Override the defaults if user inputs them
             key,value = arg.split('=')
-            if(not arg_dict.has_key(key)):
+            if(not key in arg_dict):
                 self.disconnect(NTCP)                                           # Close the connection and 
                 return "invalid argument: " + arg                               # return error message
             arg_dict[key] = value     
@@ -59,7 +61,8 @@ class Scanbot():
         scan.Action('stop')                                                     # Stop the current scan
         
         self.disconnect(NTCP)                                                   # Close the NTCP connection
-        
+        return ("Stopped!")
+    
     def survey(self,args):
         NTCP,connection_error = self.connect()                                  # Connect to nanonis via TCP
         if(connection_error): return connection_error                           # Return error message if there was a problem connecting        
@@ -71,7 +74,7 @@ class Scanbot():
         
         for arg in args:                                                        # Override the defaults if user inputs them
             key,value = arg.split('=')
-            if(not arg_dict.has_key(key)):
+            if(not key in arg_dict):
                 self.disconnect(NTCP)                                           # Close the connection and 
                 return "invalid argument: " + arg                               # return error message
             arg_dict[key] = value                    
@@ -114,7 +117,10 @@ class Scanbot():
         
         scan.PropsSet(series_name=basename)                                     # Put back the original basename
         self.disconnect(NTCP)                                                   # Close the TCP connection
-        return 'survey \'' + tempBasename + '\' done'                           # Send a notification that the survey has completed
+        
+        global_.running.clear()                                                 # Free up the running flag
+        
+        self.interface.sendReply('survey \'' + arg_dict['-s'] + '\' done')      # Send a notification that the survey has completed
     
 ###############################################################################
 # Utilities
@@ -129,7 +135,7 @@ class Scanbot():
         scanData[mask == True] = np.nanmean(scanData)                           # Replace the Nan's with the mean so it doesn't affect the plane fit
         scanData = nap.plane_fit_2d(scanData)                                   # Flattern the image
         vmin, vmax = nap.filter_sigma(scanData)                                 # cmap saturation
-    
+        
         ax.imshow(scanData, origin='lower', cmap='Blues_r', vmin=vmin, vmax=vmax) # Plot
         ax.axis('off')
         
@@ -142,8 +148,8 @@ class Scanbot():
         return pngFilename
         
     def checkEventFlags(self):
-        if(not self.interface.running.is_set()): return 1                       # Running flag
-        while self.interface.pause.is_set(): time.sleep(2)                      # Pause flag
+        if(not global_.running.is_set()): return 1                              # Running flag
+        while global_.pause.is_set(): time.sleep(2)                             # Pause flag
     
 ###############################################################################
 # Nanonis TCP Connection
@@ -151,13 +157,13 @@ class Scanbot():
     def connect(self):
         try:                                                                    # Try to connect to nanonis via TCP
             IP   = self.interface.IP
-            PORT = self.interface.portlist.pop()
+            PORT = self.interface.portList.pop()
             NTCP = nanonisTCP(IP, PORT)
             return [NTCP,0]
         except Exception as e:
-            if(len(self.interface.portlist)): return [0,e]                      # If there are ports available then return the exception message
+            if(len(self.interface.portList)): return [0,str(e)]                 # If there are ports available then return the exception message
             return [0,"No ports available"]                                     # If no ports are available send this message
     
     def disconnect(self,NTCP):
         NTCP.close_connection()                                                 # Close the TCP connection
-        self.interface.portlist.append(NTCP.PORT)                               # Free up the port - put it back in the list of available ports
+        self.interface.portList.append(NTCP.PORT)                               # Free up the port - put it back in the list of available ports

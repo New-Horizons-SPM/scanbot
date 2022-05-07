@@ -5,7 +5,7 @@ Created on Fri May  6 12:06:37 2022
 @author: jced0001
 """
 
-from ScanBot import ScanBot
+from Scanbot import Scanbot
 import threading
 
 import firebase_admin
@@ -15,13 +15,11 @@ import os
 import ipaddress
 from pathlib import Path
 
-class ScanbotInterface(object):
-    global tasks;   tasks   = []                                                # queue of threads
-    global running; running = threading.Event()                                 # event to stop threads
-    global pause;   pause   = threading.Event()                                 # event to pause threads
-    
+import global_
+
+class scanbot_test(object):
     message    = []
-    botHandler = []
+    bot_handler = []
     validUploadMethods = ['zulip','firebase']
     
 ###############################################################################
@@ -29,13 +27,17 @@ class ScanbotInterface(object):
 ###############################################################################
     def __init__(self):
         ## Globals
+        global_.tasks   = []
+        global_.running = threading.Event()                                     # event to stop threads
+        global_.pause   = threading.Event()                                     # event to pause threads
         
         self.getWhitelist()                                                     # Load in whitelist file if there is one
         self.firebaseInit()                                                     # Initialise Firebase
         self.portList = [6501,6502,6503,6504]                                   # Default TCP ports for communicating with nanonis
         self.IP       = '127.0.0.1'                                             # Default IP to local host
-        self.uploadMethod = 'zulip'                                             # Default upload method is zulip
-        self.scanbot = ScanBot(self)
+        self.uploadMethod = 'firebase'                                          # Default upload method is firebase
+        self.initCommandDict()
+        self.scanbot = Scanbot(self)
     
 ###############################################################################
 # Initialisation
@@ -50,46 +52,46 @@ class ScanbotInterface(object):
             print('No whitelist... add users to create one')
     
     def firebaseInit(self):
+        print("Initialising firebase app")
         try:
             cred = credentials.Certificate('firebase.json')                     # Your firebase credentials
             firebase_admin.initialize_app(cred, {
                 'storageBucket': 'g80live.appspot.com'                          # Your firebase storage bucket
             })
-        except:
-            pass                                                                # Firebase error or already initialised
+        except Exception as e:
+            print(e)
     
     def initCommandDict(self):
         self.commands = {'list_commands'    : self.listCommands,
                          'add_user'         : self.addUsers,
-                         'list_users'       : lambda: str(self.whitelist),
+                         'list_users'       : lambda args: str(self.whitelist),
                          'set_ip'           : self.setIP,
-                         'get_ip'           : lambda: self.IP,
+                         'get_ip'           : lambda args: self.IP,
                          'set_portlist'     : self.setPortList,
-                         'get_portlist'     : lambda: self.portList,
+                         'get_portlist'     : lambda args: self.portList,
                          'set_upload_method': self.setUploadMethod,
-                         'get_upload_method': lambda: self.uploadMethod,
+                         'get_upload_method': lambda args: self.uploadMethod,
                          'survey'           : self.survey,
                          'stop'             : self.stop,
-                         'pause'            : lambda: pause.set(),
-                         'resume'           : lambda: pause.clear(),
+                         'pause'            : lambda args: global_.pause.set(),
+                         'resume'           : lambda args: global_.pause.clear(),
                          'plot'             : self.plot
         }
-        
+    
 ###############################################################################
 # Scanbot
 ###############################################################################
     def survey(self,args):
-        if running.is_set(): return "Error: something already running"
-        running.set()
+        if global_.running.is_set(): return "Error: something already running"
+        global_.running.set()
         t = threading.Thread(target=lambda : self.scanbot.survey(args))
-        tasks.append(t)
+        global_.tasks = t
         t.start()
     
     def stop(self,args):
         self.scanbot.stop(args)
-        while len(tasks) > 0:
-            running.clear()
-            tasks.pop().join()
+        global_.running.clear()
+        global_.tasks.join()
     
     def plot(self,args):
         self.scanbot.plot(args)
@@ -97,22 +99,30 @@ class ScanbotInterface(object):
 ###############################################################################
 # Zulip
 ###############################################################################
-    def handle_message(self, message, botHandler):
+    def handle_message(self, message, bot_handler):
         if message['sender_email'] not in self.whitelist and self.whitelist:
+            self.sendReply(message['sender_email'])
             self.sendReply('access denied')
             return
         
         self.message = message
-        self.botHandler = botHandler
+        self.bot_handler = bot_handler
         
         command = message['content'].split(' ')[0].lower()
         args    = message['content'].split(' ')[1:]
+        # if(len(args) == 1): args = args.pop()
         
-        reply = self.command_dict[command](args)
-        self.sendReply(reply)
+        if(not command in self.commands):
+            reply = "Invalid command. Run *list_commands* to see command list"
+            self.sendReply(reply)
+            return
+        
+        reply = self.commands[command](args)
+        
+        if(reply): self.sendReply(reply)
     
     def sendReply(self,reply):
-        if(self.botHandler): self.botHandler.send_reply(self.message, reply)
+        if(self.bot_handler): self.bot_handler.send_reply(self.message, reply)
     
     def sendPNG(self,pngFilename):
         path = os.getcwd() + '/' + pngFilename
@@ -120,7 +130,7 @@ class ScanbotInterface(object):
         path = path.resolve()
         
         if self.uploadMethod == 'zulip':
-            upload = self.botHandler.upload_file_from_path(str(path))
+            upload = self.bot_handler.upload_file_from_path(str(path))
             uploaded_file_reply = "[{}]({})".format(path.name, upload["uri"])
             self.sendReply(uploaded_file_reply)
             self.sendReply(pngFilename)
@@ -136,24 +146,25 @@ class ScanbotInterface(object):
         
         os.remove(path)
         
-    def addUsers(self,users):
+    def addUsers(self,user):
         try:
-            for u in users: self.whitelist.append(u)
+            self.whitelist.append(user)
             with open('whitelist.txt', 'w') as f:
                 for w in self.whitelist:
                     f.write(w+'\n')
         except Exception as e:
-            return e
+            return str(e)
         
         return "user/s added sucessfully"
     
     def setIP(self,IP):
         try:
+            IP = IP[0]
             ipaddress.ip_address(IP)
             self.IP = IP
             return "Set IP to " + self.IP
         except Exception as e:
-            return e
+            return str(e)
     
     def setPortList(self,portList):
         self.portList = [int(x) for x in portList]
@@ -161,9 +172,12 @@ class ScanbotInterface(object):
     
     def setUploadMethod(self,uploadMethod):
         uploadMethod = uploadMethod.lower()
-        if(not uploadMethod in self.validUploadMethods): return "Invalid Method"
+        if(not uploadMethod in self.validUploadMethods):
+            return "Invalid Method. Available methods:\n" + "\n". join(self.validUploadMethods)
         self.uploadMethod = uploadMethod
         return "Set upload method to " + self.uploadMethod
     
-    def listCommands(self):
-        return str([c for c in self.commands])
+    def listCommands(self,args):
+        return "\n". join([c for c in self.commands])
+    
+handler_class = scanbot_test

@@ -70,7 +70,9 @@ class Scanbot():
         arg_dict = {'-n'  : '5',                                                # size of the nxn grid of scans
                     '-s'  : 'scanbot',                                          # suffix at the end of autosaved sxm files
                     '-xy' : '100e-9',                                           # length and width of the scan frame (square)
-                    '-dx' : '150e-9'}                                           # spacing between scans
+                    '-dx' : '150e-9',                                           # spacing between scans
+                    '-oxy': '0,0',                                              # Origin (centre of grid)
+                    '-st' : '0.5 '}                                             # Sleep time before restarting scan to correct for drift
         
         for arg in args:                                                        # Override the defaults if user inputs them
             key,value = arg.split('=')
@@ -78,7 +80,9 @@ class Scanbot():
                 self.disconnect(NTCP)                                           # Close the connection and 
                 return "invalid argument: " + arg                               # return error message
             arg_dict[key] = value                    
-            
+        
+        self.survey_args = arg_dict.copy()                                      # Store these params for enhance to look at
+        
         scan = Scan(NTCP)                                                       # Nanonis scan module
         
         basename     = scan.PropsGet()[3]                                       # Get the save basename
@@ -88,21 +92,24 @@ class Scanbot():
         n  = int(arg_dict['-n'])                                                # size of nxn grid of scans
         dx = float(arg_dict['-dx'])                                             # Scan spacing
         xy = float(arg_dict['-xy'])                                             # Scan size (square)
+        ox = float(arg_dict['-oxy'].split(',')[0])                              # Origin of grid
+        oy = float(arg_dict['-oxy'].split(',')[1])                              # Origin of grid
         
         frames = []                                                             # [x,y,w,h,angle=0]
-        for ii in range(int(-n/2),int(n/2) + 1 - ((n+1)%2)):                    # cater for odd and even n
-            for jj in range(int(-n/2),int(n/2) + 1 - ((n+1)%2)):                # cater for odd and even n
-                if(not ii%2): frames.append([jj*dx, ii*dx, xy, xy])             # for even ii, go in the forwards direction of jj
-                if(ii%2):     frames.append([-jj*dx, ii*dx, xy, xy])            # for odd ii, go in the reverse direction of jj.
+        for ii in range(int(-n/2),int(n/2) + n%2):
+            for jj in range(int(-n/2),int(n/2) + n%2):
+                if(not ii%2): frames.append([ jj*dx+ox, ii*dx+oy, xy, xy])      # for even ii, go in the forwards direction of jj
+                if(ii%2):     frames.append([-jj*dx+ox, ii*dx+oy, xy, xy])      # for odd ii, go in the reverse direction of jj.
                                                                                 # Alternate jj direction so the grid snakes which is better for drift
+        sleepTime = float(arg_dict['-st'])                                      # Time to sleep before restarting scan to reduce drift
         for frame in frames:
             self.interface.sendReply('running scan' + str(frame))               # Send a message that the next scan is starting
             
             scan.FrameSet(*frame)                                               # Set the coordinates and size of the frame window in nanonis
             scan.Action('start')                                                # Start the scan. default direction is "up"
             if(self.checkEventFlags()): break                                   # Check event flags
-        
-            time.sleep(10)                                                      # Wait 10s for drift to settle
+            
+            time.sleep(sleepTime)                                               # Wait 10s for drift to settle
             if(self.checkEventFlags()): break
         
             scan.Action('start')                                                # Start the scan again after waiting for drift to settle
@@ -122,6 +129,53 @@ class Scanbot():
         
         self.interface.sendReply('survey \'' + arg_dict['-s'] + '\' done')      # Send a notification that the survey has completed
     
+    def enhance(self,args):
+                                                                                # Defaults args...
+        arg_dict = {'-i'  : '1',                                                # Index of the frame in the last survey to enhance
+                    '-n'  : '2',                                                # size of the nxn grid of scans
+                    '-s'  : 'enhance',                                          # suffix at the end of autosaved sxm files
+                    '-xy' : '0',                                                # length and width of the scan frame (square)
+                    '-dx' : '0'}                                                # spacing between scans
+        
+        for arg in args:                                                        # Override the defaults if user inputs them
+            key,value = arg.split('=')
+            if(not key in arg_dict):
+                return "invalid argument: " + arg                               # return error message
+            arg_dict[key] = value                    
+        
+        i = int(arg_dict['-i'])
+        n = int(self.survey_args['-n'])
+        
+        count = 0
+        for ii in range(int(-n/2),int(n/2) + n%2):
+            for jj in range(int(-n/2),int(n/2) + n%2):
+                count += 1
+                if(count == i): break
+            if(count == i): break
+        
+        ox = float(self.survey_args['-oxy'].split(',')[0])                      # Origin of grid
+        oy = float(self.survey_args['-oxy'].split(',')[1])                      # Origin of grid
+        dx = float(self.survey_args['-dx'])
+        if(not ii%2): ox,oy =  jj*dx+ox, ii*dx+oy
+        if(    ii%2): ox,oy = -jj*dx+ox, ii*dx+oy
+        oxy = str(ox) + ',' + str(oy)
+        
+        n  = int(arg_dict['-n'])
+        xy = float(arg_dict['-xy'])
+        dx = float(arg_dict['-dx'])
+        
+        if(xy == 0): xy = float(self.survey_args['-xy'])/n
+        if(dx == 0): dx = xy
+        
+        survey_args = []
+        survey_args.append('-n='   + str(n))
+        survey_args.append('-s='   + 'enhance')
+        survey_args.append('-xy='  + str(xy))
+        survey_args.append('-dx='  + str(dx))
+        survey_args.append('-oxy=' + oxy)
+        
+        self.survey(survey_args)
+        
 ###############################################################################
 # Utilities
 ###############################################################################

@@ -75,6 +75,7 @@ class scanbot_test(object):
                          'stop'             : self.stop,
                          'pause'            : lambda args: global_.pause.set(),
                          'resume'           : lambda args: global_.pause.clear(),
+                         'enhance'          : self.enhance,
                          'plot'             : self.plot
         }
     
@@ -93,9 +94,16 @@ class scanbot_test(object):
         global_.running.clear()
         global_.tasks.join()
     
+    def enhance(self,args):
+        self.stop(args=[])
+        global_.running.set()
+        t = threading.Thread(target=lambda : self.scanbot.enhance(args))
+        global_.tasks = t
+        t.start()
+        
     def plot(self,args):
         self.scanbot.plot(args)
-        
+    
 ###############################################################################
 # Zulip
 ###############################################################################

@@ -67,7 +67,7 @@ class Scanbot():
         NTCP,connection_error = self.connect()                                  # Connect to nanonis via TCP
         if(connection_error): return connection_error                           # Return error message if there was a problem connecting        
                                                                                 # Defaults args...
-        arg_dict = {'-i'  : '1',
+        arg_dict = {'-i'  : '1',                                                # start the grid from this index
                     '-n'  : '5',                                                # size of the nxn grid of scans
                     '-s'  : 'scanbot',                                          # suffix at the end of autosaved sxm files
                     '-xy' : '100e-9',                                           # length and width of the scan frame (square)
@@ -90,22 +90,28 @@ class Scanbot():
         tempBasename = basename + '_' + arg_dict['-s'] + '_'                    # Create a temp basename for this survey
         scan.PropsSet(series_name=tempBasename)                                 # Set the basename in nanonis for this survey
         
+        i  = int(arg_dict['-i'])                                                # start the grid at this index
         n  = int(arg_dict['-n'])                                                # size of nxn grid of scans
         dx = float(arg_dict['-dx'])                                             # Scan spacing
         xy = float(arg_dict['-xy'])                                             # Scan size (square)
         ox = float(arg_dict['-oxy'].split(',')[0])                              # Origin of grid
         oy = float(arg_dict['-oxy'].split(',')[1])                              # Origin of grid
         
+        count = 0
         frames = []                                                             # [x,y,w,h,angle=0]
         for ii in range(int(-n/2),int(n/2) + n%2):
             jj_range = range(int(-n/2),int(n/2) + n%2)
             if(ii%2): jj_range = reversed(jj_range)                             # Alternate grid direction each row so the grid snakes... better for drift
             for jj in jj_range:
-                frames.append([ jj*dx+ox, ii*dx+oy, xy, xy])                    
-                                                                                # Build scan frame
+                count += 1
+                if(count < i): continue                                         # Skip this frame if it's before the frame index we want to start from
+                frames.append([ jj*dx+ox, ii*dx+oy, xy, xy])                    # Build scan frame
+        
+        count = i-1
         sleepTime = float(arg_dict['-st'])                                      # Time to sleep before restarting scan to reduce drift
-        for count,frame in enumerate(frames):
-            self.interface.sendReply('Running scan ' + str(count+1) + ': ' + str(frame)) # Send a message that the next scan is starting
+        for frame in frames:
+            count += 1
+            self.interface.sendReply('Running scan ' + str(count) + ': ' + str(frame)) # Send a message that the next scan is starting
             
             scan.FrameSet(*frame)                                               # Set the coordinates and size of the frame window in nanonis
             scan.Action('start')                                                # Start the scan. default direction is "up"

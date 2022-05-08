@@ -76,7 +76,8 @@ class scanbot_test(object):
                          'pause'            : lambda args: global_.pause.set(),
                          'resume'           : lambda args: global_.pause.clear(),
                          'enhance'          : self.enhance,
-                         'plot'             : self.plot
+                         'plot'             : self.plot,
+                         'tip_shape'        : self.tipShape
         }
     
 ###############################################################################
@@ -104,6 +105,13 @@ class scanbot_test(object):
     def plot(self,args):
         self.scanbot.plot(args)
     
+    def tipShape(self,args):
+        if(global_.running.is_set()): self.stop(args=[])
+        global_.running.set()
+        t = threading.Thread(target=lambda : self.scanbot.tipShape(args))
+        global_.tasks = t
+        t.start()
+        
 ###############################################################################
 # Zulip
 ###############################################################################

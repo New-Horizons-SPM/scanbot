@@ -7,6 +7,7 @@ Created on Fri May  6 15:38:34 2022
 
 from nanonisTCP import nanonisTCP
 from nanonisTCP.Scan import Scan
+from nanonisTCP.TipShaper import TipShaper
 
 import numpy as np
 
@@ -111,6 +112,7 @@ class Scanbot():
         sleepTime = float(arg_dict['-st'])                                      # Time to sleep before restarting scan to reduce drift
         for frame in frames:
             count += 1
+            self.currentSurveyIndex = count
             self.interface.sendReply('Running scan ' + str(count) + ': ' + str(frame)) # Send a message that the next scan is starting
             
             scan.FrameSet(*frame)                                               # Set the coordinates and size of the frame window in nanonis
@@ -183,7 +185,49 @@ class Scanbot():
         survey_args.append('-oxy=' + oxy)
         
         self.survey(survey_args)                                                # Kick off a survey within the frame we want to enhance
+    
+    def tipShape(self,args):
+        NTCP,connection_error = self.connect()                                  # Connect to nanonis via TCP
+        if(connection_error): return connection_error                           # Return error message if there was a problem connecting        
+                                                                                # Defaults args...
+        arg_dict = {'-sod'  : ['default',lambda x: float(x)],                   # Index of the frame in the last survey to enhance
+                    '-cb'   : ['default',lambda x: int(x)],                     # size of the nxn grid of scans
+                    '-b1'   : ['default',lambda x: float(x)],                   # suffix at the end of autosaved sxm files
+                    '-z1'   : ['default',lambda x: float(x)],                   # length and width of the scan frame (square)
+                    '-t1'   : ['default',lambda x: float(x)],                   # spacing between scans
+                    '-b2'   : ['default',lambda x: float(x)],
+                    '-t2'   : ['default',lambda x: float(x)],
+                    '-z3'   : ['default',lambda x: float(x)],
+                    '-t3'   : ['default',lambda x: float(x)],
+                    '-wait' : ['default',lambda x: float(x)],
+                    '-fb'   : ['default',lambda x: int(x)]}
         
+        for arg in args:                                                        # Override the defaults if user inputs them
+            key,value = arg.split('=')
+            if(not key in arg_dict):
+                return "invalid argument: " + arg                               # return error message
+            arg_dict[key][0] = value                    
+            
+        tipShaper = TipShaper(NTCP)
+        default_args = tipShaper.PropsGet()
+        
+        tipShaperArgs = []
+        for i,arg in enumerate(arg_dict):
+            if(arg_dict[arg][0] == 'default'):
+                arg_dict[arg][0] = str(default_args[i])
+            
+            tipShaperArgs.append(arg_dict[arg][1](arg_dict[arg][0]))
+        
+        tipShaper.PropsSet(*tipShaperArgs)
+        
+        tipShaper.Start(wait_until_finished=False,timeout=-1)
+        
+        self.disconnect(NTCP)
+        
+        global_.running.clear()
+        
+        self.interface.sendReply("Tip-shape complete")
+    
 ###############################################################################
 # Utilities
 ###############################################################################

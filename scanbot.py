@@ -67,7 +67,8 @@ class Scanbot():
         NTCP,connection_error = self.connect()                                  # Connect to nanonis via TCP
         if(connection_error): return connection_error                           # Return error message if there was a problem connecting        
                                                                                 # Defaults args...
-        arg_dict = {'-n'  : '5',                                                # size of the nxn grid of scans
+        arg_dict = {'-i'  : '1',
+                    '-n'  : '5',                                                # size of the nxn grid of scans
                     '-s'  : 'scanbot',                                          # suffix at the end of autosaved sxm files
                     '-xy' : '100e-9',                                           # length and width of the scan frame (square)
                     '-dx' : '150e-9',                                           # spacing between scans
@@ -97,13 +98,14 @@ class Scanbot():
         
         frames = []                                                             # [x,y,w,h,angle=0]
         for ii in range(int(-n/2),int(n/2) + n%2):
-            for jj in range(int(-n/2),int(n/2) + n%2):
-                if(not ii%2): frames.append([ jj*dx+ox, ii*dx+oy, xy, xy])      # for even ii, go in the forwards direction of jj
-                if(ii%2):     frames.append([-jj*dx+ox, ii*dx+oy, xy, xy])      # for odd ii, go in the reverse direction of jj.
-                                                                                # Alternate jj direction so the grid snakes which is better for drift
+            jj_range = range(int(-n/2),int(n/2) + n%2)
+            if(ii%2): jj_range = reversed(jj_range)                             # Alternate grid direction each row so the grid snakes... better for drift
+            for jj in jj_range:
+                frames.append([ jj*dx+ox, ii*dx+oy, xy, xy])                    
+                                                                                # Build scan frame
         sleepTime = float(arg_dict['-st'])                                      # Time to sleep before restarting scan to reduce drift
-        for frame in frames:
-            self.interface.sendReply('running scan' + str(frame))               # Send a message that the next scan is starting
+        for count,frame in enumerate(frames):
+            self.interface.sendReply('Running scan ' + str(count+1) + ': ' + str(frame)) # Send a message that the next scan is starting
             
             scan.FrameSet(*frame)                                               # Set the coordinates and size of the frame window in nanonis
             scan.Action('start')                                                # Start the scan. default direction is "up"
@@ -143,38 +145,38 @@ class Scanbot():
                 return "invalid argument: " + arg                               # return error message
             arg_dict[key] = value                    
         
-        i = int(arg_dict['-i'])
-        n = int(self.survey_args['-n'])
+        i = int(arg_dict['-i'])                                                 # Index of the frame to enhance
+        n = int(self.survey_args['-n'])                                         # size of the original survey grid
         
-        count = 0
+        count = 0                                                               # Lazy way to get ii and jj
         for ii in range(int(-n/2),int(n/2) + n%2):
-            for jj in range(int(-n/2),int(n/2) + n%2):
+            jj_range = range(int(-n/2),int(n/2) + n%2)
+            if(ii%2): jj_range = reversed(jj_range)                             # Alternate grid direction each row so the grid snakes... better for drift
+            for jj in jj_range:
                 count += 1
                 if(count == i): break
             if(count == i): break
         
-        ox = float(self.survey_args['-oxy'].split(',')[0])                      # Origin of grid
-        oy = float(self.survey_args['-oxy'].split(',')[1])                      # Origin of grid
-        dx = float(self.survey_args['-dx'])
-        if(not ii%2): ox,oy =  jj*dx+ox, ii*dx+oy
-        if(    ii%2): ox,oy = -jj*dx+ox, ii*dx+oy
-        oxy = str(ox) + ',' + str(oy)
+        ox = float(self.survey_args['-oxy'].split(',')[0])                      # Origin of the original survey grid
+        oy = float(self.survey_args['-oxy'].split(',')[1])                      # Origin of the original survey grid
+        dx = float(self.survey_args['-dx'])                                     # Frame spacing in the original survey grid
+        ox,oy =  jj*dx+ox, ii*dx+oy                                             # New origin for the enhance grid is the centre of the frame to enhance
         
-        n  = int(arg_dict['-n'])
-        xy = float(arg_dict['-xy'])
-        dx = float(arg_dict['-dx'])
+        n  = int(arg_dict['-n'])                                                # size of the nxn grid within the frame to enhance
+        xy = float(arg_dict['-xy'])                                             # size of the frames in the enhance grid
+        dx = float(arg_dict['-dx'])                                             # spacing of the frames in the enhance grid
+        if(xy == 0): xy = float(self.survey_args['-xy'])/n                      # if xy is set to 0, divide the enhance grid fills the frame exactly
+        if(dx == 0): dx = xy                                                    # spacing = frame size by default
+        oxy = str(ox+dx/2) + ',' + str(oy+dx/2)                                 # Adjust the origin by dx/2 to centre the enhance grid on the survey frame
         
-        if(xy == 0): xy = float(self.survey_args['-xy'])/n
-        if(dx == 0): dx = xy
-        
-        survey_args = []
+        survey_args = []                                                        # Argument list for survey
         survey_args.append('-n='   + str(n))
         survey_args.append('-s='   + 'enhance')
         survey_args.append('-xy='  + str(xy))
         survey_args.append('-dx='  + str(dx))
         survey_args.append('-oxy=' + oxy)
         
-        self.survey(survey_args)
+        self.survey(survey_args)                                                # Kick off a survey within the frame we want to enhance
         
 ###############################################################################
 # Utilities

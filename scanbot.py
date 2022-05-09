@@ -75,7 +75,7 @@ class scanbot():
                     '-xy' : '100e-9',                                           # length and width of the scan frame (square)
                     '-dx' : '150e-9',                                           # spacing between scans
                     '-oxy': '0,0',                                              # Origin (centre of grid)
-                    '-st' : '0.5 ',                                             # Sleep time before restarting scan to correct for drift
+                    '-st' : '10',                                               # Sleep time before restarting scan to correct for drift
                     '-bias': '1'}                                               # Scan bias (not implemented yet)
         
         for arg in args:                                                        # Override the defaults if user inputs them
@@ -148,7 +148,8 @@ class scanbot():
                     '-n'  : '2',                                                # size of the nxn grid of scans
                     '-s'  : 'enhance',                                          # suffix at the end of autosaved sxm files
                     '-xy' : '0',                                                # length and width of the scan frame (square)
-                    '-dx' : '0'}                                                # spacing between scans
+                    '-dx' : '0',                                                # spacing between scans
+                    '-st' : '10'}                                               # Sleep time before restarting scan to correct for drift
         
         for arg in args:                                                        # Override the defaults if user inputs them
             key,value = arg.split('=')
@@ -186,6 +187,7 @@ class scanbot():
         survey_args.append('-xy='  + str(xy))
         survey_args.append('-dx='  + str(dx))
         survey_args.append('-oxy=' + oxy)
+        survey_args.append('-st='  + arg_dict['-st'])
         
         self.survey(survey_args)                                                # Kick off a survey within the frame we want to enhance
     

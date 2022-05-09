@@ -77,7 +77,8 @@ class scanbot_test(object):
                          'resume'           : lambda args: global_.pause.clear(),
                          'enhance'          : self.enhance,
                          'plot'             : self.plot,
-                         'tip_shape'        : self.tipShape
+                         'tip_shape'        : self.tipShape,
+                         'pulse'            : self.pulse
         }
     
 ###############################################################################
@@ -111,6 +112,9 @@ class scanbot_test(object):
         t = threading.Thread(target=lambda : self.scanbot.tipShape(args))
         global_.tasks = t
         t.start()
+        
+    def pulse(self,args):
+        self.scanbot.pulse(args)
         
 ###############################################################################
 # Zulip

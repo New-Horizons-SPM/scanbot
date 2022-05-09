@@ -241,12 +241,13 @@ class scanbot():
                 biasPulseArgs.append(arg_dict[arg][2](arg_dict[arg][1]))
         
         biasPulseArgs.append(1)                                                 # wait_until_done flag
+        pw        = arg_dict['-pw'][2](arg_dict['-pw'][1])                      # pulse width
         numPulses = arg_dict['-np'][2](arg_dict['-np'][1])                      # Number of bias pulses
         
         tipShaper.Start(wait_until_finished=True,timeout=-1)                    # initiate the tip shape
         for n in range(0,numPulses):                                            # Pulse the tip -np times
             biasModule.Pulse(*biasPulseArgs)
-            time.sleep(0.2)
+            time.sleep(pw + 0.2)
         
         self.disconnect(NTCP)
         
@@ -254,6 +255,43 @@ class scanbot():
         
         self.interface.sendReply("Tip-shape complete")
     
+    def pulse(self,args):
+        NTCP,connection_error = self.connect()                                  # Connect to nanonis via TCP
+        if(connection_error): return connection_error                           # Return error message if there was a problem connecting        
+                                                                                # Defaults args... leaving set to default takes settings from nanonis
+        arg_dict = {'-np'     : ['-','1',       lambda x: int(x)],              # Number of pulses
+                    '-pw'     : ['pulse','0.1', lambda x: float(x)],            # Pulse width (duration in seconds)
+                    '-bias'   : ['pulse','3',   lambda x: float(x)],            # Bias value (V)
+                    '-zhold'  : ['pulse','0',   lambda x: int(x)],              # Z-Controller on hold (0=nanonis setting, 1=deactivated, 2=activated)
+                    '-abs'    : ['pulse','0',   lambda x: int(x)]               # Absolute or relative to current bias (0=nanonis setting, 1=relative,2=absolute)
+                    }
+        
+        for arg in args:                                                        # Override the defaults if user inputs them
+            key,value = arg.split('=')
+            if(not key in arg_dict):
+                return "invalid argument: " + arg                               # return error message
+            arg_dict[key][1] = value                    
+            
+        biasModule = Bias(NTCP)
+        
+        biasPulseArgs = []
+        for arg in arg_dict:
+            if(arg_dict[arg][0] == 'pulse'):
+                biasPulseArgs.append(arg_dict[arg][2](arg_dict[arg][1]))
+        
+        biasPulseArgs.append(1)                                                 # wait_until_done flag
+        pw        = arg_dict['-pw'][2](arg_dict['-pw'][1])                      # pulse width
+        print(pw)
+        numPulses = arg_dict['-np'][2](arg_dict['-np'][1])                      # Number of bias pulses
+        for n in range(0,numPulses):                                            # Pulse the tip -np times
+            biasModule.Pulse(*biasPulseArgs)
+            time.sleep(pw + 0.2)
+        
+        self.disconnect(NTCP)
+        
+        global_.running.clear()
+        
+        self.interface.sendReply("Bias pulse complete")
 ###############################################################################
 # Utilities
 ###############################################################################

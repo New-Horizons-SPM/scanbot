@@ -8,6 +8,7 @@ Created on Fri May  6 15:38:34 2022
 from nanonisTCP import nanonisTCP
 from nanonisTCP.Scan import Scan
 from nanonisTCP.TipShaper import TipShaper
+from nanonisTCP.Bias import Bias
 
 import numpy as np
 
@@ -74,7 +75,8 @@ class Scanbot():
                     '-xy' : '100e-9',                                           # length and width of the scan frame (square)
                     '-dx' : '150e-9',                                           # spacing between scans
                     '-oxy': '0,0',                                              # Origin (centre of grid)
-                    '-st' : '0.5 '}                                             # Sleep time before restarting scan to correct for drift
+                    '-st' : '0.5 ',                                             # Sleep time before restarting scan to correct for drift
+                    '-bias': '1'}                                               # Scan bias (not implemented yet)
         
         for arg in args:                                                        # Override the defaults if user inputs them
             key,value = arg.split('=')
@@ -86,6 +88,7 @@ class Scanbot():
         self.survey_args = arg_dict.copy()                                      # Store these params for enhance to look at
         
         scan = Scan(NTCP)                                                       # Nanonis scan module
+        # biasModule = Bias(NTCP)                                                 # Nanonis bias module
         
         basename     = scan.PropsGet()[3]                                       # Get the save basename
         tempBasename = basename + '_' + arg_dict['-s'] + '_'                    # Create a temp basename for this survey
@@ -189,38 +192,59 @@ class Scanbot():
     def tipShape(self,args):
         NTCP,connection_error = self.connect()                                  # Connect to nanonis via TCP
         if(connection_error): return connection_error                           # Return error message if there was a problem connecting        
-                                                                                # Defaults args...
-        arg_dict = {'-sod'  : ['default',lambda x: float(x)],                   # Index of the frame in the last survey to enhance
-                    '-cb'   : ['default',lambda x: int(x)],                     # size of the nxn grid of scans
-                    '-b1'   : ['default',lambda x: float(x)],                   # suffix at the end of autosaved sxm files
-                    '-z1'   : ['default',lambda x: float(x)],                   # length and width of the scan frame (square)
-                    '-t1'   : ['default',lambda x: float(x)],                   # spacing between scans
-                    '-b2'   : ['default',lambda x: float(x)],
-                    '-t2'   : ['default',lambda x: float(x)],
-                    '-z3'   : ['default',lambda x: float(x)],
-                    '-t3'   : ['default',lambda x: float(x)],
-                    '-wait' : ['default',lambda x: float(x)],
-                    '-fb'   : ['default',lambda x: int(x)]}
+                                                                                # Defaults args... leaving set to default takes settings from nanonis
+        arg_dict = {'-sod'    : ['ts','default',lambda x: float(x)],            # switch off delay: the time during which the Z position is averaged before switching the Z controller off.
+                    '-cb'     : ['ts','default',lambda x: int(x)],              # Change bias flag
+                    '-b1'     : ['ts','default',lambda x: float(x)],            # is the value applied to the Bias signal if cb is true
+                    '-z1'     : ['ts','default',lambda x: float(x)],            # first tip lift (m) (i.e. -2e-9)
+                    '-t1'     : ['ts','default',lambda x: float(x)],            # defines the time to ramp Z from current Z position to z1
+                    '-b2'     : ['ts','default',lambda x: float(x)],            # the Bias voltage applied just after the first Z ramping
+                    '-t2'     : ['ts','default',lambda x: float(x)],            # the time to wait after applying the Bias Lift value b2
+                    '-z3'     : ['ts','default',lambda x: float(x)],            # the height the tip is going to ramp for the second time (m) i.e. +5nm
+                    '-t3'     : ['ts','default',lambda x: float(x)],            # given time to ramp Z in the second ramping [s].
+                    '-wait'   : ['ts','default',lambda x: float(x)],            # time to wait after restoring the initial Bias voltage
+                    '-fb'     : ['ts','default',lambda x: int(x)],              # selects the initial Z-controller status is off (0) or on (1)
+                    # Bias Pulse params
+                    '-np'     : ['-','1',       lambda x: int(x)],              # Number of pulses
+                    '-pw'     : ['pulse','0.1', lambda x: float(x)],            # Pulse width (duration in seconds)
+                    '-bias'   : ['pulse','3',   lambda x: float(x)],            # Bias value (V)
+                    '-zhold'  : ['pulse','0',   lambda x: int(x)],              # Z-Controller on hold (0=nanonis setting, 1=deactivated, 2=activated)
+                    '-abs'    : ['pulse','0',   lambda x: int(x)]               # Absolute or relative to current bias (0=nanonis setting, 1=relative,2=absolute)
+                    }
         
         for arg in args:                                                        # Override the defaults if user inputs them
             key,value = arg.split('=')
             if(not key in arg_dict):
                 return "invalid argument: " + arg                               # return error message
-            arg_dict[key][0] = value                    
+            arg_dict[key][1] = value                    
             
-        tipShaper = TipShaper(NTCP)
-        default_args = tipShaper.PropsGet()
+        tipShaper  = TipShaper(NTCP)
+        biasModule = Bias(NTCP)
+        
+        default_args = tipShaper.PropsGet()                                     # Store all the current tip shaping settings in nanonis
         
         tipShaperArgs = []
         for i,arg in enumerate(arg_dict):
-            if(arg_dict[arg][0] == 'default'):
-                arg_dict[arg][0] = str(default_args[i])
+            if(arg_dict[arg][0] == 'ts'):
+                if(arg_dict[arg][1] == 'default'):                              # only process tip shaper params
+                    arg_dict[arg][1] = str(default_args[i])                     # set all the remaining 'default' values to values from nanonis
             
-            tipShaperArgs.append(arg_dict[arg][1](arg_dict[arg][0]))
+                tipShaperArgs.append(arg_dict[arg][2](arg_dict[arg][1]))        # convert the string to required type
         
-        tipShaper.PropsSet(*tipShaperArgs)
+        tipShaper.PropsSet(*tipShaperArgs)                                      # update the tip shaping params in nanonis
         
-        tipShaper.Start(wait_until_finished=False,timeout=-1)
+        biasPulseArgs = []
+        for arg in arg_dict:
+            if(arg_dict[arg][0] == 'pulse'):
+                biasPulseArgs.append(arg_dict[arg][2](arg_dict[arg][1]))
+        
+        biasPulseArgs.append(1)                                                 # wait_until_done flag
+        numPulses = arg_dict['-np'][2](arg_dict['-np'][1])                      # Number of bias pulses
+        
+        tipShaper.Start(wait_until_finished=True,timeout=-1)                    # initiate the tip shape
+        for n in range(0,numPulses):                                            # Pulse the tip -np times
+            biasModule.Pulse(*biasPulseArgs)
+            time.sleep(0.2)
         
         self.disconnect(NTCP)
         

@@ -2,7 +2,7 @@
 """
 Created on Fri May  6 12:06:37 2022
 
-@author: jced0001
+@author: jack hellerstedt and julian ceddia
 """
 
 from Scanbot import Scanbot

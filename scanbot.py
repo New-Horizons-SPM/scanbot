@@ -2,7 +2,7 @@
 """
 Created on Fri May  6 15:38:34 2022
 
-@author: jced0001
+@author: jack hellerstedt and julian ceddia
 """
 
 from nanonisTCP import nanonisTCP

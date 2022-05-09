@@ -5,7 +5,7 @@ Created on Fri May  6 12:06:37 2022
 @author: jack hellerstedt and julian ceddia
 """
 
-from Scanbot import Scanbot
+from scanbot import scanbot
 import threading
 
 import firebase_admin
@@ -37,7 +37,7 @@ class scanbot_test(object):
         self.IP       = '127.0.0.1'                                             # Default IP to local host
         self.uploadMethod = 'firebase'                                          # Default upload method is firebase
         self.initCommandDict()
-        self.scanbot = Scanbot(self)
+        self.scanbot = scanbot(self)
     
 ###############################################################################
 # Initialisation

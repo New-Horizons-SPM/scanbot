@@ -17,8 +17,8 @@ from pathlib import Path
 
 import global_
 
-class scanbot_test(object):
-    message    = []
+class scanbot_interface(object):
+    bot_message = []
     bot_handler = []
     validUploadMethods = ['zulip','firebase']
     
@@ -78,59 +78,68 @@ class scanbot_test(object):
                          'enhance'          : self.enhance,
                          'plot'             : self.plot,
                          'tip_shape'        : self.tipShape,
-                         'pulse'            : self.pulse
+                         'pulse'            : self.pulse,
+                         'bias_dep'         : self.biasDep
         }
     
 ###############################################################################
 # Scanbot
 ###############################################################################
     def survey(self,args):
-        if global_.running.is_set(): return "Error: something already running"
-        global_.running.set()
-        t = threading.Thread(target=lambda : self.scanbot.survey(args))
-        global_.tasks = t
-        t.start()
+        func = lambda : self.scanbot.survey(args)
+        return self.threadTask(func)
     
     def stop(self,args):
+        if(global_.running.is_set()):
+            self.scanbot.stop(args)
+            global_.running.clear()
+            global_.tasks.join()
         self.scanbot.stop(args)
-        global_.running.clear()
-        global_.tasks.join()
-    
+        
     def enhance(self,args):
-        self.stop(args=[])
-        global_.running.set()
-        t = threading.Thread(target=lambda : self.scanbot.enhance(args))
-        global_.tasks = t
-        t.start()
+        func = lambda : self.scanbot.enhance(args)
+        return self.threadTask(func,override=True)
         
     def plot(self,args):
         self.scanbot.plot(args)
     
     def tipShape(self,args):
-        if(global_.running.is_set()): self.stop(args=[])
-        global_.running.set()
-        t = threading.Thread(target=lambda : self.scanbot.tipShape(args))
-        global_.tasks = t
-        t.start()
+        func = lambda : self.scanbot.tipShape(args)
+        return self.threadTask(func)
         
     def pulse(self,args):
         self.scanbot.pulse(args)
         
+    def biasDep(self,args):
+        func = lambda : self.scanbot.biasDep(args)
+        return self.threadTask(func)
+    
+    def threadTask(self,func,override=False):
+        if(override): self.stop(args=[])
+        if global_.running.is_set(): return "Error: something already running"
+        global_.running.set()
+        t = threading.Thread(target=func)
+        global_.tasks = t
+        t.start()
+        return ""
+        
 ###############################################################################
 # Zulip
 ###############################################################################
-    def handle_message(self, message, bot_handler):
-        if message['sender_email'] not in self.whitelist and self.whitelist:
-            self.sendReply(message['sender_email'])
-            self.sendReply('access denied')
-            return
-        
-        self.message = message
+    def handle_message(self, message, bot_handler=None):
         self.bot_handler = bot_handler
-        
-        command = message['content'].split(' ')[0].lower()
-        args    = message['content'].split(' ')[1:]
-        # if(len(args) == 1): args = args.pop()
+        if(bot_handler):
+            if message['sender_email'] not in self.whitelist and self.whitelist:
+                self.sendReply(message['sender_email'])
+                self.sendReply('access denied')
+                return
+            
+            self.bot_message = message
+            
+            message = message['content']
+            
+        command = message.split(' ')[0].lower()
+        args    = message.split(' ')[1:]
         
         if(not command in self.commands):
             reply = "Invalid command. Run *list_commands* to see command list"
@@ -142,9 +151,14 @@ class scanbot_test(object):
         if(reply): self.sendReply(reply)
     
     def sendReply(self,reply):
-        if(self.bot_handler): self.bot_handler.send_reply(self.message, reply)
+        if(self.bot_handler):
+            self.bot_handler.send_reply(self.bot_message, reply)
+            return
+        
+        print(reply)
     
     def sendPNG(self,pngFilename):
+        if(not self.bot_handler): print("pngs not supported yet"); return       # Don't support png
         path = os.getcwd() + '/' + pngFilename
         path = Path(path)
         path = path.resolve()
@@ -191,7 +205,7 @@ class scanbot_test(object):
         return "Updated ports: " + str(self.portList)
     
     def setUploadMethod(self,uploadMethod):
-        uploadMethod = uploadMethod.lower()
+        uploadMethod = uploadMethod[0].lower()
         if(not uploadMethod in self.validUploadMethods):
             return "Invalid Method. Available methods:\n" + "\n". join(self.validUploadMethods)
         self.uploadMethod = uploadMethod
@@ -200,4 +214,4 @@ class scanbot_test(object):
     def listCommands(self,args):
         return "\n". join([c for c in self.commands])
     
-handler_class = scanbot_test
+handler_class = scanbot_interface

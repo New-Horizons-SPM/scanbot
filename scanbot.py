@@ -10,6 +10,8 @@ from nanonisTCP.Scan import Scan
 from nanonisTCP.TipShaper import TipShaper
 from nanonisTCP.Bias import Bias
 
+import nanonisUtils as nut
+
 import numpy as np
 
 import matplotlib
@@ -38,9 +40,9 @@ class scanbot():
         if(connection_error): return connection_error                           # Return error message if there was a problem connecting        
         
         scan = Scan(NTCP)                                                       # Nanonis scan module
-        _,scanData,scanDirection = scan.FrameDataGrab(14, 1)                    # Grab the data within the scan frame. Channel 14 is . 1 is forward data direction
+        _,scanData,_ = scan.FrameDataGrab(14, 1)                                # Grab the data within the scan frame. Channel 14 is . 1 is forward data direction
         
-        pngFilename = self.makePNG(scanData, scanDirection)                     # Generate a png from the scan data
+        pngFilename = self.makePNG(scanData)                                    # Generate a png from the scan data
         self.interface.sendPNG(pngFilename)                                     # Send a png over zulip
         
         self.disconnect(NTCP)                                                   # Close the TCP connection
@@ -120,7 +122,6 @@ class scanbot():
             
             scan.FrameSet(*frame)                                               # Set the coordinates and size of the frame window in nanonis
             scan.Action('start')                                                # Start the scan. default direction is "up"
-            if(self.checkEventFlags()): break                                   # Check event flags
             
             time.sleep(sleepTime)                                               # Wait 10s for drift to settle
             if(self.checkEventFlags()): break
@@ -128,12 +129,12 @@ class scanbot():
             scan.Action('start')                                                # Start the scan again after waiting for drift to settle
             timeoutStatus, _, filePath = scan.WaitEndOfScan()                   # Wait until the scan finishes
             
-            _,scanData,scanDirection = scan.FrameDataGrab(14, 1)                # Grab the data within the scan frame. Channel 14 is . 1 is forward data direction
+            _,scanData,_ = scan.FrameDataGrab(14, 1)                            # Grab the data within the scan frame. Channel 14 is . 1 is forward data direction
             
-            if timeoutStatus: filePath = ''                                     # If the timeout status indicates scan did not finish, there's no file to save
-            
-            pngFilename = self.makePNG(scanData, scanDirection, filePath)       # Generate a png from the scan data
+            pngFilename = self.makePNG(scanData, filePath)                      # Generate a png from the scan data
             self.interface.sendPNG(pngFilename)                                 # Send a png over zulip
+            
+            if(self.checkEventFlags()): break                                   # Check event flags
         
         scan.PropsSet(series_name=basename)                                     # Put back the original basename
         self.disconnect(NTCP)                                                   # Close the TCP connection
@@ -281,7 +282,7 @@ class scanbot():
         
         biasPulseArgs.append(1)                                                 # wait_until_done flag
         pw        = arg_dict['-pw'][2](arg_dict['-pw'][1])                      # pulse width
-        print(pw)
+        
         numPulses = arg_dict['-np'][2](arg_dict['-np'][1])                      # Number of bias pulses
         for n in range(0,numPulses):                                            # Pulse the tip -np times
             biasModule.Pulse(*biasPulseArgs)
@@ -292,21 +293,98 @@ class scanbot():
         global_.running.clear()
         
         self.interface.sendReply("Bias pulse complete")
+    
+    def biasDep(self,args):
+        NTCP,connection_error = self.connect()                                  # Connect to nanonis via TCP
+        if(connection_error): return connection_error                           # Return error message if there was a problem connecting        
+                                                                                # Defaults args
+        arg_dict = {'-nb'  : ['5',   lambda x: int(x)],                         # Number of images to take b/w initial and final bias
+                    '-bdc' : ['-1',  lambda x: float(x)],                       # Drift correct image bias
+                    '-bi'  : ['-1',  lambda x: float(x)],                       # initial bias
+                    '-bf'  : ['1',   lambda x: float(x)],                       # final bias
+                    '-px'  : ['128', lambda x: int(x)]}                         # dc pixels
+        
+        for arg in args:                                                        # Override the defaults if user inputs them
+            key,value = arg.split('=')
+            if(not key in arg_dict):
+                return "invalid argument: " + arg                               # return error message
+            arg_dict[key][0] = value                    
+            
+        nb  = arg_dict['-nb'][1](arg_dict['-nb'][0])
+        bdc = arg_dict['-bdc'][1](arg_dict['-bdc'][0])
+        bi  = arg_dict['-bi'][1](arg_dict['-bi'][0])
+        bf  = arg_dict['-bf'][1](arg_dict['-bf'][0])
+        px  = arg_dict['-px'][1](arg_dict['-px'][0])
+        
+        biasList = np.linspace(bi,bf,nb)
+        
+        scan = Scan(NTCP)
+        biasModule = Bias(NTCP)
+        
+        scanPixels,scanLines = scan.BufferGet()[2:]
+        lx = int((scanLines/scanPixels)*px)
+        
+        x,y,w,h,angle = scan.FrameGet()
+        
+        ## Initial drift correct frame
+        biasModule.Set(bdc)
+        scan.BufferSet(pixels=px,lines=lx)
+        scan.Action('start',scan_direction='up')
+        timeoutStatus, _, filePath = scan.WaitEndOfScan()
+        if(timeoutStatus): return "bias dep stopped"
+        _,initialDriftCorrect,_ = scan.FrameDataGrab(14, 1)
+        
+        dx  = w/px
+        dy  = h/lx
+        dxy = np.array([dx,dy])
+        for b in biasList:
+            ## Bias dep scan
+            biasModule.Set(b)
+            scan.BufferSet(pixels=scanPixels,lines=scanLines)
+            scan.Action('start',scan_direction='down')
+            timeoutStatus, _, filePath = scan.WaitEndOfScan()
+            if(timeoutStatus): return "bias dep stopped"
+            print("timeout: " + str(timeoutStatus))
+            _,scanData,_ = scan.FrameDataGrab(14, 1)
+            
+            
+            pngFilename = self.makePNG(scanData, filePath)                      # Generate a png from the scan data
+            self.interface.sendPNG(pngFilename)                                 # Send a png over zulip
+            
+            if(self.checkEventFlags()): break                                   # Check event flags
+            
+            ## Drift correct scan
+            biasModule.Set(bdc)
+            scan.BufferSet(pixels=px,lines=lx)
+            scan.Action('start',scan_direction='up')
+            timeoutStatus, _, filePath = scan.WaitEndOfScan()
+            if(timeoutStatus): return "bias dep stopped"
+            _,driftCorrectFrame,_ = scan.FrameDataGrab(14, 1)
+            
+            if(self.checkEventFlags()): break                                   # Check event flags
+            
+            ox,oy = nut.getFrameOffset(initialDriftCorrect,driftCorrectFrame,dxy)
+            x,y   = np.array([x,y]) - np.array([ox,oy])
+            
+            scan.FrameSet(x,y,w,h)
+            
+        self.disconnect(NTCP)
+        
+        global_.running.clear()
+        
+        self.interface.sendReply("Bias dependent imaging complete")
 ###############################################################################
 # Utilities
 ###############################################################################
-    def makePNG(self,scanData,scanDirection,filePath=''):
+    def makePNG(self,scanData,filePath=''):
         fig, ax = plt.subplots(1,1)
         
-        if scanDirection == 'up':
-            scanData = np.flipud(scanData)                                      # Flip the scan if it's taken from the bottom up
-            
         mask = np.isnan(scanData)                                               # Mask the Nan's
         scanData[mask == True] = np.nanmean(scanData)                           # Replace the Nan's with the mean so it doesn't affect the plane fit
         scanData = nap.plane_fit_2d(scanData)                                   # Flattern the image
         vmin, vmax = nap.filter_sigma(scanData)                                 # cmap saturation
         
-        ax.imshow(scanData, origin='lower', cmap='Blues_r', vmin=vmin, vmax=vmax) # Plot
+        ax.imshow(scanData, cmap='Blues_r', vmin=vmin, vmax=vmax) # Plot
         ax.axis('off')
         
         pngFilename = 'im.png'

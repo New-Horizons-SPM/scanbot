@@ -36,6 +36,7 @@ class scanbot_interface(object):
         self.portList = [6501,6502,6503,6504]                                   # Default TCP ports for communicating with nanonis
         self.IP       = '127.0.0.1'                                             # Default IP to local host
         self.uploadMethod = 'firebase'                                          # Default upload method is firebase
+        self.notifications = True
         self.initCommandDict()
         self.scanbot = scanbot(self)
     
@@ -65,6 +66,7 @@ class scanbot_interface(object):
         self.commands = {'list_commands'    : self.listCommands,
                          'add_user'         : self.addUsers,
                          'list_users'       : lambda args: str(self.whitelist),
+                         'noti'             : self.noti,
                          'set_ip'           : self.setIP,
                          'get_ip'           : lambda args: self.IP,
                          'set_portlist'     : self.setPortList,
@@ -151,11 +153,12 @@ class scanbot_interface(object):
         if(reply): self.sendReply(reply)
     
     def sendReply(self,reply):
-        if(self.bot_handler):
-            self.bot_handler.send_reply(self.bot_message, reply)
-            return
+        if(self.notifications):
+            if(self.bot_handler):
+                self.bot_handler.send_reply(self.bot_message, reply)
+                return
         
-        print(reply)
+        print(reply)                                                            # Print reply to console if zulip not available or notis turned off
     
     def sendPNG(self,pngFilename):
         if(not self.bot_handler): print("pngs not supported yet"); return       # Don't support png
@@ -210,6 +213,20 @@ class scanbot_interface(object):
             return "Invalid Method. Available methods:\n" + "\n". join(self.validUploadMethods)
         self.uploadMethod = uploadMethod
         return "Set upload method to " + self.uploadMethod
+    
+    def noti(self,args):
+        if(not args[0].lower() in ["off","on"]):
+            self.sendReply("Choose on or off")
+            return
+        
+        if(args[0].lower() == "on"):
+            self.notifications = True
+            self.sendReply("Notifications on")
+            
+        if(args[0].lower() == "off"):
+            self.sendReply("Turn notifications back on by")
+            self.sendReply("```noti on```")
+            self.notifications = False
     
     def listCommands(self,args):
         return "\n". join([c for c in self.commands])

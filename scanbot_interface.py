@@ -81,7 +81,8 @@ class scanbot_interface(object):
                          'plot'             : self.plot,
                          'tip_shape'        : self.tipShape,
                          'pulse'            : self.pulse,
-                         'bias_dep'         : self.biasDep
+                         'bias_dep'         : self.biasDep,
+                         'set_bias'         : self.setBias
         }
     
 ###############################################################################
@@ -90,13 +91,6 @@ class scanbot_interface(object):
     def survey(self,args):
         func = lambda : self.scanbot.survey(args)
         return self.threadTask(func)
-    
-    def stop(self,args):
-        if(global_.running.is_set()):
-            self.scanbot.stop(args)
-            global_.running.clear()
-            global_.tasks.join()
-        self.scanbot.stop(args)
         
     def enhance(self,args):
         func = lambda : self.scanbot.enhance(args)
@@ -116,6 +110,17 @@ class scanbot_interface(object):
         func = lambda : self.scanbot.biasDep(args)
         return self.threadTask(func)
     
+    def setBias(self,args):
+        func = lambda : self.scanbot.setBias(args)
+        return self.threadTask(func)
+    
+    def stop(self,args):
+        if(global_.running.is_set()):
+            self.scanbot.stop(args)
+            global_.running.clear()
+            global_.tasks.join()
+        self.scanbot.stop(args)
+        
     def threadTask(self,func,override=False):
         if(override): self.stop(args=[])
         if global_.running.is_set(): return "Error: something already running"

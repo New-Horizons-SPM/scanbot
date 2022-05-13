@@ -9,6 +9,7 @@ from nanonisTCP import nanonisTCP
 from nanonisTCP.Scan import Scan
 from nanonisTCP.TipShaper import TipShaper
 from nanonisTCP.Bias import Bias
+from nanonisTCP.ZController import ZController
 
 import nanonisUtils as nut
 
@@ -90,7 +91,6 @@ class scanbot():
         self.survey_args = arg_dict.copy()                                      # Store these params for enhance to look at
         
         scan = Scan(NTCP)                                                       # Nanonis scan module
-        # biasModule = Bias(NTCP)                                                 # Nanonis bias module
         
         basename     = scan.PropsGet()[3]                                       # Get the save basename
         tempBasename = basename + '_' + arg_dict['-s'] + '_'                    # Create a temp basename for this survey
@@ -319,7 +319,6 @@ class scanbot():
         biasList = np.linspace(bi,bf,nb)
         
         scan = Scan(NTCP)
-        biasModule = Bias(NTCP)
         
         scanPixels,scanLines = scan.BufferGet()[2:]
         lx = int((scanLines/scanPixels)*px)
@@ -327,24 +326,24 @@ class scanbot():
         x,y,w,h,angle = scan.FrameGet()
         
         ## Initial drift correct frame
-        biasModule.Set(bdc)
+        self.rampBias(NTCP, bdc)
         scan.BufferSet(pixels=px,lines=lx)
         scan.Action('start',scan_direction='up')
-        timeoutStatus, _, filePath = scan.WaitEndOfScan()
-        if(timeoutStatus): return "bias dep stopped"
+        scan.WaitEndOfScan()
         _,initialDriftCorrect,_ = scan.FrameDataGrab(14, 1)
+        
+        if(self.checkEventFlags()): biasList=[]                                 # Check event flags
         
         dx  = w/px
         dy  = h/lx
         dxy = np.array([dx,dy])
         for b in biasList:
             ## Bias dep scan
-            biasModule.Set(b)
+            self.rampBias(NTCP, b)
             scan.BufferSet(pixels=scanPixels,lines=scanLines)
             scan.Action('start',scan_direction='down')
-            timeoutStatus, _, filePath = scan.WaitEndOfScan()
-            if(timeoutStatus): return "bias dep stopped"
-            print("timeout: " + str(timeoutStatus))
+            _, _, filePath = scan.WaitEndOfScan()
+            
             _,scanData,_ = scan.FrameDataGrab(14, 1)
             
             
@@ -354,11 +353,11 @@ class scanbot():
             if(self.checkEventFlags()): break                                   # Check event flags
             
             ## Drift correct scan
-            biasModule.Set(bdc)
+            self.rampBias(NTCP, bdc)
             scan.BufferSet(pixels=px,lines=lx)
             scan.Action('start',scan_direction='up')
             timeoutStatus, _, filePath = scan.WaitEndOfScan()
-            if(timeoutStatus): return "bias dep stopped"
+            if(timeoutStatus): break
             _,driftCorrectFrame,_ = scan.FrameDataGrab(14, 1)
             
             if(self.checkEventFlags()): break                                   # Check event flags
@@ -373,9 +372,49 @@ class scanbot():
         global_.running.clear()
         
         self.interface.sendReply("Bias dependent imaging complete")
+    
+    def setBias(self,args):
+        NTCP,connection_error = self.connect()                                  # Connect to nanonis via TCP
+        if(connection_error): return connection_error                           # Return error message if there was a problem connecting        
+                                                                                # Defaults args
+        arg_dict = {'-b'   : ['0',   lambda x: float(x)]}                       # Change bias to this value
+        
+        for arg in args:                                                        # Override the defaults if user inputs them
+            key,value = arg.split('=')
+            if(not key in arg_dict):
+                return "invalid argument: " + arg                               # return error message
+            arg_dict[key][0] = value                    
+        
+        bias = arg_dict['-b'][1](arg_dict['-b'][0])
+        self.rampBias(NTCP, bias)
+        
+        self.disconnect(NTCP)
+        
+        global_.running.clear()
+        
+        self.interface.sendReply("Bias set to " + str(bias) + "V")
+        
 ###############################################################################
 # Utilities
 ###############################################################################
+    def rampBias(self,NTCP,bias,dbdt=1,db=50e-3,zhold=True):                    # Ramp the tip bias from current value to final value at a rate of db/dt
+        biasModule = Bias(NTCP)                                                 # Nanonis Bias module
+        zController = ZController(NTCP)                                         # Nanonis ZController module
+        
+        sleepTime   = db/dbdt                                                   # Sleep interval for changing bias by step size
+        currentBias = biasModule.Get()                                          # Grab the current tip bias from nanonis
+        
+        if(zhold): zController.OnOffSet(False)                                  # Turn off the z-controller if we need to
+        
+        if(bias < currentBias): db = -db                                        # flip the sign of db if we're going down in bias
+        for b in np.arange(currentBias,bias,db):                                # Change the bias according to step size
+            biasModule.Set(b)                                                   # Set the tip bias in nanonis
+            time.sleep(sleepTime)                                               # sleep a bit
+        
+        biasModule.Set(bias)                                                    # Set the final bias in case the step size doesn't get us there nicely
+        
+        if(zhold): zController.OnOffSet(True)                                   # Turn the controller back on if we need to
+        
     def makePNG(self,scanData,filePath=''):
         fig, ax = plt.subplots(1,1)
         

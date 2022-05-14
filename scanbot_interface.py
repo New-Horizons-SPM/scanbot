@@ -16,6 +16,7 @@ import ipaddress
 from pathlib import Path
 
 import global_
+import nanonisUtils as nut
 
 class scanbot_interface(object):
     bot_message = []
@@ -59,6 +60,7 @@ class scanbot_interface(object):
             firebase_admin.initialize_app(cred, {
                 'storageBucket': 'g80live.appspot.com'                          # Your firebase storage bucket
             })
+            self.firebaseStoragePath = "scanbot/"
         except Exception as e:
             print(e)
     
@@ -83,7 +85,8 @@ class scanbot_interface(object):
                          'tip_shape'        : self.tipShape,
                          'pulse'            : self.pulse,
                          'bias_dep'         : self.biasDep,
-                         'set_bias'         : self.setBias
+                         'set_bias'         : self.setBias,
+                         'stitch_survey'    : self.stitchSurvey
         }
     
 ###############################################################################
@@ -266,7 +269,7 @@ class scanbot_interface(object):
             
         if self.uploadMethod == 'firebase':
             bucket = storage.bucket()
-            blob   = bucket.blob('scanbot/' + pngFilename)
+            blob   = bucket.blob(self.firebaseStoragePath + pngFilename)
             blob.upload_from_filename(str(path))
         
             url = blob.generate_signed_url(expiration=9999999999)
@@ -326,6 +329,20 @@ class scanbot_interface(object):
 ###############################################################################
 # Utilities
 ###############################################################################
+    def stitchSurvey(self,user_args,_help=False):
+        arg_dict = {'-s' : ['*', lambda x: str(x), "(str) Survey name"],
+                    '-d' : ['0', lambda x: int(x), "(int) Delete survey after stitch. 0: Don't delete. 1: Delete"]}
+        
+        if(_help): return arg_dict
+        
+        if(self.uploadMethod == 'zulip'): return "Unsupported upload method"
+        
+        error,user_arg_dict = self.userArgs(arg_dict,user_args)
+        if(error): return error + "\nRun ```help stitch_survey``` if you're unsure."
+        
+        args = self.unpackArgs(user_arg_dict)
+        return nut.stitchSurvey(storage,self.firebaseStoragePath,*args)
+                
     def userArgs(self,arg_dict,user_args):
         error = ""
         for arg in user_args:                                                   # Override the defaults if user inputs them

@@ -98,10 +98,16 @@ def stitchSurvey(storage,storagePath,surveyName,delete):
     
     new_im.save(surveyName + '.png')
     
+    blob = bucket.blob(storagePath + surveyName + '.png')
+    blob.upload_from_filename(surveyName + '.png')
+
+    url = blob.generate_signed_url(expiration=9999999999)
+    
+    os.remove(surveyName + '.png')    
     for f in localFiles: os.remove(f)
     
     if(delete):
         for f in files:
             bucket.delete_blob(f)
     
-    return "Survey stitched!"
+    return url

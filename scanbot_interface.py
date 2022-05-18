@@ -32,6 +32,7 @@ class scanbot_interface(object):
         global_.running = threading.Event()                                     # event to stop threads
         global_.pause   = threading.Event()                                     # event to pause threads
         
+        self.notifyUserList = []
         self.getWhitelist()                                                     # Load in whitelist file if there is one
         self.firebaseInit()                                                     # Initialise Firebase
         self.portList = [6501,6502,6503,6504]                                   # Default TCP ports for communicating with nanonis
@@ -87,7 +88,9 @@ class scanbot_interface(object):
                          'bias_dep'         : self.biasDep,
                          'set_bias'         : self.setBias,
                          'stitch_survey'    : self.stitchSurvey,
-                         'watch'            : self.watch
+                         'watch'            : self.watch,
+                         'add_notify_list'  : self.addNotifyUser,
+                         'get_notify_list'  : lambda args: self.notifyUserList
         }
     
 ###############################################################################
@@ -271,7 +274,12 @@ class scanbot_interface(object):
         
         print(reply)                                                            # Print reply to console if zulip not available or notis turned off
     
-    def sendPNG(self,pngFilename):
+    def sendPNG(self,pngFilename,notify=True):
+        notifyString = ""
+        if(notify):
+            for user in self.notifyUserList:
+                notifyString += "@**" + user + "** "
+            
         if(not self.bot_handler): print("pngs not supported yet"); return       # Don't support png
         path = os.getcwd() + '/' + pngFilename
         path = Path(path)
@@ -280,8 +288,8 @@ class scanbot_interface(object):
         if self.uploadMethod == 'zulip':
             upload = self.bot_handler.upload_file_from_path(str(path))
             uploaded_file_reply = "[{}]({})".format(path.name, upload["uri"])
+            self.sendReply(notifyString + pngFilename)
             self.sendReply(uploaded_file_reply)
-            self.sendReply(pngFilename)
             
         if self.uploadMethod == 'firebase':
             bucket = storage.bucket()
@@ -289,10 +297,12 @@ class scanbot_interface(object):
             blob.upload_from_filename(str(path))
         
             url = blob.generate_signed_url(expiration=9999999999)
-            self.sendReply(pngFilename)
-            self.sendReply(url)
+            self.sendReply(notifyString + "[" + pngFilename + "](" + url + ")")
         
         os.remove(path)
+    
+    def addNotifyUser(self,username):
+        self.notifyUserList.append(" ".join(username))
         
     def addUsers(self,user):
         try:

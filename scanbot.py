@@ -45,7 +45,7 @@ class scanbot():
         _,scanData,_ = scan.FrameDataGrab(14, 1)                                # Grab the data within the scan frame. Channel 14 is . 1 is forward data direction
         
         pngFilename = self.makePNG(scanData)                                    # Generate a png from the scan data
-        self.interface.sendPNG(pngFilename)                                     # Send a png over zulip
+        self.interface.sendPNG(pngFilename,notify=False)                        # Send a png over zulip
         
         self.disconnect(NTCP)                                                   # Close the TCP connection
         return ""

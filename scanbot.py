@@ -60,6 +60,36 @@ class scanbot():
         self.disconnect(NTCP)                                                   # Close the NTCP connection
         return ("Stopped!")
     
+    def watch(self,suffix):
+        NTCP,connection_error = self.connect()                                  # Connect to nanonis via TCP
+        if(connection_error): return connection_error                           # Return error message if there was a problem connecting        
+        
+        scan = Scan(NTCP)                                                       # Nanonis scan module
+        
+        basename     = scan.PropsGet()[3]                                       # Get the save basename
+        tempBasename = basename + '_' + suffix + '_'                            # Create a temp basename for this survey
+        scan.PropsSet(series_name=tempBasename)                                 # Set the basename in nanonis for this survey
+        
+        self.interface.sendReply('Scanbot :eyes: \'' + suffix + '\'')           # Send a notification that the survey has completed
+        
+        while(True):
+            if(self.checkEventFlags()): break                                   # Check event flags
+            timeoutStatus, _, filePath = scan.WaitEndOfScan(200)                # Wait until the scan finishes
+            
+            if(not filePath): continue
+            
+            _,scanData,_ = scan.FrameDataGrab(14, 1)                            # Grab the data within the scan frame. Channel 14 is . 1 is forward data direction
+            pngFilename = self.makePNG(scanData, filePath)                      # Generate a png from the scan data
+            self.interface.sendPNG(pngFilename)                                 # Send a png over zulip
+            
+        scan.PropsSet(series_name=basename)                                     # Put back the original basename
+        
+        self.disconnect(NTCP)                                                   # Close the TCP connection
+        
+        global_.running.clear()                                                 # Free up the running flag
+        
+        self.interface.sendReply('Stopped watching \'' + suffix + '\'')         # Send a notification that the survey has completed
+        
     def survey(self,bias,n,i,suffix,xy,dx,sleepTime,ox=0,oy=0):
         NTCP,connection_error = self.connect()                                  # Connect to nanonis via TCP
         if(connection_error): return connection_error                           # Return error message if there was a problem connecting        
@@ -190,7 +220,7 @@ class scanbot():
         
         self.interface.sendReply("Bias pulse complete")
     
-    def biasDep(self,nb,bdc,bi,bf,px):
+    def biasDep(self,nb,bdc,bi,bf,px,suffix):
         NTCP,connection_error = self.connect()                                  # Connect to nanonis via TCP
         if(connection_error): return connection_error                           # Return error message if there was a problem connecting
         
@@ -219,6 +249,7 @@ class scanbot():
         if(self.checkEventFlags()): biasList=[]                                 # Check event flags
         
         for b in biasList:
+            if(b == 0): continue                                                # Don't set the bias to zero ever
             ## Bias dep scan
             self.rampBias(NTCP, b)
             scan.BufferSet(pixels=scanPixels,lines=scanLines)
@@ -265,7 +296,9 @@ class scanbot():
         if(bias):
             self.rampBias(NTCP, bias)                                           # Only ramp the bias if it's not zero
             self.interface.sendReply("Bias set to " + str(bias) + "V")
-        
+        else:
+            self.interface.sendReply("Can't set bias to zero")
+            
         self.disconnect(NTCP)
         
         global_.running.clear()
@@ -275,6 +308,7 @@ class scanbot():
 # Utilities
 ###############################################################################
     def rampBias(self,NTCP,bias,dbdt=1,db=50e-3,zhold=True):                    # Ramp the tip bias from current value to final value at a rate of db/dt
+        if(bias == 0): return
         biasModule = Bias(NTCP)                                                 # Nanonis Bias module
         zController = ZController(NTCP)                                         # Nanonis ZController module
         
@@ -285,7 +319,7 @@ class scanbot():
         
         if(bias < currentBias): db = -db                                        # flip the sign of db if we're going down in bias
         for b in np.arange(currentBias,bias,db):                                # Change the bias according to step size
-            biasModule.Set(b)                                                   # Set the tip bias in nanonis
+            if(b and abs(b) <= 10): biasModule.Set(b)                           # Set the tip bias in nanonis. skip b == 0
             time.sleep(sleepTime)                                               # sleep a bit
         
         biasModule.Set(bias)                                                    # Set the final bias in case the step size doesn't get us there nicely

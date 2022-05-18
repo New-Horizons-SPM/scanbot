@@ -86,12 +86,27 @@ class scanbot_interface(object):
                          'pulse'            : self.pulse,
                          'bias_dep'         : self.biasDep,
                          'set_bias'         : self.setBias,
-                         'stitch_survey'    : self.stitchSurvey
+                         'stitch_survey'    : self.stitchSurvey,
+                         'watch'            : self.watch
         }
     
 ###############################################################################
 # Scanbot
 ###############################################################################
+    def watch(self,user_args,_help=False):
+        arg_dict = {'-s'    : ['sbwatch',  lambda x: str(x),   "(str) Suffix at the end of autosaved sxm files"]}
+        
+        if(_help): return arg_dict
+        
+        error,user_arg_dict = self.userArgs(arg_dict,user_args)
+        if(error): return error + "\nRun ```help watch``` if you're unsure."
+        
+        args = self.unpackArgs(user_arg_dict)
+        
+        func = lambda : self.scanbot.watch(*args)
+        return self.threadTask(func)
+        
+        
     def survey(self,user_args,_help=False):
         arg_dict = {'-bias' : ['-default', lambda x: float(x), "(float) Scan bias"],
                     '-n'    : ['5',        lambda x: int(x),   "(int) Size of the nxn grid of scans"],
@@ -181,7 +196,8 @@ class scanbot_interface(object):
                     '-bdc' : ['-1',  lambda x: float(x), "(float) Drift correct image bias"],
                     '-bi'  : ['-1',  lambda x: float(x), "(float) Initial Bias"],
                     '-bf'  : ['1',   lambda x: float(x), "(float) Final Bias"],
-                    '-px'  : ['128', lambda x: int(x),   "(int) Pixels in drift correct image. 0=no drift correction"]}
+                    '-px'  : ['128', lambda x: int(x),   "(int) Pixels in drift correct image. 0=no drift correction"],
+                    '-s'   : ['',    lambda x: str(x),   "(str) Suffix for the set of bias dep sxm files"]}
         
         if(_help): return arg_dict
         

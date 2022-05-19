@@ -402,6 +402,10 @@ class scanbot_interface(object):
         return args
     
     def _help(self,args):
+        if(not len(args)):
+            helpStr = "Type ```help <command name>``` for more info\n"
+            return helpStr + self.listCommands(args=[])
+        
         command = args[0]
         if(not command in self.commands):
             return "Run ```list_commands``` to see valid commands"

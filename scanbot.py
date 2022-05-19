@@ -132,7 +132,10 @@ class scanbot():
             _,scanData,_ = scan.FrameDataGrab(14, 1)                            # Grab the data within the scan frame. Channel 14 is . 1 is forward data direction
             
             pngFilename = self.makePNG(scanData, filePath)                      # Generate a png from the scan data
-            self.interface.sendPNG(pngFilename)                                 # Send a png over zulip
+            
+            notify = True
+            if(not filePath): notify= False                                     # Don't @ users if the image isn't complete
+            self.interface.sendPNG(pngFilename,notify)                          # Send a png over zulip
             
             if(self.checkEventFlags()): break                                   # Check event flags
         
@@ -260,7 +263,10 @@ class scanbot():
             
             
             pngFilename = self.makePNG(scanData, filePath)                      # Generate a png from the scan data
-            self.interface.sendPNG(pngFilename)                                 # Send a png over zulip
+            
+            notify = True
+            if(not filePath): notify= False                                     # Don't @ users if the image isn't complete
+            self.interface.sendPNG(pngFilename,notify)                          # Send a png over zulip
             
             if(self.checkEventFlags()): break                                   # Check event flags
             

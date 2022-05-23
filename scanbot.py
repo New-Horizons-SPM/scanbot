@@ -204,6 +204,7 @@ class scanbot():
         folMe.XYPosSet(x,y,Wait_end_of_move=True)
         
         self.disconnect(NTCP)
+        time.sleep(0.1)
         # self.interface.sendReply("Tip-moved to " + str(x) + "," + str(y))
         
     def tipShape(self,np,pw,bias,zhold,rel_abs):
@@ -244,6 +245,7 @@ class scanbot():
         tipShaper.Start(wait_until_finished=True,timeout=-1)
         
         self.disconnect(NTCP)
+        time.sleep(0.1)
         # self.interface.sendReply("Tip-shape complete")
         
     def tipShapeProps(self,sod,cb,b1,z1,t1,b2,t2,z3,t3,wait,fb,designatedArea,designatedGrid):#,np,pw,bias,zhold,rel_abs):
@@ -286,6 +288,7 @@ class scanbot():
         
         self.disconnect(NTCP)
         
+        time.sleep(0.1)
         # self.interface.sendReply("Bias pulse complete")
     
     def biasDep(self,nb,bdc,bi,bf,px,suffix):

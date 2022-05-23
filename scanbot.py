@@ -10,6 +10,7 @@ from nanonisTCP.Scan import Scan
 from nanonisTCP.TipShaper import TipShaper
 from nanonisTCP.Bias import Bias
 from nanonisTCP.ZController import ZController
+from nanonisTCP.FolMe import FolMe
 
 import nanonisUtils as nut
 
@@ -33,6 +34,9 @@ class scanbot():
     def __init__(self,interface):
         self.interface = interface
         self.survey_args = []
+        self.designatedTipShapeArea = [-600e-9,-600e-9,300e-9,300e-9]
+        self.designatedGrid = [10,0]
+        self.defaultPulseParams = [5,0.1,3,0,0]                                 # np,pw,bias,zhold,rel_abs. Defaults here because nanonis has no TCP comand to retrieve them :(
         
 ###############################################################################
 # Actions
@@ -131,7 +135,11 @@ class scanbot():
             if(self.checkEventFlags()): break
         
             scan.Action('start')                                                # Start the scan again after waiting for drift to settle
-            timeoutStatus, _, filePath = scan.WaitEndOfScan()                   # Wait until the scan finishes
+            
+            timeoutStatus = 1
+            while(timeoutStatus):
+                timeoutStatus, _, filePath = scan.WaitEndOfScan(timeout=200)    # Wait until the scan finishes
+                if(self.checkEventFlags()): break
             
             _,scanData,_ = scan.FrameDataGrab(14, 1)                            # Grab the data within the scan frame. Channel 14 is . 1 is forward data direction
             
@@ -183,12 +191,70 @@ class scanbot():
         survey_args = [bias,n,1,suffix,xy,dx,sleepTime,ox,oy]
         self.survey(*survey_args)                                               # Kick off a survey within the frame we want to enhance
     
-    def tipShape(self,sod,cb,b1,z1,t1,b2,t2,z3,t3,wait,fb,np,pw,bias,zhold,rel_abs):
+    def moveTip(self,pos):
+        x = pos[0]
+        y = pos[1]
+        if(abs(x) > 800e-9): self.interface.sendReply("Can't move tip outside scan window"); return
+        if(abs(y) > 800e-9): self.interface.sendReply("Can't move tip outside scan window"); return
+        
+        NTCP,connection_error = self.connect()                                  # Connect to nanonis via TCP
+        if(connection_error): self.interface.sendReply(connection_error); return # Return error message if there was a problem connecting
+        
+        folMe = FolMe(NTCP)
+        folMe.XYPosSet(x,y,Wait_end_of_move=True)
+        
+        self.disconnect(NTCP)
+        # self.interface.sendReply("Tip-moved to " + str(x) + "," + str(y))
+        
+    def tipShape(self,np,pw,bias,zhold,rel_abs):
+        global_.pause.set()
+        time.sleep(0.5)
+        
+        gridCentre = self.designatedTipShapeArea[0:2]
+        gridSize   = self.designatedTipShapeArea[2:4]
+        gridN      = self.designatedGrid[0]
+        gridI      = self.designatedGrid[1]
+        
+        dx    = gridSize[0]/gridN
+        xpos  = gridCentre[0] - gridSize[0]/2
+        xpos += (gridI%gridN + 0.5)*dx
+        
+        dy    = gridSize[1]/gridN
+        ypos  = gridCentre[1] - gridSize[1]/2
+        ypos += (int(gridI/gridN) + 0.5)*dy
+        
+        self.moveTip(pos=[xpos,ypos])
+        self.designatedGrid[1] += 1
+        
+        self.executeTipShape()
+        
+        time.sleep(0.5)
+        
+        self.pulse()
+        
+        time.sleep(0.5)
+        
+        global_.pause.clear()
+        
+    def executeTipShape(self):
+        NTCP,connection_error = self.connect()                                  # Connect to nanonis via TCP
+        if(connection_error): return connection_error                           # Return error message if there was a problem connecting
+        
+        tipShaper = TipShaper(NTCP)
+        tipShaper.Start(wait_until_finished=True,timeout=-1)
+        
+        self.disconnect(NTCP)
+        # self.interface.sendReply("Tip-shape complete")
+        
+    def tipShapeProps(self,sod,cb,b1,z1,t1,b2,t2,z3,t3,wait,fb,designatedArea,designatedGrid):#,np,pw,bias,zhold,rel_abs):
+        if(z1 > 50e-9):
+            self.interface.sendReply("Limit for z1=50e-9 m")
+            return
+        
         NTCP,connection_error = self.connect()                                  # Connect to nanonis via TCP
         if(connection_error): return connection_error                           # Return error message if there was a problem connecting
          
         tipShaper  = TipShaper(NTCP)
-        biasModule = Bias(NTCP)
         
         default_args  = tipShaper.PropsGet()                                    # Store all the current tip shaping settings in nanonis
         tipShaperArgs = [sod,cb,b1,z1,t1,b2,t2,z3,t3,wait,fb]                   # Order matters here
@@ -198,34 +264,29 @@ class scanbot():
                 
         tipShaper.PropsSet(*tipShaperArgs)                                      # update the tip shaping params in nanonis
         
-        biasPulseArgs = [pw,bias,zhold,rel_abs,1]
-        
-        tipShaper.Start(wait_until_finished=True,timeout=-1)                    # initiate the tip shape
-        for n in range(0,np):                                                   # Pulse the tip -np times
-            biasModule.Pulse(*biasPulseArgs)
-            time.sleep(pw + 0.2)
+        self.designatedTipShapeArea = designatedArea
+        self.designatedGrid[0] = designatedGrid
         
         self.disconnect(NTCP)
-        
-        global_.running.clear()
-        
-        self.interface.sendReply("Tip-shape complete")
+        self.interface.sendReply("Tip-shaper props set")
     
-    def pulse(self,np,pw,bias,zhold,rel_abs):
+    def pulseProps(self,np,pw,bias,zhold,rel_abs):
+        self.defaultPulseParams = [np,pw,bias,zhold,rel_abs]
+        
+    def pulse(self):
         NTCP,connection_error = self.connect()                                  # Connect to nanonis via TCP
         if(connection_error): return connection_error                           # Return error message if there was a problem connecting        
         
         biasModule = Bias(NTCP)
         
+        np,pw,bias,zhold,rel_abs = self.defaultPulseParams                      # Grab the stored pulse params
         for n in range(0,np):                                                   # Pulse the tip -np times
             biasModule.Pulse(pw,bias,zhold,rel_abs,wait_until_done=False)
             time.sleep(pw + 0.2)                                                # Wait 200 ms more than the pulse time
         
         self.disconnect(NTCP)
         
-        global_.running.clear()
-        
-        self.interface.sendReply("Bias pulse complete")
+        # self.interface.sendReply("Bias pulse complete")
     
     def biasDep(self,nb,bdc,bi,bf,px,suffix):
         NTCP,connection_error = self.connect()                                  # Connect to nanonis via TCP
@@ -355,10 +416,20 @@ class scanbot():
         
         return pngFilename
         
-    def checkEventFlags(self):
+    def checkEventFlags(self,message = ""):
         if(not global_.running.is_set()): return 1                              # Running flag
-        while global_.pause.is_set(): time.sleep(2)                             # Pause flag
-    
+        
+        if(global_.pause.is_set()):
+            NTCP,connection_error = self.connect()                              # Connect to nanonis via TCP
+            if(connection_error): return connection_error                       # Return error message if there was a problem connecting        
+            scan = Scan(NTCP)
+            scan.Action(scan_action='pause')
+            
+            while global_.pause.is_set(): time.sleep(2)                         # Pause flag
+            
+            scan.Action(scan_action='stop')
+            
+            self.disconnect(NTCP)
 ###############################################################################
 # Nanonis TCP Connection
 ###############################################################################

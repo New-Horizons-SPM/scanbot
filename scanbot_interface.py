@@ -83,7 +83,10 @@ class scanbot_interface(object):
                          'resume'           : lambda args: global_.pause.clear(),
                          'enhance'          : self.enhance,
                          'plot'             : self.plot,
+                         'move_tip'         : self.moveTip,
+                         'tip_shape_props'  : self.tipShapeProps,
                          'tip_shape'        : self.tipShape,
+                         'pulse_props'      : self.pulseProps,
                          'pulse'            : self.pulse,
                          'bias_dep'         : self.biasDep,
                          'set_bias'         : self.setBias,
@@ -124,7 +127,6 @@ class scanbot_interface(object):
         func = lambda : self.scanbot.watch(*args)
         return self.threadTask(func)
         
-        
     def survey(self,user_args,_help=False):
         arg_dict = {'-bias' : ['-default', lambda x: float(x), "(float) Scan bias"],
                     '-n'    : ['5',        lambda x: int(x),   "(int) Size of the nxn grid of scans"],
@@ -164,20 +166,20 @@ class scanbot_interface(object):
     def plot(self,args):
         self.scanbot.plot(args)
     
+    def moveTip(self,user_args,_help=False):
+        arg_dict = {'-pos'     : ['0,0', lambda x: [float(p) for p in x.split(',')], "(float array) position of the tip x,y"]}
+        
+        if(_help): return arg_dict
+        
+        error,user_arg_dict = self.userArgs(arg_dict,user_args)
+        if(error): return error + "\nRun ```help move_tip``` if you're unsure."
+        
+        args = self.unpackArgs(user_arg_dict)
+        
+        self.scanbot.moveTip(*args)
+        
     def tipShape(self,user_args,_help=False):
-        arg_dict = {'-sod'    : ['-default',lambda x: float(x), "(float) Switch off delay: the time (s) during which the Z position is averaged before switching the Z controller off"],
-                    '-cb'     : ['-default',lambda x: int(x),   "(int) Change bias flag (0=Nanonis,1=Change Bias,2=Don't Change"],
-                    '-b1'     : ['-default',lambda x: float(x), "(float) The value applied to the Bias signal if cb is true"],
-                    '-z1'     : ['-default',lambda x: float(x), "(float) First tip lift (m) (i.e. -2e-9)"],
-                    '-t1'     : ['-default',lambda x: float(x), "(float) Defines the time to ramp Z from current Z position to z1"],
-                    '-b2'     : ['-default',lambda x: float(x), "(float) Bias voltage applied just after the first Z ramping"],
-                    '-t2'     : ['-default',lambda x: float(x), "(float) Time to wait after applying the Bias Lift value b2"],
-                    '-z3'     : ['-default',lambda x: float(x), "(float) Height the tip is going to ramp for the second time (m) i.e. +5nm"],
-                    '-t3'     : ['-default',lambda x: float(x), "(float) Time to ramp Z in the second ramping [s]."],
-                    '-wait'   : ['-default',lambda x: float(x), "(float) Time to wait after restoring the initial Bias voltage"],
-                    '-fb'     : ['-default',lambda x: int(x),   "(int) Restore the initial Z-Controller status. 0: off. 1: on"],
-                    # Bias Pulse params
-                    '-np'     : ['1',   lambda x: int(x),   "(int) Number of bias pulses after tip shape"], 
+        arg_dict = {'-np'     : ['1',   lambda x: int(x),   "(int) Number of bias pulses after tip shape"], 
                     '-pw'     : ['0.1', lambda x: float(x), "(float) Pulse width (s)"],
                     '-bias'   : ['3',   lambda x: float(x), "(float) Bias pulse value (V)"],
                     '-zhold'  : ['0',   lambda x: int(x),   "(int) Z-Controller on hold (0=nanonis setting, 1=deactivated, 2=activated)"],
@@ -190,10 +192,33 @@ class scanbot_interface(object):
         
         args = self.unpackArgs(user_arg_dict)
         
-        func = lambda : self.scanbot.tipShape(*args)
-        return self.threadTask(func)
+        self.scanbot.tipShape(*args)
         
-    def pulse(self,user_args,_help = False):
+    def tipShapeProps(self,user_args,_help=False):
+        arg_dict = {'-sod'    : ['-default',lambda x: float(x), "(float) Switch off delay: the time (s) during which the Z position is averaged before switching the Z controller off"],
+                    '-cb'     : ['-default',lambda x: int(x),   "(int) Change bias flag (0=Nanonis,1=Change Bias,2=Don't Change"],
+                    '-b1'     : ['-default',lambda x: float(x), "(float) The value applied to the Bias signal if cb is true"],
+                    '-z1'     : ['-default',lambda x: float(x), "(float) First tip lift (m) (i.e. -2e-9)"],
+                    '-t1'     : ['-default',lambda x: float(x), "(float) Defines the time to ramp Z from current Z position to z1"],
+                    '-b2'     : ['-default',lambda x: float(x), "(float) Bias voltage applied just after the first Z ramping"],
+                    '-t2'     : ['-default',lambda x: float(x), "(float) Time to wait after applying the Bias Lift value b2"],
+                    '-z3'     : ['-default',lambda x: float(x), "(float) Height the tip is going to ramp for the second time (m) i.e. +5nm"],
+                    '-t3'     : ['-default',lambda x: float(x), "(float) Time to ramp Z in the second ramping [s]."],
+                    '-wait'   : ['-default',lambda x: float(x), "(float) Time to wait after restoring the initial Bias voltage"],
+                    '-fb'     : ['-default',lambda x: int(x),   "(int) Restore the initial Z-Controller status. 0: off. 1: on"],
+                    '-area'   : ['-600e-9,-600e-9,300e-9,300e-9', lambda x: [float(p) for p in x.split(',')], "(float array) Designated tip-shaping area [x_centre,y_centre,width,height]"],
+                    '-grid'   : ['10',      lambda x: int(x),   "(int) Grid size in the designated area"]}
+        
+        if(_help): return arg_dict
+        
+        error,user_arg_dict = self.userArgs(arg_dict,user_args)
+        if(error): return error + "\nRun ```help tip_shape_props``` if you're unsure."
+        
+        args = self.unpackArgs(user_arg_dict)
+        
+        self.scanbot.tipShapeProps(*args)
+    
+    def pulseProps(self,user_args,_help=False):
         arg_dict = {'-n'      : ['1',  lambda x: int(x),   "(Int) Number of pulses"],
                     '-pw'     : ['.1', lambda x: float(x), "(float) Pulse width (s)"],
                     '-bias'   : ['3',  lambda x: float(x), "(float) Bias value (V)"],
@@ -204,10 +229,13 @@ class scanbot_interface(object):
         if(_help): return arg_dict
         
         error,user_arg_dict = self.userArgs(arg_dict,user_args)
-        if(error): return error + "\nRun ```help pulse``` if you're unsure."
+        if(error): return error + "\nRun ```help pulse_props``` if you're unsure."
         
         args = self.unpackArgs(user_arg_dict)
-        self.scanbot.pulse(*args)
+        self.scanbot.pulseProps(*args)
+        
+    def pulse(self,user_args,_help=False):
+        self.scanbot.pulse()
         
     def biasDep(self,user_args,_help=False):
         arg_dict = {'-n'   : ['5',   lambda x: int(x),   "(int) Number of images to take b/w initial and final bias"],

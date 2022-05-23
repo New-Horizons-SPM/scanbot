@@ -60,15 +60,18 @@ class scanbot():
         self.disconnect(NTCP)                                                   # Close the NTCP connection
         return ("Stopped!")
     
-    def watch(self,suffix):
-        NTCP,connection_error = self.connect()                                  # Connect to nanonis via TCP
-        if(connection_error): return connection_error                           # Return error message if there was a problem connecting        
+    def watch(self,suffix,creepIP=None,creepPORT=None):
+        NTCP,connection_error = self.connect(creepIP,creepPORT)                 # Connect to nanonis via TCP
+        if(connection_error):
+            self.interface.sendReply(connection_error)
+            return                                                              # Return error message if there was a problem connecting        
         
         scan = Scan(NTCP)                                                       # Nanonis scan module
         
         basename     = scan.PropsGet()[3]                                       # Get the save basename
-        tempBasename = basename + '_' + suffix + '_'                            # Create a temp basename for this survey
-        scan.PropsSet(series_name=tempBasename)                                 # Set the basename in nanonis for this survey
+        if(suffix):
+            tempBasename = basename + '_' + suffix + '_'                        # Create a temp basename for this survey
+            scan.PropsSet(series_name=tempBasename)                             # Set the basename in nanonis for this survey
         
         self.interface.sendReply('Scanbot :eyes: \'' + suffix + '\'')           # Send a notification that the survey has completed
         
@@ -82,7 +85,8 @@ class scanbot():
             pngFilename = self.makePNG(scanData, filePath)                      # Generate a png from the scan data
             self.interface.sendPNG(pngFilename)                                 # Send a png over zulip
             
-        scan.PropsSet(series_name=basename)                                     # Put back the original basename
+        if(suffix):
+            scan.PropsSet(series_name=basename)                                 # Put back the original basename
         
         self.disconnect(NTCP)                                                   # Close the TCP connection
         
@@ -358,10 +362,12 @@ class scanbot():
 ###############################################################################
 # Nanonis TCP Connection
 ###############################################################################
-    def connect(self):
+    def connect(self,creepIP=None,creepPORT=None):
+        IP   = creepIP
+        PORT = creepPORT
         try:                                                                    # Try to connect to nanonis via TCP
-            IP   = self.interface.IP
-            PORT = self.interface.portList.pop()
+            if(not IP):   IP   = self.interface.IP
+            if(not PORT): PORT = self.interface.portList.pop()
             NTCP = nanonisTCP(IP, PORT)
             return [NTCP,0]
         except Exception as e:

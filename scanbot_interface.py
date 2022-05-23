@@ -349,7 +349,7 @@ class scanbot_interface(object):
         
     def addUsers(self,user):
         try:
-            self.whitelist.append(user)
+            self.whitelist.append(user[0])
             with open('whitelist.txt', 'w') as f:
                 for w in self.whitelist:
                     f.write(w+'\n')

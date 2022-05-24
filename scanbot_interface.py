@@ -55,18 +55,21 @@ class scanbot_interface(object):
                     'ip'                        : '127.0.0.1',
                     'notify_list'               : ''}
         
-        with open('scanbot_config.txt','r') as f:
-            line = "begin"
-            while(line):
-                line = f.readline()[:-1]
-                if(not ': ' in line): print("From config: " + line); continue
-                key, value = line.split(': ')
-                if(not key in initDict):
-                    print("Invalid key in scanbot_config.txt: " + key)
-                    continue
-                
-                initDict[key] = value
-                
+        try:
+            with open('scanbot_config.txt','r') as f:
+                line = "begin"
+                while(line):
+                    line = f.readline()[:-1]
+                    if(not ': ' in line): print("From config: " + line); continue
+                    key, value = line.split(': ')
+                    if(not key in initDict):
+                        print("Invalid key in scanbot_config.txt: " + key)
+                        continue
+                    
+                    initDict[key] = value
+        except:
+            pass
+        
         self.zuliprc      = initDict['zuliprc']
         self.uploadMethod = initDict['upload_method']
         self.firebaseCert = initDict['firebase_credentials']

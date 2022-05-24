@@ -99,6 +99,25 @@ class scanbot():
         self.interface.sendReply('Stopped watching \'' + suffix + '\'')         # Send a notification that the survey has completed
         
     def survey(self,bias,n,i,suffix,xy,dx,sleepTime,ox=0,oy=0):
+        count = 0
+        frames = []                                                             # [x,y,w,h,angle=0]
+        gridOK = True
+        for ii in range(int(-n/2),int(n/2) + n%2):
+            jj_range = range(int(-n/2),int(n/2) + n%2)
+            if(ii%2): jj_range = reversed(jj_range)                             # Alternate grid direction each row so the grid snakes... better for drift
+            for jj in jj_range:
+                count += 1
+                if(count < i): continue                                         # Skip this frame if it's before the frame index we want to start from
+                frames.append([ jj*dx+ox, ii*dx+oy, xy, xy])                    # Build scan frame
+                
+                if(abs(frames[-1][0]) + xy/2 > 800e-9): gridOK = False          # Safety checks
+                if(abs(frames[-1][1]) + xy/2 > 800e-9): gridOK = False          # Safety checks
+        
+        if(not gridOK):
+            self.interface.sendReply("Survey error: Grid size exceeds scan area")
+            global_.running.clear()                                                 # Free up the running flag
+            return
+        
         NTCP,connection_error = self.connect()                                  # Connect to nanonis via TCP
         if(connection_error): return connection_error                           # Return error message if there was a problem connecting        
         
@@ -112,21 +131,11 @@ class scanbot():
         tempBasename = basename + '_' + suffix + '_'                            # Create a temp basename for this survey
         scan.PropsSet(series_name=tempBasename)                                 # Set the basename in nanonis for this survey
         
-        count = 0
-        frames = []                                                             # [x,y,w,h,angle=0]
-        for ii in range(int(-n/2),int(n/2) + n%2):
-            jj_range = range(int(-n/2),int(n/2) + n%2)
-            if(ii%2): jj_range = reversed(jj_range)                             # Alternate grid direction each row so the grid snakes... better for drift
-            for jj in jj_range:
-                count += 1
-                if(count < i): continue                                         # Skip this frame if it's before the frame index we want to start from
-                frames.append([ jj*dx+ox, ii*dx+oy, xy, xy])                    # Build scan frame
-        
         count = i-1
         for frame in frames:
             count += 1
             self.currentSurveyIndex = count
-            self.interface.sendReply('Running scan ' + str(count) + ': ' + str(frame)) # Send a message that the next scan is starting
+            self.interface.sendReply('Running scan ' + str(count) + '/' + str(n**2) + ': ' + str(frame)) # Send a message that the next scan is starting
             
             scan.FrameSet(*frame)                                               # Set the coordinates and size of the frame window in nanonis
             scan.Action('start')                                                # Start the scan. default direction is "up"

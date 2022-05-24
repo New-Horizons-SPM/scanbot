@@ -18,6 +18,8 @@ from pathlib import Path
 import global_
 import nanonisUtils as nut
 
+import zulip
+
 class scanbot_interface(object):
     bot_message = []
     bot_handler = []
@@ -32,19 +34,66 @@ class scanbot_interface(object):
         global_.running = threading.Event()                                     # event to stop threads
         global_.pause   = threading.Event()                                     # event to pause threads
         
-        self.notifyUserList = []
+        self.init()
+        
+        self.client = zulip.Client(config_file=self.zuliprc)
         self.getWhitelist()                                                     # Load in whitelist file if there is one
         self.firebaseInit()                                                     # Initialise Firebase
-        self.portList = [6501,6502,6503,6504]                                   # Default TCP ports for communicating with nanonis
-        self.IP       = '127.0.0.1'                                             # Default IP to local host
-        self.uploadMethod = 'firebase'                                          # Default upload method is firebase
-        self.notifications = True
         self.initCommandDict()
         self.scanbot = scanbot(self)
     
 ###############################################################################
 # Initialisation
 ###############################################################################
+    def init(self):
+        initDict = {'zuliprc'                   : 'zuliprc',
+                    'upload_method'             : 'zulip',
+                    'firebase_credentials'      : '',
+                    'firebase_storage_bucket'   : '',
+                    'firebase_storage_path'     : '',
+                    'port_list'                 : '6501,6502,6503,6504',
+                    'ip'                        : '127.0.0.1',
+                    'notify_list'               : ''}
+        
+        with open('scanbot_config.txt','r') as f:
+            line = "begin"
+            while(line):
+                line = f.readline()[:-1]
+                if(not ': ' in line): print("From config: " + line); continue
+                key, value = line.split(': ')
+                if(not key in initDict):
+                    print("Invalid key in scanbot_config.txt: " + key)
+                    continue
+                
+                initDict[key] = value
+                
+        self.zuliprc      = initDict['zuliprc']
+        self.uploadMethod = initDict['upload_method']
+        self.firebaseCert = initDict['firebase_credentials']
+        self.firebaseStorageBucket = initDict['firebase_storage_bucket']
+        self.firebaseStoragePath   = initDict['firebase_storage_path']
+        
+        portList = initDict['port_list']
+        if(portList):
+            if(',' in portList):
+                portList = portList.split(',')
+                self.setPortList(portList)
+            else:
+                self.setPortList([portList])
+                
+        self.setIP([initDict['ip']])
+        
+        self.notifyUserList = []
+        notifyList = initDict['notify_list']
+        if(notifyList):
+            if(',' in notifyList):
+                notifyList = notifyList.split(',')
+                self.notifyUserList = notifyList
+            else:
+                self.notifyUserList = [notifyList]
+        
+        self.notifications = True
+        
     def getWhitelist(self):
         self.whitelist = []
         try:
@@ -57,11 +106,10 @@ class scanbot_interface(object):
     def firebaseInit(self):
         print("Initialising firebase app")
         try:
-            cred = credentials.Certificate('firebase.json')                     # Your firebase credentials
+            cred = credentials.Certificate(self.firebaseCert)                   # Your firebase credentials
             firebase_admin.initialize_app(cred, {
-                'storageBucket': 'g80live.appspot.com'                          # Your firebase storage bucket
+                'storageBucket': self.firebaseStorageBucket                     # Your firebase storage bucket
             })
-            self.firebaseStoragePath = "scanbot/"
         except Exception as e:
             print(e)
     
@@ -295,10 +343,8 @@ class scanbot_interface(object):
             
             self.bot_message = message
             
-            message = message['content']
-            
-        command = message.split(' ')[0].lower()
-        args    = message.split(' ')[1:]
+        command = message['content'].split(' ')[0].lower()
+        args    = message['content'].split(' ')[1:]
         
         if(not command in self.commands):
             reply = "Invalid command. Run *list_commands* to see command list"
@@ -317,6 +363,13 @@ class scanbot_interface(object):
         
         print(reply)                                                            # Print reply to console if zulip not available or notis turned off
     
+    def reactToMessage(self,reaction):
+        react_request = {
+            'message_id': self.message['id'],
+            'emoji_name': reaction,
+            }
+        self.client.add_reaction(react_request)
+        
     def sendPNG(self,pngFilename,notify=True):
         notifyString = ""
         if(notify):

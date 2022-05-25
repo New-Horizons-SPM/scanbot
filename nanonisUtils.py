@@ -10,7 +10,6 @@ import scipy.signal as sp
 from PIL import Image
 import os
 import math
-import imageio
 
 ###############################################################################
 # Drift Correction

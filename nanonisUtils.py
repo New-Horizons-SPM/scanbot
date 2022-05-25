@@ -10,7 +10,6 @@ import scipy.signal as sp
 from PIL import Image
 import os
 import math
-import time
 
 ###############################################################################
 # Drift Correction
@@ -39,6 +38,8 @@ def getFrameOffset(im1,im2,dxy=[1,1]):
 
     ni = np.array(xcor.shape)
     oy,ox = np.array([y,x]).astype(int) - (ni/2).astype(int)
+    
+    ox += x%2                                                                   # Add in this offset because differentiating results in odd number of px 
     
     ox *= dxy[0]
     oy *= -dxy[1]
@@ -72,26 +73,28 @@ def stitchSurvey(storage,storagePath,surveyName,delete):
     widths, heights = zip(*(i.size for i in images))
     
     n = len(images)
-    rows = int(n**0.5)
     cols = math.ceil(n**0.5)
+    rows = math.ceil(n/cols)
     
-    total_width = max(widths)*cols
-    max_height  = max(heights)*rows
+    total_width  = max(widths)*cols
+    total_height = max(heights)*rows
     
-    new_im = Image.new('RGB', (total_width, max_height))
+    new_im = Image.new('RGB', (total_width, total_height))
     
     im = 0
+    direction = 1
     x_offset = 0
-    y_offset = 0
+    y_offset = max(heights)
     for r in range(rows):
         for c in range(cols):
             if(im == len(images)): break
-            new_im.paste(images[im], (x_offset,y_offset))
-            x_offset += images[im].size[0]
+            new_im.paste(images[im], (x_offset,total_height - y_offset))
+            x_offset += images[im].size[0]*direction
             im += 1
             
         if(im == len(images)): break
-        x_offset  = 0
+        direction *= -1
+        x_offset += images[im].size[0]*direction
         y_offset += images[im].size[1]
             
     for im in images: im.close()

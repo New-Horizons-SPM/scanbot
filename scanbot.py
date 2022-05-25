@@ -107,7 +107,7 @@ class scanbot():
         gridOK = True
         for ii in range(int(-n/2),int(n/2) + n%2):
             jj_range = range(int(-n/2),int(n/2) + n%2)
-            if(ii%2): jj_range = reversed(jj_range)                             # Alternate grid direction each row so the grid snakes... better for drift
+            if((ii+int(n/2))%2): jj_range = reversed(jj_range)                    # Alternate grid direction each row so the grid snakes... better for drift
             for jj in jj_range:
                 count += 1
                 if(count < i): continue                                         # Skip this frame if it's before the frame index we want to start from
@@ -185,7 +185,7 @@ class scanbot():
         count = 0                                                               # Lazy way to get ii and jj
         for ii in range(int(-ns/2),int(ns/2) + ns%2):
             jj_range = range(int(-ns/2),int(ns/2) + ns%2)
-            if(ii%2): jj_range = reversed(jj_range)                             # Alternate grid direction each row so the grid snakes... better for drift
+            if((ii+int(n/2))%2): jj_range = reversed(jj_range)                    # Alternate grid direction each row so the grid snakes... better for drift
             for jj in jj_range:
                 count += 1
                 if(count == i): break
@@ -335,7 +335,7 @@ class scanbot():
         
         ## Initial drift correct frame
         dxy = []
-        initialDriftCorrect = "skip"
+        initialDriftCorrect = []
         if(px > 0):
             self.rampBias(NTCP, bdc)
             scan.BufferSet(pixels=px,lines=lx)
@@ -370,7 +370,7 @@ class scanbot():
             
             if(self.checkEventFlags()): break                                   # Check event flags
             
-            if(initialDriftCorrect == "skip"): continue                         # If we haven't taken out initial dc image, dc must be turned off so continue
+            if(not len(initialDriftCorrect)): continue                          # If we haven't taken out initial dc image, dc must be turned off so continue
             
             scan.PropsSet(series_name=tempBasename + str(bdc) + "V-DC_")        # Set the basename in nanonis for this survey
             ## Drift correct scan

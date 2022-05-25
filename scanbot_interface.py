@@ -75,6 +75,8 @@ class scanbot_interface(object):
         self.firebaseCert = initDict['firebase_credentials']
         self.firebaseStorageBucket = initDict['firebase_storage_bucket']
         self.firebaseStoragePath   = initDict['firebase_storage_path']
+        if(not self.firebaseStoragePath.endswith('/')):
+            self.firebaseStoragePath += '/'
         
         portList = initDict['port_list']
         if(portList):

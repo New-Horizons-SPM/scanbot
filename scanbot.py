@@ -67,8 +67,9 @@ class scanbot():
     def watch(self,suffix,creepIP=None,creepPORT=None):
         NTCP,connection_error = self.connect(creepIP,creepPORT)                 # Connect to nanonis via TCP
         if(connection_error):
-            self.interface.sendReply(connection_error)
-            return                                                              # Return error message if there was a problem connecting        
+            global_.running.clear()                                             # Free up the running flag
+            self.sendReply(connection_error)                                    # Return error message if there was a problem connecting
+            return
         
         scan = Scan(NTCP)                                                       # Nanonis scan module
         
@@ -76,8 +77,10 @@ class scanbot():
         if(suffix):
             tempBasename = basename + '_' + suffix + '_'                        # Create a temp basename for this survey
             scan.PropsSet(series_name=tempBasename)                             # Set the basename in nanonis for this survey
+            
+        self.interface.reactToMessage("eyes")
         
-        self.interface.sendReply('Scanbot :eyes: \'' + suffix + '\'')           # Send a notification that the survey has completed
+        # self.interface.sendReply('Scanbot :eyes: \'' + suffix + '\'')           # Send a notification that the survey has completed
         
         while(True):
             if(self.checkEventFlags()): break                                   # Check event flags
@@ -96,7 +99,7 @@ class scanbot():
         
         global_.running.clear()                                                 # Free up the running flag
         
-        self.interface.sendReply('Stopped watching \'' + suffix + '\'')         # Send a notification that the survey has completed
+        self.interface.reactToMessage("+1")
         
     def survey(self,bias,n,i,suffix,xy,dx,sleepTime,ox=0,oy=0):
         count = 0
@@ -119,7 +122,12 @@ class scanbot():
             return
         
         NTCP,connection_error = self.connect()                                  # Connect to nanonis via TCP
-        if(connection_error): return connection_error                           # Return error message if there was a problem connecting        
+        if(connection_error):
+            global_.running.clear()                                             # Free up the running flag
+            self.sendReply(connection_error)                                    # Return error message if there was a problem connecting
+            return
+        
+        self.interface.reactToMessage("working_on_it")
         
         self.survey_args = [bias,n,i,suffix,xy,dx,sleepTime,ox,oy]              # Store these params for enhance to look at
         
@@ -213,8 +221,6 @@ class scanbot():
         folMe.XYPosSet(x,y,Wait_end_of_move=True)
         
         self.disconnect(NTCP)
-        time.sleep(0.1)
-        # self.interface.sendReply("Tip-moved to " + str(x) + "," + str(y))
         
     def tipShape(self,np,pw,bias,zhold,rel_abs):
         global_.pause.set()
@@ -254,14 +260,10 @@ class scanbot():
         tipShaper.Start(wait_until_finished=True,timeout=-1)
         
         self.disconnect(NTCP)
-        time.sleep(0.1)
+        self.interface.reactToMessage("dagger")
         # self.interface.sendReply("Tip-shape complete")
         
     def tipShapeProps(self,sod,cb,b1,z1,t1,b2,t2,z3,t3,wait,fb,designatedArea,designatedGrid):#,np,pw,bias,zhold,rel_abs):
-        if(z1 > 50e-9):
-            self.interface.sendReply("Limit for z1=50e-9 m")
-            return
-        
         NTCP,connection_error = self.connect()                                  # Connect to nanonis via TCP
         if(connection_error): return connection_error                           # Return error message if there was a problem connecting
          
@@ -272,17 +274,30 @@ class scanbot():
         for i,a in enumerate(tipShaperArgs):
             if(a=="-default"):
                 tipShaperArgs[i] = default_args[i]
-                
+        
+        z1 = tipShaperArgs[3]
+        if(z1 < -50e-9):
+            self.interface.sendReply("Limit for z1=-50e-9 m")
+            return
+        z3 = tipShaperArgs[7]
+        if(z1 < -50e-9):
+            self.interface.sendReply("Limit for z3=-50e-9 m")
+            return
+        if(z1 > 0):
+            self.interface.sendReply("Sure you want a positive z1?")
+            
         tipShaper.PropsSet(*tipShaperArgs)                                      # update the tip shaping params in nanonis
         
         self.designatedTipShapeArea = designatedArea
         self.designatedGrid[0] = designatedGrid
         
         self.disconnect(NTCP)
-        self.interface.sendReply("Tip-shaper props set")
+        self.interface.reactToMessage("+1")
     
     def pulseProps(self,np,pw,bias,zhold,rel_abs):
+        if(abs(bias) > 10): return "Bias must be <= 10 V"
         self.defaultPulseParams = [np,pw,bias,zhold,rel_abs]
+        self.interface.reactToMessage("+1")
         
     def pulse(self):
         NTCP,connection_error = self.connect()                                  # Connect to nanonis via TCP
@@ -296,17 +311,22 @@ class scanbot():
             time.sleep(pw + 0.2)                                                # Wait 200 ms more than the pulse time
         
         self.disconnect(NTCP)
-        
-        time.sleep(0.1)
+        self.interface.reactToMessage("explosion")
         # self.interface.sendReply("Bias pulse complete")
     
     def biasDep(self,nb,bdc,bi,bf,px,suffix):
         NTCP,connection_error = self.connect()                                  # Connect to nanonis via TCP
         if(connection_error): return connection_error                           # Return error message if there was a problem connecting
         
+        self.interface.reactToMessage("working_on_it")
+        
         biasList = np.linspace(bi,bf,nb)
         
         scan = Scan(NTCP)
+        
+        basename     = scan.PropsGet()[3]                                       # Get the save basename
+        tempBasename = basename + '_' + suffix + '_'                            # Create a temp basename for this survey
+        scan.PropsSet(series_name=tempBasename)                                 # Set the basename in nanonis for this survey
         
         scanPixels,scanLines = scan.BufferGet()[2:]
         lx = int((scanLines/scanPixels)*px)
@@ -321,6 +341,7 @@ class scanbot():
             scan.BufferSet(pixels=px,lines=lx)
             scan.Action('start',scan_direction='up')
             scan.WaitEndOfScan()
+            scan.PropsSet(series_name=tempBasename + str(bdc) + "V-DC_")        # Set the basename in nanonis for this survey
             _,initialDriftCorrect,_ = scan.FrameDataGrab(14, 1)
             
             dx  = w/px; dy  = h/lx
@@ -330,6 +351,8 @@ class scanbot():
         
         for b in biasList:
             if(b == 0): continue                                                # Don't set the bias to zero ever
+            
+            scan.PropsSet(series_name=tempBasename + str(b) + "V_")             # Set the basename in nanonis for this survey
             ## Bias dep scan
             self.rampBias(NTCP, b)
             scan.BufferSet(pixels=scanPixels,lines=scanLines)
@@ -349,6 +372,7 @@ class scanbot():
             
             if(initialDriftCorrect == "skip"): continue                         # If we haven't taken out initial dc image, dc must be turned off so continue
             
+            scan.PropsSet(series_name=tempBasename + str(bdc) + "V-DC_")        # Set the basename in nanonis for this survey
             ## Drift correct scan
             self.rampBias(NTCP, bdc)
             scan.BufferSet(pixels=px,lines=lx)
@@ -364,6 +388,8 @@ class scanbot():
             
             scan.FrameSet(x,y,w,h)
             
+        scan.PropsSet(series_name=basename)                                     # Put back the original basename
+        
         self.disconnect(NTCP)
         
         global_.running.clear()
@@ -374,13 +400,11 @@ class scanbot():
         NTCP,connection_error = self.connect()                                  # Connect to nanonis via TCP
         if(connection_error): return connection_error                           # Return error message if there was a problem connecting        
         
-        ## Need to put a check in here to see if bias is outside bias range
-        ## Nanonis sim allows biases outside range?
-        if(bias):
+        if(bias and abs(bias) < 10):
             self.rampBias(NTCP, bias)                                           # Only ramp the bias if it's not zero
-            self.interface.sendReply("Bias set to " + str(bias) + "V")
+            self.interface.reactToMessage("+1")
         else:
-            self.interface.sendReply("Can't set bias to zero")
+            self.interface.reactToMessage("cross_marker")
             
         self.disconnect(NTCP)
         
@@ -460,3 +484,4 @@ class scanbot():
     def disconnect(self,NTCP):
         NTCP.close_connection()                                                 # Close the TCP connection
         self.interface.portList.append(NTCP.PORT)                               # Free up the port - put it back in the list of available ports
+        time.sleep(0.2)                                                         # Sleep

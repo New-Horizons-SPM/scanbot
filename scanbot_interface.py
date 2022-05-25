@@ -96,6 +96,7 @@ class scanbot_interface(object):
                 self.notifyUserList = [notifyList]
         
         self.notifications = True
+        self.bot_message = ""
         
     def getWhitelist(self):
         self.whitelist = []
@@ -294,7 +295,7 @@ class scanbot_interface(object):
                     '-bi'  : ['-1',  lambda x: float(x), "(float) Initial Bias"],
                     '-bf'  : ['1',   lambda x: float(x), "(float) Final Bias"],
                     '-px'  : ['128', lambda x: int(x),   "(int) Pixels in drift correct image. 0=no drift correction"],
-                    '-s'   : ['',    lambda x: str(x),   "(str) Suffix for the set of bias dep sxm files"]}
+                    '-s'   : ['sb-biasdep', lambda x: str(x), "(str) Suffix for the set of bias dep sxm files"]}
         
         if(_help): return arg_dict
         
@@ -367,8 +368,9 @@ class scanbot_interface(object):
         print(reply)                                                            # Print reply to console if zulip not available or notis turned off
     
     def reactToMessage(self,reaction):
+        if(not self.bot_message): return
         react_request = {
-            'message_id': self.message['id'],
+            'message_id': self.bot_message['id'],
             'emoji_name': reaction,
             }
         self.client.add_reaction(react_request)
@@ -403,7 +405,13 @@ class scanbot_interface(object):
     def addNotifyUser(self,username):
         self.notifyUserList.append(" ".join(username))
         
-    def addUsers(self,user):
+    def addUsers(self,user,_help=False):
+        arg_dict = {'' : ['', 0, "(string) Add user email to whitelist (one at a time)"]}
+        
+        if(_help): return arg_dict
+        
+        if(len(user) != 1): self.reactToMessage("cross_mark"); return
+        if(' ' in user[0]): self.reactToMessage("cross_mark"); return
         try:
             self.whitelist.append(user[0])
             with open('whitelist.txt', 'w') as f:
@@ -414,39 +422,64 @@ class scanbot_interface(object):
         
         return "user/s added sucessfully"
     
-    def setIP(self,IP):
+    def setIP(self,IP,_help=False):
+        arg_dict = {'' : ['127.0.0.1', lambda x: str(x), "(string) IP Address"]}
+        
+        if(_help): return arg_dict
+        
+        if(len(IP) != 1): return "Invalid IP: " + str(IP)
         try:
             IP = IP[0]
             ipaddress.ip_address(IP)
             self.IP = IP
-            return "Set IP to " + self.IP
+            self.reactToMessage('computer')
+            return
         except Exception as e:
             return str(e)
     
-    def setPortList(self,portList):
-        self.portList = [int(x) for x in portList]
-        return "Updated ports: " + str(self.portList)
+    def setPortList(self,portList,_help=False):
+        arg_dict = {'' : ['6501 6502 6503 6504', 0, "(int array) List of ports delimited by a space"]}
+        
+        if(_help): return arg_dict
+        
+        try:
+            portList = [int(x) for x in portList]
+        except:
+            self.reactToMessage('cross_mark')
+            return "Invalid portlis. Ports must be integers delimited by spaces"
+        
+        if(not portList): return self.reactToMessage('cross_mark')
+        
+        self.portList = portList
+        self.reactToMessage('computer')
     
     def setUploadMethod(self,uploadMethod):
+        if(len(uploadMethod) != 1): self.reactToMessage('cross_mark'); return
+        
         uploadMethod = uploadMethod[0].lower()
         if(not uploadMethod in self.validUploadMethods):
+            self.reactToMessage('cross_mark')
             return "Invalid Method. Available methods:\n" + "\n". join(self.validUploadMethods)
         self.uploadMethod = uploadMethod
-        return "Set upload method to " + self.uploadMethod
+        self.reactToMessage('all_good')
     
-    def noti(self,args):
+    def noti(self,args,_help=False):
+        arg_dict = {'' : ['', 0, '(string) Notifications either "on" or "off"']}
+        
+        if(_help): return arg_dict
+        
         if(not args[0].lower() in ["off","on"]):
+            self.reactToMessage('cross_mark')
             self.sendReply("Choose on or off")
             return
         
         if(args[0].lower() == "on"):
             self.notifications = True
-            self.sendReply("Notifications on")
+            self.reactToMessage('speaking_head')
             
         if(args[0].lower() == "off"):
-            self.sendReply("Turn notifications back on by")
-            self.sendReply("```noti on```")
             self.notifications = False
+            self.reactToMessage('quiet')
     
     def listCommands(self,args):
         return "\n". join([c for c in self.commands])
@@ -509,13 +542,20 @@ class scanbot_interface(object):
         if(not command in self.commands):
             return "Run ```list_commands``` to see valid commands"
         
-        helpStr = "**" + command + "**\n"
-        arg_dict = self.commands[command](args,_help=True)
-        for key,value in arg_dict.items():
-            helpStr += "```"
-            helpStr += key + "```: " + value[2] + ". "
-            helpStr += "Default: ```" +  value[0].replace("-default","nanonis") 
-            helpStr += "```\n"
+        try:
+            helpStr = "**" + command + "**\n"
+            arg_dict = self.commands[command](args,_help=True)
+            for key,value in arg_dict.items():
+                if(key):
+                    helpStr += "```"
+                    helpStr += key + "```: " 
+                helpStr += value[2] + ". "
+                if(value[0]):
+                    helpStr += "Default: ```" +  value[0].replace("-default","nanonis") 
+                    helpStr += "```"
+                helpStr += "\n"
+        except:
+            return "No help for this command"
         
         return helpStr
     

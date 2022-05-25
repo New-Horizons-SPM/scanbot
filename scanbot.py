@@ -463,7 +463,7 @@ class scanbot():
             
             while global_.pause.is_set(): time.sleep(2)                         # Pause flag
             
-            scan.Action(scan_action='stop')
+            scan.Action(scan_action='resume')
             
             self.disconnect(NTCP)
 ###############################################################################

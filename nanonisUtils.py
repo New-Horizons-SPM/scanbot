@@ -10,6 +10,7 @@ import scipy.signal as sp
 from PIL import Image
 import os
 import math
+import imageio
 
 ###############################################################################
 # Drift Correction
@@ -46,10 +47,9 @@ def getFrameOffset(im1,im2,dxy=[1,1]):
     
     return np.array([ox,oy])
 ###############################################################################
-# Drift Correction
+# Image Processing
 ###############################################################################
-def stitchSurvey(storage,storagePath,surveyName,delete):
-    if(surveyName == "*"): return "Survey name required use arg -s=<survey name>"
+def getFiles(storage,storagePath,surveyName):
     surveyName = '_' + surveyName + '_'
     
     files  = []
@@ -59,9 +59,10 @@ def stitchSurvey(storage,storagePath,surveyName,delete):
         if(filename.startswith(storagePath) and filename != storagePath):
             if(surveyName in filename):
                 files.append(filename)
-                
-    if(not len(files)): return "No files found for " + storagePath + surveyName
     
+    return files
+
+def downloadFiles(storage,files):
     bucket = storage.bucket()
     for f in files:
         saveFilename = f.split('/')[-1]
@@ -69,6 +70,17 @@ def stitchSurvey(storage,storagePath,surveyName,delete):
         blob.download_to_filename(saveFilename)
     
     localFiles  = [f.split('/')[-1] for f in files]
+    return localFiles
+    
+def stitchSurvey(storage,storagePath,surveyName,delete):
+    if(surveyName == "*"): return "Survey name required use arg -s=<survey name>"
+    
+    files = getFiles(storage,storagePath,surveyName)
+                
+    if(not len(files)): return "No files found for " + storagePath + surveyName
+    
+    localFiles = downloadFiles(storage,files)
+    
     images = [Image.open(x) for x in localFiles]
     widths, heights = zip(*(i.size for i in images))
     
@@ -101,12 +113,14 @@ def stitchSurvey(storage,storagePath,surveyName,delete):
     
     new_im.save(surveyName + '.png')
     
-    blob = bucket.blob(storagePath + "/stitch" + surveyName.strip('_') + '.png')
+    bucket = storage.bucket()
+    blob = bucket.blob(storagePath + "stitch/" + surveyName.strip('_') + '.png')
     blob.upload_from_filename(surveyName + '.png')
 
     url = blob.generate_signed_url(expiration=9999999999)
     
-    os.remove(surveyName + '.png')    
+    os.remove(surveyName + '.png')
+    
     for f in localFiles: os.remove(f)
     
     if(delete):
@@ -114,3 +128,38 @@ def stitchSurvey(storage,storagePath,surveyName,delete):
             bucket.delete_blob(f)
     
     return url
+
+def makeGif(storage,storagePath,surveyName,delete):
+    files = getFiles(storage,storagePath,surveyName)
+                
+    if(not len(files)): return "No files found for " + storagePath + surveyName
+    
+    localFiles = downloadFiles(storage,files)
+    biasList = []
+    
+    reply = ""
+    try:
+        biasList = [float(fname.split(surveyName)[-1].split('V_')[0].strip('_')) for fname in localFiles]
+        localFiles = [f for _,f in sorted(zip(biasList,localFiles))]
+    except:
+        reply = "Could not sort by bias"
+        
+    images = [Image.open(x) for x in localFiles]
+    
+    images[0].save('output.gif', formate='GIF',
+               append_images=images[1:],
+               save_all=True,
+               duration=300, loop=0
+               )
+    
+    bucket = storage.bucket()
+    blob = bucket.blob(storagePath + "gifs/" + surveyName.strip('_') + '.gif')
+    blob.upload_from_filename('output.gif')
+
+    url = blob.generate_signed_url(expiration=9999999999)
+    
+    os.remove('output.gif')
+    
+    for f in localFiles: os.remove(f)
+    
+    return reply,url

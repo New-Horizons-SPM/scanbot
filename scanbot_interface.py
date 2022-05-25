@@ -75,7 +75,7 @@ class scanbot_interface(object):
         self.firebaseCert = initDict['firebase_credentials']
         self.firebaseStorageBucket = initDict['firebase_storage_bucket']
         self.firebaseStoragePath   = initDict['firebase_storage_path']
-        if(not self.firebaseStoragePath.endswith('/')):
+        if(not self.firebaseStoragePath.endswith('/') and self.firebaseStoragePath):
             self.firebaseStoragePath += '/'
         
         portList = initDict['port_list']
@@ -143,6 +143,7 @@ class scanbot_interface(object):
                          'pulse_props'      : self.pulseProps,
                          'pulse'            : self.pulse,
                          'bias_dep'         : self.biasDep,
+                         'make_gif'         : self.makeGif,
                          'set_bias'         : self.setBias,
                          'stitch_survey'    : self.stitchSurvey,
                          'watch'            : self.watch,
@@ -362,6 +363,7 @@ class scanbot_interface(object):
         if(reply): self.sendReply(reply)
     
     def sendReply(self,reply):
+        if(not reply): return
         if(self.notifications):
             if(self.bot_handler):
                 self.bot_handler.send_reply(self.bot_message, reply)
@@ -489,6 +491,22 @@ class scanbot_interface(object):
 ###############################################################################
 # Utilities
 ###############################################################################
+    def makeGif(self,user_args,_help=False):
+        arg_dict = {'-s' : ['*', lambda x: str(x), "(str) Survey name"],
+                    '-d' : ['0', lambda x: int(x), "(int) Delete survey after stitch. 0: Don't delete. 1: Delete"]}
+        
+        if(_help): return arg_dict
+        
+        if(self.uploadMethod == 'zulip'): return "Unsupported upload method"
+        
+        error,user_arg_dict = self.userArgs(arg_dict,user_args)
+        if(error): return error + "\nRun ```help make_gif``` if you're unsure."
+        
+        args = self.unpackArgs(user_arg_dict)
+        url,reply = nut.makeGif(storage,self.firebaseStoragePath,*args)
+        if(reply): self.sendReply(reply)
+        return url
+        
     def stitchSurvey(self,user_args,_help=False):
         arg_dict = {'-s' : ['*', lambda x: str(x), "(str) Survey name"],
                     '-d' : ['0', lambda x: int(x), "(int) Delete survey after stitch. 0: Don't delete. 1: Delete"]}

@@ -111,6 +111,7 @@ class scanbot():
         zController  = ZController(NTCP)
         autoApproach = AutoApproach(NTCP)
         
+        self.interface.reactToMessage("working_on_it")
         print("withdrawing")
         zController.Withdraw(wait_until_finished=True,timeout=3)
         print("withdrew")
@@ -138,6 +139,7 @@ class scanbot():
         
         # Check current here
         
+        self.interface.reactToMessage("double_down")
         motor.FreqAmpSet(upF,upV)
         autoApproach.Open()
         autoApproach.OnOffSet(on_off=True)
@@ -148,6 +150,7 @@ class scanbot():
         
         time.sleep(1)
         if(zon): zController.OnOffSet(True)
+        self.interface.reactToMessage("sparkler")
         
         self.disconnect(NTCP)                                                   # Close the TCP connection
         
@@ -372,7 +375,7 @@ class scanbot():
             self.interface.sendReply(str(e))
         
         self.disconnect(NTCP)
-        self.interface.reactToMessage("sparkler")
+        self.interface.reactToMessage("dagger")
         
     def tipShapePropsGet(self):
         NTCP,connection_error = self.connect()                                  # Connect to nanonis via TCP

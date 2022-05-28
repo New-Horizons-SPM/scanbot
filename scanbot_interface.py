@@ -173,6 +173,7 @@ class scanbot_interface(object):
         
         args = self.unpackArgs(user_arg_dict)
         
+        self.stop()
         self.scanbot.moveArea(*args)
         
     def creep(self,user_args,_help=False):

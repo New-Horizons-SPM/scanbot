@@ -160,10 +160,11 @@ class scanbot_interface(object):
         arg_dict = {'-up'    : ['10',   lambda x: int(x),   "(int) Steps to go up before moving across. min 10"],
                     '-upV'   : ['180',  lambda x: float(x), "(float) Controller amplitude during up motor steps"],
                     '-upF'   : ['1100', lambda x: float(x), "(float) Controller frequency during up motor steps"],
-                    '-dir'   : ['Y+',   lambda x: str(x), "(str) Direction to go across (either X+, X-, Y+, Y-)"],
-                    '-steps' : ['10',   lambda x: int(x), "(int) Steps to move across after moving -up number of steps"],
+                    '-dir'   : ['Y+',   lambda x: str(x),   "(str) Direction to go across (either X+, X-, Y+, Y-)"],
+                    '-steps' : ['10',   lambda x: int(x),   "(int) Steps to move across after moving -up number of steps"],
                     '-dirV'  : ['130',  lambda x: float(x), "(float) Controller amplitude during across motor steps"],
-                    '-dirF'  : ['1100', lambda x: float(x), "(float) Controller frequency during across motor steps"]}
+                    '-dirF'  : ['1100', lambda x: float(x), "(float) Controller frequency during across motor steps"],
+                    '-zon'   : ['1',    lambda x: int(x),   "(int) Turn the z-controller on after approaching. 1=on, 0=off"]}
         
         if(_help): return arg_dict
         

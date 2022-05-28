@@ -43,7 +43,7 @@ class scanbot():
 ###############################################################################
 # Actions
 ###############################################################################
-    def moveArea(self,up,upV,upF,direction,steps,dirV,dirF):
+    def moveArea(self,up,upV,upF,direction,steps,dirV,dirF,zon):
         NTCP,connection_error = self.connect()                                  # Connect to nanonis via TCP
         if(connection_error): return connection_error                           # Return error message if there was a problem connecting        
         
@@ -145,6 +145,9 @@ class scanbot():
         while(autoApproach.OnOffGet()):
             print("Still approaching...")
             time.sleep(1)
+        
+        time.sleep(1)
+        if(zon): zController.OnOffSet(True)
         
         self.disconnect(NTCP)                                                   # Close the TCP connection
         

@@ -149,12 +149,31 @@ class scanbot_interface(object):
                          'watch'            : self.watch,
                          'creep'            : self.creep,
                          'add_notify_list'  : self.addNotifyUser,
-                         'get_notify_list'  : lambda args: self.notifyUserList
+                         'get_notify_list'  : lambda args: self.notifyUserList,
+                         'move_area'        : self.moveArea
         }
     
 ###############################################################################
 # Scanbot
 ###############################################################################
+    def moveArea(self,user_args,_help=False):
+        arg_dict = {'-up'    : ['10',   lambda x: int(x),   "(int) Steps to go up before moving across. min 10"],
+                    '-upV'   : ['180',  lambda x: float(x), "(float) Controller amplitude during up motor steps"],
+                    '-upF'   : ['1100', lambda x: float(x), "(float) Controller frequency during up motor steps"],
+                    '-dir'   : ['Y+',   lambda x: str(x), "(str) Direction to go across (either X+, X-, Y+, Y-)"],
+                    '-steps' : ['10',   lambda x: int(x), "(int) Steps to move across after moving -up number of steps"],
+                    '-dirV'  : ['130',  lambda x: float(x), "(float) Controller amplitude during across motor steps"],
+                    '-dirF'  : ['1100', lambda x: float(x), "(float) Controller frequency during across motor steps"]}
+        
+        if(_help): return arg_dict
+        
+        error,user_arg_dict = self.userArgs(arg_dict,user_args)
+        if(error): return error + "\nRun ```help move_area``` if you're unsure."
+        
+        args = self.unpackArgs(user_arg_dict)
+        
+        self.scanbot.moveArea(*args)
+        
     def creep(self,user_args,_help=False):
         arg_dict = {'-ip'   : [self.IP, lambda x: str(x), "(str) Creep IP"],
                     '-port' : ['6501',  lambda x: int(x), "(int) Creep Port"]}
@@ -165,12 +184,12 @@ class scanbot_interface(object):
         if(error): return error + "\nRun ```help creep``` if you're unsure."
         
         args = self.unpackArgs(user_arg_dict)
-        # self.scanbot.watch("",*args)
+        
         func = lambda : self.scanbot.watch("",*args)
         return self.threadTask(func)
     
     def watch(self,user_args,_help=False):
-        arg_dict = {'-s'    : ['sbwatch',  lambda x: str(x),   "(str) Suffix at the end of autosaved sxm files"]}
+        arg_dict = {'-s' : ['sbwatch', lambda x: str(x), "(str) Suffix at the end of autosaved sxm files"]}
         
         if(_help): return arg_dict
         
@@ -266,6 +285,8 @@ class scanbot_interface(object):
         
         if(_help): return arg_dict
         
+        if(not len(user_args)): return self.scanbot.tipShapePropsGet()
+        
         error,user_arg_dict = self.userArgs(arg_dict,user_args)
         if(error): return error + "\nRun ```help tip_shape_props``` if you're unsure."
         
@@ -282,6 +303,8 @@ class scanbot_interface(object):
                     }
         
         if(_help): return arg_dict
+        
+        if(not len(user_args)): return self.scanbot.pulsePropsGet()
         
         error,user_arg_dict = self.userArgs(arg_dict,user_args)
         if(error): return error + "\nRun ```help pulse_props``` if you're unsure."

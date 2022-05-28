@@ -11,6 +11,8 @@ from nanonisTCP.TipShaper import TipShaper
 from nanonisTCP.Bias import Bias
 from nanonisTCP.ZController import ZController
 from nanonisTCP.FolMe import FolMe
+from nanonisTCP.Motor import Motor
+from nanonisTCP.AutoApproach import AutoApproach
 
 import nanonisUtils as nut
 
@@ -41,6 +43,111 @@ class scanbot():
 ###############################################################################
 # Actions
 ###############################################################################
+    def moveArea(self,up,upV,upF,direction,steps,dirV,dirF):
+        NTCP,connection_error = self.connect()                                  # Connect to nanonis via TCP
+        if(connection_error): return connection_error                           # Return error message if there was a problem connecting        
+        
+        if(up < 10):
+            self.disconnect(NTCP)
+            self.interface.sendReply("-up must be > 10")
+            return
+        
+        if(upV > 200):
+            self.disconnect(NTCP)
+            self.interface.sendReply("-upV 200 V max")
+            return
+        
+        if(upF > 2.5e3):
+            self.disconnect(NTCP)
+            self.interface.sendReply("-upF 2.5 kHz max")
+            return
+        
+        if(dirV > 200):
+            self.disconnect(NTCP)
+            self.interface.sendReply("-dirV 200 V max")
+            return
+        
+        if(dirF > 2.5e3):
+            self.disconnect(NTCP)
+            self.interface.sendReply("-dirF 2.5 kHz max")
+            return
+        
+        if(upV < 1):
+            self.disconnect(NTCP)                                               # Close the TCP connection
+            self.interface.sendReply("-upV must be between 1 V and 200 V")
+            return
+            
+        if(upF < 500):
+            self.disconnect(NTCP)                                               # Close the TCP connection
+            self.interface.sendReply("-upF must be between 500 Hz and 2.5 kHz")
+            return
+        
+        if(dirV < 1):
+            self.disconnect(NTCP)                                               # Close the TCP connection
+            self.interface.sendReply("-upV must be between 1 V and 200 V")
+            return
+            
+        if(dirF < 500):
+            self.disconnect(NTCP)                                               # Close the TCP connection
+            self.interface.sendReply("-upF must be between 500 Hz and 2.5 kHz")
+            return
+        
+        if(not direction in ["X+","X-","Y+","Y-"]):
+            self.disconnect(NTCP)                                               # Close the TCP connection
+            self.interface.sendReply("-dir can only be X+, X-, Y+, Y-")
+            return
+        
+        if(steps < 0):
+            self.disconnect(NTCP)
+            self.interface.sendReply("-steps must be > 0")
+            return
+        
+        if(up < 0):
+            self.disconnect(NTCP)
+            self.interface.sendReply("-up must be > 0")
+            return
+        
+        motor        = Motor(NTCP)
+        zController  = ZController(NTCP)
+        autoApproach = AutoApproach(NTCP)
+        
+        print("withdrawing")
+        zController.Withdraw(wait_until_finished=True,timeout=3)
+        print("withdrew")
+        time.sleep(0.25)
+        
+        stepsAtATime = 10
+        leftOver     = steps%stepsAtATime
+        steps        = int(steps/stepsAtATime)
+        
+        motor.FreqAmpSet(upF,upV)
+        motor.StartMove("Z+",up,wait_until_finished=True)
+        print("Moving motor: Z+" + " " + str(up) + "steps")
+        time.sleep(0.5)
+        
+        motor.FreqAmpSet(dirF,dirV)
+        for s in range(steps):
+            motor.StartMove(direction,stepsAtATime,wait_until_finished=True)
+            print("Moving motor: " + direction + " " + str(stepsAtATime) + "steps")
+            time.sleep(0.25)
+            # Check current here
+        
+        motor.StartMove(direction,leftOver,wait_until_finished=True)
+        print("Moving motor: " + direction + " " + str(leftOver) + "steps")
+        time.sleep(0.5)
+        
+        # Check current here
+        
+        motor.FreqAmpSet(upF,upV)
+        autoApproach.Open()
+        autoApproach.OnOffSet(on_off=True)
+        
+        while(autoApproach.OnOffGet()):
+            print("Still approaching...")
+            time.sleep(1)
+        
+        self.disconnect(NTCP)                                                   # Close the TCP connection
+        
     def plot(self,args):
         NTCP,connection_error = self.connect()                                  # Connect to nanonis via TCP
         if(connection_error): return connection_error                           # Return error message if there was a problem connecting        
@@ -52,7 +159,6 @@ class scanbot():
         self.interface.sendPNG(pngFilename,notify=False)                        # Send a png over zulip
         
         self.disconnect(NTCP)                                                   # Close the TCP connection
-        return ""
     
     def stop(self,args):
         NTCP,connection_error = self.connect()                                  # Connect to nanonis via TCP
@@ -79,8 +185,6 @@ class scanbot():
             scan.PropsSet(series_name=tempBasename)                             # Set the basename in nanonis for this survey
             
         self.interface.reactToMessage("eyes")
-        
-        # self.interface.sendReply('Scanbot :eyes: \'' + suffix + '\'')           # Send a notification that the survey has completed
         
         while(True):
             if(self.checkEventFlags()): break                                   # Check event flags
@@ -223,6 +327,7 @@ class scanbot():
         self.disconnect(NTCP)
         
     def tipShape(self,np,pw,bias,zhold,rel_abs):
+        self.interface.reactToMessage("at_work")
         global_.pause.set()
         time.sleep(0.5)
         
@@ -257,19 +362,59 @@ class scanbot():
         if(connection_error): return connection_error                           # Return error message if there was a problem connecting
         
         tipShaper = TipShaper(NTCP)
-        tipShaper.Start(wait_until_finished=True,timeout=-1)
+        
+        try:
+            tipShaper.Start(wait_until_finished=True,timeout=-1)
+        except Exception as e:
+            self.interface.sendReply(str(e))
         
         self.disconnect(NTCP)
-        self.interface.reactToMessage("dagger")
-        # self.interface.sendReply("Tip-shape complete")
+        self.interface.reactToMessage("sparkler")
         
-    def tipShapeProps(self,sod,cb,b1,z1,t1,b2,t2,z3,t3,wait,fb,designatedArea,designatedGrid):#,np,pw,bias,zhold,rel_abs):
+    def tipShapePropsGet(self):
+        NTCP,connection_error = self.connect()                                  # Connect to nanonis via TCP
+        if(connection_error): return connection_error                           # Return error message if there was a problem connecting
+         
+        tipShaper = TipShaper(NTCP)
+        
+        try:
+            args = tipShaper.PropsGet()                                         # Grab all the current tip shaping settings in nanonis
+        except Exception as e:
+            self.interface.sendReply(str(e))
+            self.disconnect(NTCP)
+            return
+        
+        self.disconnect(NTCP)
+        
+        getStr  = "Switch off delay (sod): " + str(args[0])  + "\n"
+        getStr += "Change bias flag  (cb): " + str(args[1])  + "\n"
+        getStr += "Change bias value (b1): " + str(args[2])  + "\n"
+        getStr += "Tip lift 1 height (z1): " + str(args[3])  + "\n"
+        getStr += "Tip lift 1 time   (t1): " + str(args[4])  + "\n"
+        getStr += "Tip lift bias     (b2): " + str(args[5])  + "\n"
+        getStr += "Tip lift 2 time   (t2): " + str(args[6])  + "\n"
+        getStr += "Tip lift 3 height (z3): " + str(args[7])  + "\n"
+        getStr += "Tip lift 3 time   (t3): " + str(args[8])  + "\n"
+        getStr += "Final wait time (wait): " + str(args[9])  + "\n"
+        getStr += "Restore feeback   (fb): " + str(args[10]) + "\n"
+        getStr += "Tip shape area  (area): " + str(self.designatedTipShapeArea) + "\n"
+        getStr += "Area grid size  (grid): " + str(self.designatedGrid) + "\n"
+        
+        return getStr
+    
+    def tipShapeProps(self,sod,cb,b1,z1,t1,b2,t2,z3,t3,wait,fb,designatedArea,designatedGrid):
         NTCP,connection_error = self.connect()                                  # Connect to nanonis via TCP
         if(connection_error): return connection_error                           # Return error message if there was a problem connecting
          
         tipShaper  = TipShaper(NTCP)
         
-        default_args  = tipShaper.PropsGet()                                    # Store all the current tip shaping settings in nanonis
+        try:
+            default_args = tipShaper.PropsGet()                                 # Store all the current tip shaping settings in nanonis
+        except Exception as e:
+            self.interface.sendReply(str(e))
+            self.disconnect(NTCP)
+            return
+            
         tipShaperArgs = [sod,cb,b1,z1,t1,b2,t2,z3,t3,wait,fb]                   # Order matters here
         for i,a in enumerate(tipShaperArgs):
             if(a=="-default"):
@@ -278,11 +423,15 @@ class scanbot():
         z1 = tipShaperArgs[3]
         if(z1 < -50e-9):
             self.interface.sendReply("Limit for z1=-50e-9 m")
+            self.disconnect(NTCP)
             return
+        
         z3 = tipShaperArgs[7]
         if(z1 < -50e-9):
             self.interface.sendReply("Limit for z3=-50e-9 m")
+            self.disconnect(NTCP)
             return
+        
         if(z1 > 0):
             self.interface.sendReply("Sure you want a positive z1?")
             
@@ -294,9 +443,18 @@ class scanbot():
         self.disconnect(NTCP)
         self.interface.reactToMessage("+1")
     
+    def pulsePropsGet(self):
+        getStr  = "Num pulses          (np): " + str(self.defaultPulseParams[0]) + "\n"
+        getStr += "Pulse width         (pw): " + str(self.defaultPulseParams[1]) + "\n"
+        getStr += "Pulse bias        (bias): " + str(self.defaultPulseParams[2]) + "\n"
+        getStr += "ZController hold (zhold): " + str(self.defaultPulseParams[3]) + "\n"
+        getStr += "1=Rel. 2=Abs       (abs): " + str(self.defaultPulseParams[4]) + "\n"
+        
+        return getStr
+    
     def pulseProps(self,np,pw,bias,zhold,rel_abs):
         if(abs(bias) > 10): return "Bias must be <= 10 V"
-        self.defaultPulseParams = [np,pw,bias,zhold,rel_abs]
+        self.defaultPulseParams = [np,pw,bias,zhold,rel_abs]                    # Store here because there's no TCP command to retrieve settings from nanonis
         self.interface.reactToMessage("+1")
         
     def pulse(self):
@@ -312,7 +470,6 @@ class scanbot():
         
         self.disconnect(NTCP)
         self.interface.reactToMessage("explosion")
-        # self.interface.sendReply("Bias pulse complete")
     
     def biasDep(self,nb,bdc,bi,bf,px,suffix):
         NTCP,connection_error = self.connect()                                  # Connect to nanonis via TCP
@@ -409,7 +566,6 @@ class scanbot():
         self.disconnect(NTCP)
         
         global_.running.clear()
-        
         
 ###############################################################################
 # Utilities

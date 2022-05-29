@@ -13,6 +13,7 @@ from nanonisTCP.ZController import ZController
 from nanonisTCP.FolMe import FolMe
 from nanonisTCP.Motor import Motor
 from nanonisTCP.AutoApproach import AutoApproach
+from nanonisTCP.Current import Current
 
 import nanonisUtils as nut
 
@@ -36,6 +37,7 @@ class scanbot():
     def __init__(self,interface):
         self.interface = interface
         self.survey_args = []
+        self.safetyParams = [5e-9,1100,180]                                     # [0]: safe current threshold. [1]: safe retract motor frequency. [2]: safe retract motor voltage
         self.designatedTipShapeArea = [-600e-9,-600e-9,300e-9,300e-9]
         self.designatedGrid = [10,0]
         self.defaultPulseParams = [5,0.1,3,0,0]                                 # np,pw,bias,zhold,rel_abs. Defaults here because nanonis has no TCP comand to retrieve them :(
@@ -43,10 +45,22 @@ class scanbot():
 ###############################################################################
 # Actions
 ###############################################################################
+    def safetyPropsGet(self):
+        getStr  = "Safe current threshold     (-maxcur): " + str(self.safetyParams[0]) + " A\n"
+        getStr += "Safe retract motor freq    (-motorF): " + str(self.safetyParams[1]) + " Hz\n"
+        getStr += "Safe retract motor voltage (-motorV): " + str(self.safetyParams[2]) + " V\n"
+        return getStr
+    
+    def safetyPropsSet(self,threshold,motorF,motorV):
+        threshold = abs(threshold)
+        self.safetyParams = [threshold,motorF,motorV]
+        return self.safetyPropsGet()
+        
     def moveArea(self,up,upV,upF,direction,steps,dirV,dirF,zon):
         NTCP,connection_error = self.connect()                                  # Connect to nanonis via TCP
         if(connection_error): return connection_error                           # Return error message if there was a problem connecting        
         
+        # Safety checks
         if(up < 10):
             self.disconnect(NTCP)
             self.interface.sendReply("-up must be > 10")
@@ -107,37 +121,53 @@ class scanbot():
             self.interface.sendReply("-up must be > 0")
             return
         
-        motor        = Motor(NTCP)
-        zController  = ZController(NTCP)
-        autoApproach = AutoApproach(NTCP)
+        motor         = Motor(NTCP)                                             # Nanonis Motor module
+        zController   = ZController(NTCP)                                       # Nanonis ZController module
+        autoApproach  = AutoApproach(NTCP)                                      # Nanonis AutoApproach module
         
         self.interface.reactToMessage("working_on_it")
         print("withdrawing")
-        zController.Withdraw(wait_until_finished=True,timeout=3)
+        zController.Withdraw(wait_until_finished=True,timeout=3)                # Withdwar the tip
         print("withdrew")
         time.sleep(0.25)
         
-        stepsAtATime = 10
-        leftOver     = steps%stepsAtATime
-        steps        = int(steps/stepsAtATime)
-        
-        motor.FreqAmpSet(upF,upV)
-        motor.StartMove("Z+",up,wait_until_finished=True)
+        motor.FreqAmpSet(upF,upV)                                               # Set the motor controller params appropriate for Z piezos
+        motor.StartMove("Z+",up,wait_until_finished=True)                       # Retract the tip +Z direction
         print("Moving motor: Z+" + " " + str(up) + "steps")
         time.sleep(0.5)
         
-        motor.FreqAmpSet(dirF,dirV)
+        stepsAtATime = 10                                                       # Moving the motor across 10 steps at a time to be safe
+        leftOver     = steps%stepsAtATime                                       # Continue moving motor a few steps if stes is not divisible by 10
+        steps        = int(steps/stepsAtATime)                                  # Sets of 10 steps
+        
+        isSafe = True
+        motor.FreqAmpSet(dirF,dirV)                                             # Set the motor controller params appropriate for XY piezos
         for s in range(steps):
-            motor.StartMove(direction,stepsAtATime,wait_until_finished=True)
+            motor.StartMove(direction,stepsAtATime,wait_until_finished=True)    # Move safe number of steps at a time
             print("Moving motor: " + direction + " " + str(stepsAtATime) + "steps")
+            isSafe = self.safeCurrentCheck(NTCP)                                # Safe retract if current overload
+            if(not isSafe):
+                self.disconnect(NTCP)                                           # Close the TCP connection
+                self.interface.sendReply("Could not complete move_area...")
+                self.interface.sendReply("Safe retract was triggered because the current exceeded "
+                                         + str(self.safetyParams[0]*1e9) + " nA"
+                                         + " while moving areas")
+                return
+                
             time.sleep(0.25)
-            # Check current here
         
         motor.StartMove(direction,leftOver,wait_until_finished=True)
         print("Moving motor: " + direction + " " + str(leftOver) + "steps")
         time.sleep(0.5)
         
-        # Check current here
+        isSafe = self.safeCurrentCheck(NTCP)                                    # Safe retract if current overload
+        if(not isSafe):
+            self.disconnect(NTCP)                                               # Close the TCP connection
+            self.interface.sendReply("Could not complete move_area...")
+            self.interface.sendReply("Safe retract was triggered because the current exceeded "
+                                     + str(self.safetyParams[0]*1e9) + " nA"
+                                     + " while moving areas")
+            return
         
         self.interface.reactToMessage("double_down")
         motor.FreqAmpSet(upF,upV)
@@ -150,6 +180,8 @@ class scanbot():
         
         time.sleep(1)
         if(zon): zController.OnOffSet(True)
+        
+        time.sleep(3)
         self.interface.reactToMessage("sparkler")
         
         self.disconnect(NTCP)                                                   # Close the TCP connection
@@ -180,7 +212,7 @@ class scanbot():
         NTCP,connection_error = self.connect(creepIP,creepPORT)                 # Connect to nanonis via TCP
         if(connection_error):
             global_.running.clear()                                             # Free up the running flag
-            self.sendReply(connection_error)                                    # Return error message if there was a problem connecting
+            self.interface.sendReply(connection_error)                                    # Return error message if there was a problem connecting
             return
         
         scan = Scan(NTCP)                                                       # Nanonis scan module
@@ -234,7 +266,7 @@ class scanbot():
         NTCP,connection_error = self.connect()                                  # Connect to nanonis via TCP
         if(connection_error):
             global_.running.clear()                                             # Free up the running flag
-            self.sendReply(connection_error)                                    # Return error message if there was a problem connecting
+            self.interface.sendReply(connection_error)                                    # Return error message if there was a problem connecting
             return
         
         self.interface.reactToMessage("working_on_it")
@@ -576,6 +608,54 @@ class scanbot():
 ###############################################################################
 # Utilities
 ###############################################################################
+    def safeCurrentCheck(self,NTCP):
+        motor         = Motor(NTCP)
+        zController   = ZController(NTCP)
+        currentModule = Current(NTCP)
+        
+        current = abs(currentModule.Get())
+        threshold = self.safetyParams[0]
+        print("Safe check... Current: " + str(current) + ", threshold: " + str(threshold))
+        if(current < threshold):
+            return True
+        
+        self.interface.sendReply("---\nWarning: Safe retract has been triggered.\n"
+                                 + "Current: " + str(current*1e9) + " nA\n"
+                                 + "Threshold: " + str(threshold*1e9) + " nA\n")
+        
+        zController.Withdraw(wait_until_finished=False)                         # Retract the tip
+        
+        try:
+            print("Stopping other processes...")
+            self.interface.stop(args=[])
+        except Exception as e:
+            self.interface.sendReply("---\nWarning: error stopping processes during safe retract...")
+            self.interface.sendReply(str(e) + "\n---")
+        
+        safeFreq    = self.safetyParams[1]
+        safeVoltage = self.safetyParams[2]
+        motor.FreqAmpSet(safeFreq,safeVoltage)
+        motor.StartMove(direction="Z+", steps=50,wait_until_finished=True)
+        print("Retracted and moved 50 motor steps up")
+        
+        count = 0
+        while(current > threshold):
+            if(count%5 == 0):
+                self.interface.sendReply("---\n"
+                                     + "Warning: Safe retract has been triggered.\n"
+                                     + "Current still above threshold after "
+                                     + str((count+1)*50) + " Z+ motor steps.\n" 
+                                     + "Current: " + str(current*1e9) + " nA\n"
+                                     + "Threshold: " + str(threshold*1e9) + " nA\n")
+                
+            motor.StartMove(direction="Z+", steps=50,wait_until_finished=True)
+            current = abs(currentModule.Get())
+            count += 1
+            print("Retracting another 50 steps... current: " + str(current*1e9) + " nA")
+        
+        self.interface.sendReply("Warning: Safe retract complete... current: " + str(current*1e9) + " nA\n---\n")
+        return False
+    
     def rampBias(self,NTCP,bias,dbdt=1,db=50e-3,zhold=True):                    # Ramp the tip bias from current value to final value at a rate of db/dt
         if(bias == 0): return
         biasModule = Bias(NTCP)                                                 # Nanonis Bias module

@@ -150,12 +150,32 @@ class scanbot_interface(object):
                          'creep'            : self.creep,
                          'add_notify_list'  : self.addNotifyUser,
                          'get_notify_list'  : lambda args: self.notifyUserList,
-                         'move_area'        : self.moveArea
+                         'move_area'        : self.moveArea,
+                         'safety_props'     : self.safetyProps
         }
     
 ###############################################################################
 # Scanbot
 ###############################################################################
+    def safetyProps(self,user_args,_help=False):
+        safetyParams = self.scanbot.safetyParams                                # Using this to update the dict with current settings
+        maxcur = str(safetyParams[0])                                           # So that they don't change when only updaing some params
+        motorF = str(safetyParams[1])
+        motorV = str(safetyParams[2])
+        arg_dict = {'-maxcur' : [maxcur, lambda x: float(x), "(float) Current threshold that triggers safe retract (A)"],
+                    '-motorF' : [motorF, lambda x: float(x), "(float) Motor control piezo frequency during safe retract (Hz)"],
+                    '-motorV' : [motorV, lambda x: float(x), "(float) Motor control piezo voltage during safe retract (V)"]}
+        
+        if(_help): return arg_dict
+        
+        if(not len(user_args)): return self.scanbot.safetyPropsGet()
+        
+        error,user_arg_dict = self.userArgs(arg_dict,user_args)
+        if(error): return error + "\nRun ```help safetyProps``` if you're unsure."
+        
+        args = self.unpackArgs(user_arg_dict)
+        return self.scanbot.safetyPropsSet(*args)
+        
     def moveArea(self,user_args,_help=False):
         arg_dict = {'-up'    : ['10',   lambda x: int(x),   "(int) Steps to go up before moving across. min 10"],
                     '-upV'   : ['180',  lambda x: float(x), "(float) Controller amplitude during up motor steps"],

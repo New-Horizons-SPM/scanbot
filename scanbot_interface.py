@@ -33,6 +33,8 @@ class scanbot_interface(object):
         global_.tasks   = []
         global_.running = threading.Event()                                     # event to stop threads
         global_.pause   = threading.Event()                                     # event to pause threads
+        global_.creepTask = []                                                  # Dedicated creep task
+        global_.creepRunning = threading.Event()                                # Dedicated creep thread
         
         self.init()
         
@@ -148,6 +150,7 @@ class scanbot_interface(object):
                          'stitch_survey'    : self.stitchSurvey,
                          'watch'            : self.watch,
                          'creep'            : self.creep,
+                         'stop_creeping'    : self.stopCreeping,
                          'add_notify_list'  : self.addNotifyUser,
                          'get_notify_list'  : lambda args: self.notifyUserList,
                          'move_area'        : self.moveArea,
@@ -195,6 +198,11 @@ class scanbot_interface(object):
         
         self.stop(args=[])
         self.scanbot.moveArea(*args)
+    
+    def stopCreeping(self,user_args=[],_help=False):
+        if(global_.creepRunning.is_set()):
+            global_.creepRunning.clear()
+            global_.creepTask.join()
         
     def creep(self,user_args,_help=False):
         arg_dict = {'-ip'   : [self.IP, lambda x: str(x), "(str) Creep IP"],
@@ -208,7 +216,10 @@ class scanbot_interface(object):
         args = self.unpackArgs(user_arg_dict)
         
         func = lambda : self.scanbot.watch("",*args,message=self.bot_message.copy())
-        return self.threadTask(func)
+        if global_.creepRunning.is_set(): return "Error: already creeping"
+        global_.creepRunning.set()
+        global_.creepTask = threading.Thread(target=func)
+        global_.creepTask.start()
     
     def watch(self,user_args,_help=False):
         arg_dict = {'-s' : ['sbwatch', lambda x: str(x), "(str) Suffix at the end of autosaved sxm files"]}
@@ -419,7 +430,9 @@ class scanbot_interface(object):
         print(reply)                                                            # Print reply to console if zulip not available or notis turned off
     
     def reactToMessage(self,reaction,message=""):
-        if(not self.bot_handler): return
+        if(not self.bot_handler):
+            print("Scanbot reaction: " + reaction)
+            return
         reactTo = message
         if(not reactTo): reactTo = self.bot_message
         react_request = {

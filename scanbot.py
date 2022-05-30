@@ -211,7 +211,8 @@ class scanbot():
     def watch(self,suffix,creepIP=None,creepPORT=None,message=""):
         NTCP,connection_error = self.connect(creepIP,creepPORT)                 # Connect to nanonis via TCP
         if(connection_error):
-            global_.running.clear()                                             # Free up the running flag
+            if(creepIP): global_.creepRunning.clear()
+            if(not creepIP): global_.running.clear()                            # Free up the running flag
             self.interface.sendReply(connection_error,message=message)          # Return error message if there was a problem connecting
             return
         
@@ -225,7 +226,7 @@ class scanbot():
         self.interface.reactToMessage("eyes",message=message)
         
         while(True):
-            if(self.checkEventFlags()): break                                   # Check event flags
+            if(self.checkEventFlags(creep=creepIP)): break                      # Check event flags
             timeoutStatus, _, filePath = scan.WaitEndOfScan(200)                # Wait until the scan finishes
             
             if(not filePath): continue
@@ -239,7 +240,8 @@ class scanbot():
         
         self.disconnect(NTCP)                                                   # Close the TCP connection
         
-        global_.running.clear()                                                 # Free up the running flag
+        if(creepIP): global_.creepRunning.clear()
+        if(not creepIP): global_.running.clear()                                # Free up the running flag
         
         self.interface.reactToMessage("+1")
         
@@ -327,6 +329,8 @@ class scanbot():
         if(i < 0):                                                              # i=-1 means we want to enhance the last complete scan in the survey
             i = self.currentSurveyIndex - 1                                     # subtract 1 because the current index points to the scan in progress, not the last completed frame
             
+        if(i < 0): i = 0                                                        # Incase enhance is run before the first frame in a survey completes
+        
         ns    = self.survey_args[1]                                             # Grid size of original survey
         count = 0                                                               # Lazy way to get ii and jj
         for ii in range(int(-ns/2),int(ns/2) + ns%2):
@@ -707,7 +711,9 @@ class scanbot():
         
         return pngFilename
         
-    def checkEventFlags(self,message = ""):
+    def checkEventFlags(self,message = "",creep=False):
+        if(creep): return not global_.creepRunning.is_set()
+        
         if(not global_.running.is_set()): return 1                              # Running flag
         
         if(global_.pause.is_set()):

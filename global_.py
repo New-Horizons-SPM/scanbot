@@ -8,3 +8,6 @@ Created on Sat May  7 14:05:43 2022
 global tasks
 global running
 global pause
+
+global creepTask
+global creepRunning

@@ -208,11 +208,11 @@ class scanbot():
         self.disconnect(NTCP)                                                   # Close the NTCP connection
         return ("Stopped!")
     
-    def watch(self,suffix,creepIP=None,creepPORT=None):
+    def watch(self,suffix,creepIP=None,creepPORT=None,message=""):
         NTCP,connection_error = self.connect(creepIP,creepPORT)                 # Connect to nanonis via TCP
         if(connection_error):
             global_.running.clear()                                             # Free up the running flag
-            self.interface.sendReply(connection_error)                                    # Return error message if there was a problem connecting
+            self.interface.sendReply(connection_error,message=message)          # Return error message if there was a problem connecting
             return
         
         scan = Scan(NTCP)                                                       # Nanonis scan module
@@ -222,7 +222,7 @@ class scanbot():
             tempBasename = basename + '_' + suffix + '_'                        # Create a temp basename for this survey
             scan.PropsSet(series_name=tempBasename)                             # Set the basename in nanonis for this survey
             
-        self.interface.reactToMessage("eyes")
+        self.interface.reactToMessage("eyes",message=message)
         
         while(True):
             if(self.checkEventFlags()): break                                   # Check event flags
@@ -232,7 +232,7 @@ class scanbot():
             
             _,scanData,_ = scan.FrameDataGrab(14, 1)                            # Grab the data within the scan frame. Channel 14 is . 1 is forward data direction
             pngFilename = self.makePNG(scanData, filePath)                      # Generate a png from the scan data
-            self.interface.sendPNG(pngFilename)                                 # Send a png over zulip
+            self.interface.sendPNG(pngFilename,message=message)                 # Send a png over zulip
             
         if(suffix):
             scan.PropsSet(series_name=basename)                                 # Put back the original basename
@@ -243,7 +243,7 @@ class scanbot():
         
         self.interface.reactToMessage("+1")
         
-    def survey(self,bias,n,i,suffix,xy,dx,sleepTime,ox=0,oy=0):
+    def survey(self,bias,n,i,suffix,xy,dx,sleepTime,ox=0,oy=0,message="",enhance=False):
         count = 0
         frames = []                                                             # [x,y,w,h,angle=0]
         gridOK = True
@@ -259,17 +259,17 @@ class scanbot():
                 if(abs(frames[-1][1]) + xy/2 > 800e-9): gridOK = False          # Safety checks
         
         if(not gridOK):
-            self.interface.sendReply("Survey error: Grid size exceeds scan area")
-            global_.running.clear()                                                 # Free up the running flag
+            self.interface.sendReply("Survey error: Grid size exceeds scan area",message=message)
+            global_.running.clear()                                             # Free up the running flag
             return
         
         NTCP,connection_error = self.connect()                                  # Connect to nanonis via TCP
         if(connection_error):
             global_.running.clear()                                             # Free up the running flag
-            self.interface.sendReply(connection_error)                                    # Return error message if there was a problem connecting
+            self.interface.sendReply(connection_error,message=message)          # Return error message if there was a problem connecting
             return
         
-        self.interface.reactToMessage("working_on_it")
+        self.interface.reactToMessage("working_on_it",message=message)
         
         self.survey_args = [bias,n,i,suffix,xy,dx,sleepTime,ox,oy]              # Store these params for enhance to look at
         
@@ -285,7 +285,7 @@ class scanbot():
         for frame in frames:
             count += 1
             self.currentSurveyIndex = count
-            self.interface.sendReply('Running scan ' + str(count) + '/' + str(n**2) + ': ' + str(frame)) # Send a message that the next scan is starting
+            self.interface.sendReply('Running scan ' + str(count) + '/' + str(n**2) + ': ' + str(frame),message=message) # Send a message that the next scan is starting
             
             scan.FrameSet(*frame)                                               # Set the coordinates and size of the frame window in nanonis
             scan.Action('start')                                                # Start the scan. default direction is "up"
@@ -306,28 +306,32 @@ class scanbot():
             
             notify = True
             if(not filePath): notify= False                                     # Don't @ users if the image isn't complete
-            self.interface.sendPNG(pngFilename,notify)                          # Send a png over zulip
+            self.interface.sendPNG(pngFilename,notify=notify,message=message)   # Send a png over zulip
             
             if(self.checkEventFlags()): break                                   # Check event flags
         
         scan.PropsSet(series_name=basename)                                     # Put back the original basename
         self.disconnect(NTCP)                                                   # Close the TCP connection
         
-        global_.running.clear()                                                 # Free up the running flag
+        if(not enhance):
+            global_.running.clear()                                             # Free up the running flag
         
-        self.interface.sendReply('survey \'' + suffix + '\' done')              # Send a notification that the survey has completed
+        self.interface.sendReply('survey \'' + suffix + '\' done',message=message) # Send a notification that the survey has completed
     
-    def enhance(self,bias,n,i,suffix,sleepTime):
+    def enhance(self,bias,n,i,suffix,sleepTime,resume=True,message=""):
         if(self.survey_args == []):
-            self.interface.sendReply("Need to run a survey first")
+            self.interface.sendReply("Need to run a survey first",message=message)
             global_.running.clear()                                             # Free up the running flag
             return
         
+        if(i < 0):                                                              # i=-1 means we want to enhance the last complete scan in the survey
+            i = self.currentSurveyIndex - 1                                     # subtract 1 because the current index points to the scan in progress, not the last completed frame
+            
         ns    = self.survey_args[1]                                             # Grid size of original survey
         count = 0                                                               # Lazy way to get ii and jj
         for ii in range(int(-ns/2),int(ns/2) + ns%2):
             jj_range = range(int(-ns/2),int(ns/2) + ns%2)
-            if((ii+int(n/2))%2): jj_range = reversed(jj_range)                    # Alternate grid direction each row so the grid snakes... better for drift
+            if((ii+int(ns/2))%2): jj_range = reversed(jj_range)                 # Alternate grid direction each row so the grid snakes... better for drift
             for jj in jj_range:
                 count += 1
                 if(count == i): break
@@ -347,8 +351,17 @@ class scanbot():
         
         if(sleepTime == "-default"): sleepTime = self.survey_args[6]            # Keep the sleepTime the same as the survey
         
+        resumeSurveyAtIdx = self.currentSurveyIndex                             # Survey is currently up to this frame. store for when survey is resumed after enhancing
+        resumeSurveyArgs  = self.survey_args.copy()                             # Store the params of the current survey for when survey is resumed after enhancing
+        resumeSurveyArgs[2] = resumeSurveyAtIdx                                 # Resuming the survey at this index after enhancing
+        
         survey_args = [bias,n,1,suffix,xy,dx,sleepTime,ox,oy]
-        self.survey(*survey_args)                                               # Kick off a survey within the frame we want to enhance
+        self.survey(*survey_args,message=message,enhance=True)                  # Kick off a survey within the frame we want to enhance
+        
+        if(resume and global_.running.is_set()):
+            self.interface.sendReply("Resuming survey...",message=message)
+            self.survey(*resumeSurveyArgs,message=message)                      # Resume the survey
+        
     
     def moveTip(self,pos):
         x = pos[0]
@@ -509,11 +522,11 @@ class scanbot():
         self.disconnect(NTCP)
         self.interface.reactToMessage("explosion")
     
-    def biasDep(self,nb,bdc,bi,bf,px,suffix):
+    def biasDep(self,nb,bdc,bi,bf,px,suffix,message=""):
         NTCP,connection_error = self.connect()                                  # Connect to nanonis via TCP
         if(connection_error): return connection_error                           # Return error message if there was a problem connecting
         
-        self.interface.reactToMessage("working_on_it")
+        self.interface.reactToMessage("working_on_it",message=message)
         
         biasList = np.linspace(bi,bf,nb)
         
@@ -561,7 +574,7 @@ class scanbot():
             
             notify = True
             if(not filePath): notify= False                                     # Don't @ users if the image isn't complete
-            self.interface.sendPNG(pngFilename,notify)                          # Send a png over zulip
+            self.interface.sendPNG(pngFilename,notify=notify,message=message)   # Send a png over zulip
             
             if(self.checkEventFlags()): break                                   # Check event flags
             
@@ -589,7 +602,7 @@ class scanbot():
         
         global_.running.clear()
         
-        self.interface.sendReply("Bias dependent imaging complete")
+        self.interface.sendReply("Bias dependent imaging complete",message=message)
     
     def setBias(self,bias):
         NTCP,connection_error = self.connect()                                  # Connect to nanonis via TCP

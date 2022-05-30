@@ -171,7 +171,7 @@ class scanbot_interface(object):
         if(not len(user_args)): return self.scanbot.safetyPropsGet()
         
         error,user_arg_dict = self.userArgs(arg_dict,user_args)
-        if(error): return error + "\nRun ```help safetyProps``` if you're unsure."
+        if(error): return error + "\nRun ```help safety_props``` if you're unsure."
         
         args = self.unpackArgs(user_arg_dict)
         return self.scanbot.safetyPropsSet(*args)
@@ -207,7 +207,7 @@ class scanbot_interface(object):
         
         args = self.unpackArgs(user_arg_dict)
         
-        func = lambda : self.scanbot.watch("",*args)
+        func = lambda : self.scanbot.watch("",*args,message=self.bot_message.copy())
         return self.threadTask(func)
     
     def watch(self,user_args,_help=False):
@@ -220,7 +220,7 @@ class scanbot_interface(object):
         
         args = self.unpackArgs(user_arg_dict)
         
-        func = lambda : self.scanbot.watch(*args)
+        func = lambda : self.scanbot.watch(*args,message=self.bot_message.copy())
         return self.threadTask(func)
         
     def survey(self,user_args,_help=False):
@@ -239,13 +239,13 @@ class scanbot_interface(object):
         
         args = self.unpackArgs(user_arg_dict)
         
-        func = lambda : self.scanbot.survey(*args)
+        func = lambda : self.scanbot.survey(*args,message=self.bot_message.copy())
         return self.threadTask(func)
         
     def enhance(self,user_args,_help=False):
         arg_dict = {'-bias' : ['-default', lambda x: float(x), "(float) Scan bias. (-default=unchanged)"],
-                    '-n'    : ['5',        lambda x: int(x),   "(int) Size of nxn grid within enhanced frame"],
-                    '-i'    : ['1',        lambda x: int(x),   "(int) Start the grid from this index"],
+                    '-n'    : ['2',        lambda x: int(x),   "(int) Size of nxn grid within enhanced frame"],
+                    '-i'    : ['-1',       lambda x: int(x),   "(int) Start the grid from this index"],
                     '-s'    : ['enhance',  lambda x: str(x),   "(str) Suffix at the end of autosaved sxm files"],
                     '-st'   : ['-default', lambda x: float(x), "(float) Drift compensation time (s)"]}
         
@@ -256,7 +256,7 @@ class scanbot_interface(object):
         
         args = self.unpackArgs(user_arg_dict)
         
-        func = lambda : self.scanbot.enhance(*args)
+        func = lambda : self.scanbot.enhance(*args,message=self.bot_message.copy())
         return self.threadTask(func,override=True)
         
     def plot(self,args):
@@ -352,7 +352,7 @@ class scanbot_interface(object):
         
         args = self.unpackArgs(user_arg_dict)
         
-        func = lambda : self.scanbot.biasDep(*args)
+        func = lambda : self.scanbot.biasDep(*args,message=self.bot_message.copy())
         return self.threadTask(func)
     
     def setBias(self,user_args,_help=False):
@@ -380,12 +380,12 @@ class scanbot_interface(object):
         t = threading.Thread(target=func)
         global_.tasks = t
         t.start()
-        return ""
         
 ###############################################################################
 # Zulip
 ###############################################################################
     def handle_message(self, message, bot_handler=None):
+        self.bot_message = ""
         self.bot_handler = bot_handler
         if(bot_handler):
             if message['sender_email'] not in self.whitelist and self.whitelist:
@@ -407,24 +407,28 @@ class scanbot_interface(object):
         
         if(reply): self.sendReply(reply)
     
-    def sendReply(self,reply):
+    def sendReply(self,reply,message=""):
         if(not reply): return
         if(self.notifications):
             if(self.bot_handler):
-                self.bot_handler.send_reply(self.bot_message, reply)
+                replyTo = message
+                if(not replyTo): replyTo = self.bot_message
+                self.bot_handler.send_reply(replyTo, reply)
                 return
         
         print(reply)                                                            # Print reply to console if zulip not available or notis turned off
     
-    def reactToMessage(self,reaction):
-        if(not self.bot_message): return
+    def reactToMessage(self,reaction,message=""):
+        if(not self.bot_handler): return
+        reactTo = message
+        if(not reactTo): reactTo = self.bot_message
         react_request = {
-            'message_id': self.bot_message['id'],
+            'message_id': reactTo['id'],
             'emoji_name': reaction,
             }
         self.client.add_reaction(react_request)
         
-    def sendPNG(self,pngFilename,notify=True):
+    def sendPNG(self,pngFilename,notify=True,message=""):
         notifyString = ""
         if(notify):
             for user in self.notifyUserList:
@@ -438,8 +442,8 @@ class scanbot_interface(object):
         if self.uploadMethod == 'zulip':
             upload = self.bot_handler.upload_file_from_path(str(path))
             uploaded_file_reply = "[{}]({})".format(path.name, upload["uri"])
-            self.sendReply(notifyString + pngFilename)
-            self.sendReply(uploaded_file_reply)
+            self.sendReply(notifyString + pngFilename,message)
+            self.sendReply(uploaded_file_reply,message)
             
         if self.uploadMethod == 'firebase':
             bucket = storage.bucket()
@@ -447,7 +451,7 @@ class scanbot_interface(object):
             blob.upload_from_filename(str(path))
         
             url = blob.generate_signed_url(expiration=9999999999)
-            self.sendReply(notifyString + "[" + pngFilename + "](" + url + ")")
+            self.sendReply(notifyString + "[" + pngFilename + "](" + url + ")",message)
         
         os.remove(path)
     

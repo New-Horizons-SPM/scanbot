@@ -271,7 +271,8 @@ class scanbot_interface(object):
         
         args = self.unpackArgs(user_arg_dict)
         
-        func = lambda : self.scanbot.enhance(*args,message=self.bot_message.copy())
+        inSurvey = self.scanbot.inSurvey
+        func = lambda : self.scanbot.enhance(*args,message=self.bot_message.copy(),inSurvey=inSurvey)
         return self.threadTask(func,override=True)
         
     def plot(self,args):

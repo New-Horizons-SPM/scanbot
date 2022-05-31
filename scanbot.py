@@ -36,6 +36,7 @@ class scanbot():
 ###############################################################################
     def __init__(self,interface):
         self.interface = interface
+        self.inSurvey = False
         self.survey_args = []
         self.safetyParams = [5e-9,1100,180]                                     # [0]: safe current threshold. [1]: safe retract motor frequency. [2]: safe retract motor voltage
         self.designatedTipShapeArea = [-600e-9,-600e-9,300e-9,300e-9]
@@ -273,6 +274,7 @@ class scanbot():
         
         self.interface.reactToMessage("working_on_it",message=message)
         
+        self.inSurvey = True
         self.survey_args = [bias,n,i,suffix,xy,dx,sleepTime,ox,oy]              # Store these params for enhance to look at
         
         scan = Scan(NTCP)                                                       # Nanonis scan module
@@ -321,54 +323,68 @@ class scanbot():
         if(not enhance):
             global_.running.clear()                                             # Free up the running flag
         
+        self.inSurvey = False
         self.interface.sendReply('survey \'' + suffix + '\' done',message=message) # Send a notification that the survey has completed
     
-    def enhance(self,bias,n,i,suffix,sleepTime,resume=True,message=""):
-        if(self.survey_args == []):
-            self.interface.sendReply("Need to run a survey first",message=message)
+    def enhance(self,bias,n,i,suffix,sleepTime,resume=True,message="",inSurvey=False):
+        NTCP,connection_error = self.connect()                                  # Connect to nanonis via TCP
+        if(connection_error):
             global_.running.clear()                                             # Free up the running flag
+            self.interface.sendReply(connection_error,message=message)          # Return error message if there was a problem connecting
             return
         
-        if(i < 0):                                                              # i=-1 means we want to enhance the last complete scan in the survey
-            i = self.currentSurveyIndex - 1                                     # subtract 1 because the current index points to the scan in progress, not the last completed frame
+        scan = Scan(NTCP)
+        ox,oy,xy,_,_ = scan.FrameGet()
+        self.disconnect(NTCP)
+        
+        resumeSurveyArgs = []
+        if(inSurvey):
+            if(self.survey_args == []):
+                self.interface.sendReply("Need to run a survey first",message=message)
+                global_.running.clear()                                             # Free up the running flag
+                return
             
-        if(i < 0): i = 0                                                        # Incase enhance is run before the first frame in a survey completes
+            resumeSurveyAtIdx = self.currentSurveyIndex                             # Survey is currently up to this frame. store for when survey is resumed after enhancing
+            resumeSurveyArgs  = self.survey_args.copy()                             # Store the params of the current survey for when survey is resumed after enhancing
+            resumeSurveyArgs[2] = resumeSurveyAtIdx                                 # Resuming the survey at this index after enhancing
         
-        ns    = self.survey_args[1]                                             # Grid size of original survey
-        count = 0                                                               # Lazy way to get ii and jj
-        for ii in range(int(-ns/2),int(ns/2) + ns%2):
-            jj_range = range(int(-ns/2),int(ns/2) + ns%2)
-            if((ii+int(ns/2))%2): jj_range = reversed(jj_range)                 # Alternate grid direction each row so the grid snakes... better for drift
-            for jj in jj_range:
-                count += 1
+            if(i < 0):                                                              # i=-1 means we want to enhance the last complete scan in the survey
+                i = self.currentSurveyIndex - 1                                     # subtract 1 because the current index points to the scan in progress, not the last completed frame
+                
+            if(i < 0): i = 0                                                        # Incase enhance is run before the first frame in a survey completes
+            
+            ns    = self.survey_args[1]                                             # Grid size of original survey
+            count = 0                                                               # Lazy way to get ii and jj
+            for ii in range(int(-ns/2),int(ns/2) + ns%2):
+                jj_range = range(int(-ns/2),int(ns/2) + ns%2)
+                if((ii+int(ns/2))%2): jj_range = reversed(jj_range)                 # Alternate grid direction each row so the grid snakes... better for drift
+                for jj in jj_range:
+                    count += 1
+                    if(count == i): break
                 if(count == i): break
-            if(count == i): break
+            
+            dx = self.survey_args[5]                                                # Frame spacing in the original survey grid
+            ox = self.survey_args[7]                                                # Origin of the original survey grid
+            oy = self.survey_args[8]                                                # Origin of the original survey grid
+            
+            if(sleepTime == "-default"): sleepTime = self.survey_args[6]            # Keep the sleepTime the same as the survey
         
-        dx = self.survey_args[5]                                                # Frame spacing in the original survey grid
-        ox = self.survey_args[7]                                                # Origin of the original survey grid
-        oy = self.survey_args[8]                                                # Origin of the original survey grid
+            ox,oy =  jj*dx+ox, ii*dx+oy                                             # New origin for the enhance grid is the centre of the frame to enhance
         
-        ox,oy =  jj*dx+ox, ii*dx+oy                                             # New origin for the enhance grid is the centre of the frame to enhance
-        
-        xy = self.survey_args[4]/n                                              # if xy is set to 0, divide the enhance grid fills the frame exactly
+        # xy = self.survey_args[4]/n                                              # if xy is set to 0, divide the enhance grid fills the frame exactly
+        xy = xy/n
         dx = xy                                                                 # spacing = frame size by default
-        
         ox += (dx/2)*((n+1)%2)                                                  # Offset for even grids to keep centre
         oy += (dx/2)*((n+1)%2)                                                  # Offset for even grids to keep centre
         
-        if(sleepTime == "-default"): sleepTime = self.survey_args[6]            # Keep the sleepTime the same as the survey
-        
-        resumeSurveyAtIdx = self.currentSurveyIndex                             # Survey is currently up to this frame. store for when survey is resumed after enhancing
-        resumeSurveyArgs  = self.survey_args.copy()                             # Store the params of the current survey for when survey is resumed after enhancing
-        resumeSurveyArgs[2] = resumeSurveyAtIdx                                 # Resuming the survey at this index after enhancing
+        if(sleepTime == "-default"): sleepTime = 10
         
         survey_args = [bias,n,1,suffix,xy,dx,sleepTime,ox,oy]
         self.survey(*survey_args,message=message,enhance=True)                  # Kick off a survey within the frame we want to enhance
         
-        if(resume and global_.running.is_set()):
+        if(inSurvey and resume and global_.running.is_set()):
             self.interface.sendReply("Resuming survey...",message=message)
             self.survey(*resumeSurveyArgs,message=message)                      # Resume the survey
-        
     
     def moveTip(self,pos):
         x = pos[0]

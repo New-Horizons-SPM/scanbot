@@ -38,7 +38,6 @@ class scanbot_interface(object):
         
         self.init()
         
-        self.client = zulip.Client(config_file=self.zuliprc)
         self.getWhitelist()                                                     # Load in whitelist file if there is one
         self.firebaseInit()                                                     # Initialise Firebase
         self.initCommandDict()
@@ -48,8 +47,8 @@ class scanbot_interface(object):
 # Initialisation
 ###############################################################################
     def init(self):
-        initDict = {'zuliprc'                   : 'zuliprc',
-                    'upload_method'             : 'zulip',
+        initDict = {'zuliprc'                   : '',
+                    'upload_method'             : '',
                     'firebase_credentials'      : '',
                     'firebase_storage_bucket'   : '',
                     'firebase_storage_path'     : '',
@@ -102,6 +101,10 @@ class scanbot_interface(object):
         self.notifications = True
         self.bot_message = ""
         
+        self.zulipClient = []
+        if(self.zuliprc):
+            self.zulipClient = zulip.Client(config_file=self.zuliprc)
+        
     def getWhitelist(self):
         self.whitelist = []
         try:
@@ -119,6 +122,7 @@ class scanbot_interface(object):
                 'storageBucket': self.firebaseStorageBucket                     # Your firebase storage bucket
             })
         except Exception as e:
+            print("Firebase not initialised...")
             print(e)
     
     def initCommandDict(self):
@@ -396,7 +400,8 @@ class scanbot_interface(object):
 # Zulip
 ###############################################################################
     def handle_message(self, message, bot_handler=None):
-        self.bot_message = ""
+        messageContent   = message
+        self.bot_message = []
         self.bot_handler = bot_handler
         if(bot_handler):
             if message['sender_email'] not in self.whitelist and self.whitelist:
@@ -405,9 +410,10 @@ class scanbot_interface(object):
                 return
             
             self.bot_message = message
+            messageContent = message['content']
             
-        command = message['content'].split(' ')[0].lower()
-        args    = message['content'].split(' ')[1:]
+        command = messageContent.split(' ')[0].lower()
+        args    = messageContent.split(' ')[1:]
         
         if(not command in self.commands):
             reply = "Invalid command. Run *list_commands* to see command list"
@@ -439,7 +445,7 @@ class scanbot_interface(object):
             'message_id': reactTo['id'],
             'emoji_name': reaction,
             }
-        self.client.add_reaction(react_request)
+        self.zulipClient.add_reaction(react_request)
         
     def sendPNG(self,pngFilename,notify=True,message=""):
         notifyString = ""

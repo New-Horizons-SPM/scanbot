@@ -285,6 +285,7 @@ class scanbot():
         
         count = i-1
         for frame in frames:
+            if(self.checkEventFlags()): break                                   # Check event flags
             count += 1
             self.currentSurveyIndex = count
             self.interface.sendReply('Running scan ' + str(count) + '/' + str(n**2) + ': ' + str(frame),message=message) # Send a message that the next scan is starting
@@ -301,6 +302,8 @@ class scanbot():
             while(timeoutStatus):
                 timeoutStatus, _, filePath = scan.WaitEndOfScan(timeout=200)    # Wait until the scan finishes
                 if(self.checkEventFlags()): break
+            
+            if(not filePath): time.sleep(0.2); continue
             
             _,scanData,_ = scan.FrameDataGrab(14, 1)                            # Grab the data within the scan frame. Channel 14 is . 1 is forward data direction
             

@@ -200,7 +200,6 @@ class scanbot_interface(object):
         
         args = self.unpackArgs(user_arg_dict)
         
-        self.stop(args=[])
         self.scanbot.moveArea(*args)
     
     def stopCreeping(self,user_args=[],_help=False):
@@ -455,6 +454,7 @@ class scanbot_interface(object):
                 notifyString += "@**" + user + "** "
             
         if(not self.bot_handler): print("pngs not supported yet"); return       # Don't support png
+        
         path = os.getcwd() + '/' + pngFilename
         path = Path(path)
         path = path.resolve()

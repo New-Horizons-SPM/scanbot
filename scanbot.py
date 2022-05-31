@@ -127,6 +127,9 @@ class scanbot():
         autoApproach  = AutoApproach(NTCP)                                      # Nanonis AutoApproach module
         
         self.interface.reactToMessage("working_on_it")
+        
+        self.stop(args=[])
+        
         print("withdrawing")
         zController.Withdraw(wait_until_finished=True,timeout=3)                # Withdwar the tip
         print("withdrew")
@@ -645,15 +648,18 @@ class scanbot():
 # Utilities
 ###############################################################################
     def safeCurrentCheck(self,NTCP):
-        motor         = Motor(NTCP)
-        zController   = ZController(NTCP)
-        currentModule = Current(NTCP)
+        motor         = Motor(NTCP)                                             # Nanonis Motor module
+        zController   = ZController(NTCP)                                       # Nanonis Z-Controller module
+        currentModule = Current(NTCP)                                           # Nanonis Current module
         
-        current = abs(currentModule.Get())
-        threshold = self.safetyParams[0]
-        print("Safe check... Current: " + str(current) + ", threshold: " + str(threshold))
+        current = abs(currentModule.Get())                                      # Get the tip current
+        threshold = self.safetyParams[0]                                        # Threshold current from safety params
+        
+        print("Safe check... Current: " + str(current)
+            + ", threshold: " + str(threshold))
+        
         if(current < threshold):
-            return True
+            return True                                                         # All good if the current is below the threshold
         
         self.interface.sendReply("---\nWarning: Safe retract has been triggered.\n"
                                  + "Current: " + str(current*1e9) + " nA\n"
@@ -661,22 +667,22 @@ class scanbot():
         
         zController.Withdraw(wait_until_finished=False)                         # Retract the tip
         
-        try:
+        try:                                                                    # Stop anything running. try/except is probably overkill but just in case
             print("Stopping other processes...")
             self.interface.stop(args=[])
         except Exception as e:
             self.interface.sendReply("---\nWarning: error stopping processes during safe retract...")
             self.interface.sendReply(str(e) + "\n---")
         
-        safeFreq    = self.safetyParams[1]
-        safeVoltage = self.safetyParams[2]
-        motor.FreqAmpSet(safeFreq,safeVoltage)
-        motor.StartMove(direction="Z+", steps=50,wait_until_finished=True)
+        safeFreq    = self.safetyParams[1]                                      # Motor frequency for safe retract from safety parameters
+        safeVoltage = self.safetyParams[2]                                      # Motor voltage for safe retract from safety parameters
+        motor.FreqAmpSet(safeFreq,safeVoltage)                                  # Set the motor frequency/voltage in the nanonis motor control module
+        motor.StartMove(direction="Z+", steps=50,wait_until_finished=True)      # Move up 50 steps immediately
         print("Retracted and moved 50 motor steps up")
         
-        count = 0
-        while(current > threshold):
-            if(count%5 == 0):
+        count = 0                                                               # Keep track of how many steps we've gone up
+        while(current > threshold):                                             # Kepp moving 50 steps in Z+ until the current is < threshold
+            if(count%5 == 0):                                                   # Send a warning over the interface every 250 motor steps
                 self.interface.sendReply("---\n"
                                      + "Warning: Safe retract has been triggered.\n"
                                      + "Current still above threshold after "
@@ -684,8 +690,8 @@ class scanbot():
                                      + "Current: " + str(current*1e9) + " nA\n"
                                      + "Threshold: " + str(threshold*1e9) + " nA\n")
                 
-            motor.StartMove(direction="Z+", steps=50,wait_until_finished=True)
-            current = abs(currentModule.Get())
+            motor.StartMove(direction="Z+", steps=50,wait_until_finished=True)  # Move another 50 steps up
+            current = abs(currentModule.Get())                                  # Get the tip current after moving
             count += 1
             print("Retracting another 50 steps... current: " + str(current*1e9) + " nA")
         
@@ -719,10 +725,10 @@ class scanbot():
         scanData = nap.plane_fit_2d(scanData)                                   # Flattern the image
         vmin, vmax = nap.filter_sigma(scanData)                                 # cmap saturation
         
-        ax.imshow(scanData, cmap='Blues_r', vmin=vmin, vmax=vmax) # Plot
+        ax.imshow(scanData, cmap='Blues_r', vmin=vmin, vmax=vmax)               # Plot
         ax.axis('off')
         
-        pngFilename = 'im.png'
+        pngFilename = 'im.png'                                                  # All unsaved (incomplete) scans are saved as im.png
         if filePath: pngFilename = ntpath.split(filePath)[1] + '.png'
         
         fig.savefig(pngFilename, dpi=60, bbox_inches='tight', pad_inches=0)

@@ -385,6 +385,7 @@ class scanbot_interface(object):
         if(global_.running.is_set()):
             self.scanbot.stop(args)
             global_.running.clear()
+            global_.pause.clear()
             global_.tasks.join()
         self.scanbot.stop(args)
         
@@ -425,27 +426,51 @@ class scanbot_interface(object):
         if(reply): self.sendReply(reply)
     
     def sendReply(self,reply,message=""):
-        if(not reply): return
-        if(self.notifications):
-            if(self.bot_handler):
-                replyTo = message
-                if(not replyTo): replyTo = self.bot_message
-                self.bot_handler.send_reply(replyTo, reply)
-                return
+        """
+        Send reply text. Currently only supports zulip and console.
+
+        Parameters
+        ----------
+        reply   : Reply string
+        message : Zulip: message params for the specific message to reply ro.
+                  If not passed in, replies to the last message sent by user.
+
+        Returns
+        -------
+        message_id : Returns the message id of the sent message. (zulip only)
+
+        """
+        if(not reply): return                                                   # Can't send nothing
+        if(self.notifications):                                                 # Only send reply if notifications are turned on
+            if(self.bot_handler):                                               # If our reply pathway is zulip
+                replyTo = message                                               # If we're replying to a specific message
+                if(not replyTo): replyTo = self.bot_message                     # If we're just replying to the last message sent by user
+                r = self.bot_handler.send_reply(replyTo, reply)                 # Send the message. The sent message dict is returnred to r
+                return r['id']                                                  # Return the ID of the sent message
         
-        print(reply)                                                            # Print reply to console if zulip not available or notis turned off
+        print(reply)                                                            # Print reply to console
     
     def reactToMessage(self,reaction,message=""):
-        if(not self.bot_handler):
-            print("Scanbot reaction: " + reaction)
+        """
+        Scanbot emoji reaction to message
+
+        Parameters
+        ----------
+        reaction : Emoji name (currently zulip only)
+        message  : Specific zulip message to react to. If not passed in, reacts
+                   to the last message sent by user.
+
+        """
+        if(not self.bot_handler):                                               # If we're not using zulip
+            print("Scanbot reaction: " + reaction)                              # Send reaction to console
             return
-        reactTo = message
-        if(not reactTo): reactTo = self.bot_message
+        reactTo = message                                                       # If we're reacting to a specific zulip message
+        if(not reactTo): reactTo = self.bot_message                             # Otherwise react to the last user message
         react_request = {
-            'message_id': reactTo['id'],
-            'emoji_name': reaction,
+            'message_id': reactTo['id'],                                        # Message ID to react to
+            'emoji_name': reaction,                                             # Emoji scanbot reacts with
             }
-        self.zulipClient.add_reaction(react_request)
+        self.zulipClient.add_reaction(react_request)                            # API call to react to the message
         
     def sendPNG(self,pngFilename,notify=True,message=""):
         notifyString = ""
@@ -472,7 +497,6 @@ class scanbot_interface(object):
         
             url = blob.generate_signed_url(expiration=9999999999)
             self.sendReply(notifyString + "[" + pngFilename + "](" + url + ")",message)
-        
         os.remove(path)
     
     def addNotifyUser(self,username):

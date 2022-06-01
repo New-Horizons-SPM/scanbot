@@ -231,7 +231,7 @@ class scanbot():
         
         while(True):
             if(self.checkEventFlags(creep=creepIP)): break                      # Check event flags
-            timeoutStatus, _, filePath = scan.WaitEndOfScan(200)                # Wait until the scan finishes
+            timeoutStatus, _, filePath = scan.WaitEndOfScan(200)                # Wait until the scan finishes 200ms at a time then check event flags
             
             if(not filePath): continue
             
@@ -246,8 +246,6 @@ class scanbot():
         
         if(creepIP): global_.creepRunning.clear()
         if(not creepIP): global_.running.clear()                                # Free up the running flag
-        
-        self.interface.reactToMessage("+1")
         
     def survey(self,bias,n,i,suffix,xy,dx,sleepTime,ox=0,oy=0,message="",enhance=False):
         count = 0
@@ -739,19 +737,31 @@ class scanbot():
     def checkEventFlags(self,message = "",creep=False):
         if(creep): return not global_.creepRunning.is_set()
         
-        if(not global_.running.is_set()): return 1                              # Running flag
+        if(not global_.running.is_set()):
+            self.interface.reactToMessage("stop_button")
+            return 1                              # Running flag
         
         if(global_.pause.is_set()):
             NTCP,connection_error = self.connect()                              # Connect to nanonis via TCP
-            if(connection_error): return connection_error                       # Return error message if there was a problem connecting        
+            if(connection_error):
+                self.interface.sendReply(connection_error)                      # Return error message if there was a problem connecting
+                return 1
             scan = Scan(NTCP)
             scan.Action(scan_action='pause')
             
-            while global_.pause.is_set(): time.sleep(2)                         # Pause flag
+            self.interface.reactToMessage("pause")
             
+            while global_.pause.is_set():
+                time.sleep(2)                                                   # Sleep for a bit
+                if(not global_.running.is_set()):
+                    self.interface.reactToMessage("stop_button")
+                    self.disconnect(NTCP)
+                    return 1
+                
+            self.interface.reactToMessage("play")
             scan.Action(scan_action='resume')
-            
             self.disconnect(NTCP)
+            
 ###############################################################################
 # Nanonis TCP Connection
 ###############################################################################

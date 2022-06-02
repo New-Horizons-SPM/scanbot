@@ -339,7 +339,7 @@ class scanbot():
         self.disconnect(NTCP)
         
         resumeSurveyArgs = []
-        if(inSurvey):
+        if(inSurvey or i>0):
             if(self.survey_args == []):
                 self.interface.sendReply("Need to run a survey first",message=message)
                 global_.running.clear()                                             # Free up the running flag

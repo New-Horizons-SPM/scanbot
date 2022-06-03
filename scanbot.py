@@ -572,7 +572,7 @@ class scanbot():
             self.rampBias(NTCP, bdc)
             scan.BufferSet(pixels=px,lines=lx)
             scan.Action('start',scan_direction='up')
-            scan.WaitEndOfScan()
+            _, _, filePath = scan.WaitEndOfScan()
             scan.PropsSet(series_name=tempBasename + str(bdc) + "V-DC_")        # Set the basename in nanonis for this survey
             _,initialDriftCorrect,_ = scan.FrameDataGrab(14, 1)
             
@@ -580,8 +580,9 @@ class scanbot():
             dxy = np.array([dx,dy])
         
         if(self.checkEventFlags()): biasList=[]                                 # Check event flags
+        if(not filePath): biasList=[]
         
-        for b in biasList:
+        for idx,b in enumerate(biasList):
             if(b == 0): continue                                                # Don't set the bias to zero ever
             
             scan.PropsSet(series_name=tempBasename + str(b) + "V_")             # Set the basename in nanonis for this survey
@@ -590,6 +591,7 @@ class scanbot():
             scan.BufferSet(pixels=scanPixels,lines=scanLines)
             scan.Action('start',scan_direction='down')
             _, _, filePath = scan.WaitEndOfScan()
+            if(not filePath): break
             
             _,scanData,_ = scan.FrameDataGrab(14, 1)
             
@@ -604,13 +606,15 @@ class scanbot():
             
             if(not len(initialDriftCorrect)): continue                          # If we haven't taken out initial dc image, dc must be turned off so continue
             
+            if(idx+1 == len(biasList)): break
+            
             scan.PropsSet(series_name=tempBasename + str(bdc) + "V-DC_")        # Set the basename in nanonis for this survey
             ## Drift correct scan
             self.rampBias(NTCP, bdc)
             scan.BufferSet(pixels=px,lines=lx)
             scan.Action('start',scan_direction='up')
             timeoutStatus, _, filePath = scan.WaitEndOfScan()
-            if(timeoutStatus): break
+            if(not filePath): break
             _,driftCorrectFrame,_ = scan.FrameDataGrab(14, 1)
             
             if(self.checkEventFlags()): break                                   # Check event flags

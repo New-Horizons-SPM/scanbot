@@ -14,10 +14,12 @@ from nanonisTCP.FolMe import FolMe
 from nanonisTCP.Motor import Motor
 from nanonisTCP.AutoApproach import AutoApproach
 from nanonisTCP.Current import Current
+from nanonisTCP.Signals import Signals
 
 import nanonisUtils as nut
 
 import numpy as np
+from scipy.interpolate import interp1d
 
 import matplotlib
 matplotlib.use('Agg')
@@ -46,6 +48,30 @@ class scanbot():
 ###############################################################################
 # Actions
 ###############################################################################
+    def getTemp(self):
+        NTCP,connection_error = self.connect()                                  # Connect to nanonis via TCP
+        if(connection_error): return connection_error                           # Return error message if there was a problem connecting        
+        
+        signals_module = Signals(NTCP)
+        
+        try:
+            with open(self.interface.tempCurve, 'r') as f:
+                temperature_table = np.loadtxt(f)
+            
+            interp_func = interp1d(temperature_table[:,1], temperature_table[:,0])
+            
+            current_T_cryo = np.round(interp_func(signals_module.ValGet(2)),2)
+            current_T_stm  = np.round(interp_func(signals_module.ValGet(3)),2)
+        except Exception as e:
+            self.interface.sendReply("Check config file for temperature interpolation table... see nanonis temperature module")
+            self.interface.sendReply(str(e))
+            current_T_cryo = np.nan
+            current_T_stm = np.nan
+            
+        NTCP.close_connection() 
+        
+        return [current_T_stm,current_T_cryo]
+        
     def safetyPropsGet(self):
         getStr  = "Safe current threshold     (-maxcur): " + str(self.safetyParams[0]) + " A\n"
         getStr += "Safe retract motor freq    (-motorF): " + str(self.safetyParams[1]) + " Hz\n"
@@ -645,7 +671,35 @@ class scanbot():
         self.disconnect(NTCP)
         
         global_.running.clear()
+    
+    def channelSet(self,selectedChannel,selectedInslot):
+        return "Function not implemented"
+    
+    def channelsGet(self):
+        NTCP,connection_error = self.connect()                                  # Connect to nanonis via TCP
+        if(connection_error): return connection_error                           # Return error message if there was a problem connecting
+         
+        signalsModule = Signals(NTCP)
         
+        try:
+            names  = signalsModule.NamesGet()                                   # Grab all the current tip shaping settings in nanonis
+            sNames,sIndexes = signalsModule.InSlotsGet()
+        except Exception as e:
+            self.interface.sendReply(str(e))
+            self.disconnect(NTCP)
+            return
+        
+        self.disconnect(NTCP)
+        
+        getStr = "List of signals in slot:\n"
+        for idx,name in enumerate(sNames):
+            getStr += "#" + str(sIndexes[idx]) + ": " + name + "\n"
+            
+        getStr += "\n\nList of all signals:\n"
+        for idx,name in enumerate(names):
+            getStr += "#" + str(idx) + ": " + name + "\n"
+            
+        return getStr
 ###############################################################################
 # Utilities
 ###############################################################################

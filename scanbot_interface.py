@@ -54,7 +54,8 @@ class scanbot_interface(object):
                     'firebase_storage_path'     : '',
                     'port_list'                 : '6501,6502,6503,6504',
                     'ip'                        : '127.0.0.1',
-                    'notify_list'               : ''}
+                    'notify_list'               : '',
+                    'temp_calibration_curve'    : ''}
         
         try:
             with open('scanbot_config.txt','r') as f:
@@ -104,6 +105,8 @@ class scanbot_interface(object):
         self.zulipClient = []
         if(self.zuliprc):
             self.zulipClient = zulip.Client(config_file=self.zuliprc)
+        
+        self.tempCurve = initDict['temp_calibration_curve']
         
     def getWhitelist(self):
         self.whitelist = []
@@ -158,12 +161,38 @@ class scanbot_interface(object):
                          'add_notify_list'  : self.addNotifyUser,
                          'get_notify_list'  : lambda args: self.notifyUserList,
                          'move_area'        : self.moveArea,
-                         'safety_props'     : self.safetyProps
+                         'safety_props'     : self.safetyProps,
+                         'channel'          : self.channelSelect,
+                         'get_temp'         : self.getTemp
         }
     
 ###############################################################################
 # Scanbot
 ###############################################################################
+    def getTemp(self,user_args,_help=False):
+        arg_dict = {'' : ['', 0, "Call this function to return STM and Cryo Temps"]}
+        
+        if(_help): return arg_dict
+        
+        stmTemp,cryoTemp = self.scanbot.getTemp()
+        tempStr = "STM Temp: " + str(stmTemp) + " K\n"
+        tempStr = "Cryo Temp: " + str(cryoTemp) + " K\n"
+        return tempStr
+        
+    def channelSelect(self,user_args,_help=False):
+        arg_dict = {'-ch'     : ['-default', lambda x: int(x),                         "(int) Index of the channel to plot"],
+                    '-inslot' : ['-default', lambda x: [int(c) for c in x.split(',')], "(int array) Comma delimited signal indexes to move 'in slot'. Negative indexes remove from slot"]}
+        
+        if(_help): return arg_dict
+        
+        if(not len(user_args)): return self.scanbot.channelsGet()
+        
+        error,user_arg_dict = self.userArgs(arg_dict,user_args)
+        if(error): return error + "\nRun ```help channel``` if you're unsure."
+        
+        args = self.unpackArgs(user_arg_dict)
+        return self.scanbot.channelSet(*args)
+        
     def safetyProps(self,user_args,_help=False):
         safetyParams = self.scanbot.safetyParams                                # Using this to update the dict with current settings
         maxcur = str(safetyParams[0])                                           # So that they don't change when only updaing some params

@@ -44,10 +44,35 @@ class scanbot():
         self.designatedTipShapeArea = [-600e-9,-600e-9,300e-9,300e-9]
         self.designatedGrid = [10,0]
         self.defaultPulseParams = [5,0.1,3,0,0]                                 # np,pw,bias,zhold,rel_abs. Defaults here because nanonis has no TCP comand to retrieve them :(
+        self.channel = 14
         
 ###############################################################################
 # Actions
 ###############################################################################
+    def plotChannel(self,c=None):
+        NTCP,connection_error = self.connect()                                  # Connect to nanonis via TCP
+        if(connection_error): return connection_error                           # Return error message if there was a problem connecting        
+        
+        scan = Scan(NTCP)
+        signals = Signals(NTCP)
+        
+        signal_names,signal_indexes = signals.InSlotsGet()
+        num_channels,channel_indexes,pixels,lines = scan.BufferGet()
+        
+        self.disconnect(NTCP)
+        
+        helpStr  = "Current channel: " + signal_names[self.channel] + "\n"
+        helpStr += "Available channels:\n"
+        for idx,name in enumerate(signal_names):
+            helpStr += str(signal_indexes[idx]) + ": " + name + "\n"
+        if(not c): return helpStr
+        
+        if(not c in signal_indexes): return "Invalid signal...\n" + helpStr
+        
+        self.channel = signal_indexes.index(c)
+        
+        self.interface.reactToMessage("+1")
+        
     def getTemp(self):
         NTCP,connection_error = self.connect()                                  # Connect to nanonis via TCP
         if(connection_error): return connection_error                           # Return error message if there was a problem connecting        
@@ -68,7 +93,7 @@ class scanbot():
             current_T_cryo = np.nan
             current_T_stm = np.nan
             
-        NTCP.close_connection() 
+        self.disconnect(NTCP)
         
         return [current_T_stm,current_T_cryo]
         
@@ -221,7 +246,7 @@ class scanbot():
         if(connection_error): return connection_error                           # Return error message if there was a problem connecting        
         
         scan = Scan(NTCP)                                                       # Nanonis scan module
-        _,scanData,_ = scan.FrameDataGrab(14, 1)                                # Grab the data within the scan frame. Channel 14 is . 1 is forward data direction
+        _,scanData,_ = scan.FrameDataGrab(self.channel, 1)                      # Grab the data within the scan frame. Channel 14 is . 1 is forward data direction
         
         pngFilename = self.makePNG(scanData)                                    # Generate a png from the scan data
         self.interface.sendPNG(pngFilename,notify=False)                        # Send a png over zulip
@@ -261,7 +286,7 @@ class scanbot():
             
             if(not filePath): continue
             
-            _,scanData,_ = scan.FrameDataGrab(14, 1)                            # Grab the data within the scan frame. Channel 14 is . 1 is forward data direction
+            _,scanData,_ = scan.FrameDataGrab(self.channel, 1)                  # Grab the data within the scan frame. Channel 14 is . 1 is forward data direction
             pngFilename = self.makePNG(scanData, filePath)                      # Generate a png from the scan data
             self.interface.sendPNG(pngFilename,message=message)                 # Send a png over zulip
             

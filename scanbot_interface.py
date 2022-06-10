@@ -163,12 +163,26 @@ class scanbot_interface(object):
                          'move_area'        : self.moveArea,
                          'safety_props'     : self.safetyProps,
                          'channel'          : self.channelSelect,
-                         'get_temp'         : self.getTemp
+                         'get_temp'         : self.getTemp,
+                         'plot_channel'     : self.plotChannel
         }
     
 ###############################################################################
 # Scanbot
 ###############################################################################
+    def plotChannel(self,user_args,_help=False):
+        arg_dict = {'-c' : ['14', lambda x: int(x), "(int) Scan buffer channel display. Run without -c to see available channels"]}
+        
+        if(_help): return arg_dict
+        
+        if(not len(user_args)): return self.scanbot.plotChannel()
+        
+        error,user_arg_dict = self.userArgs(arg_dict,user_args)
+        if(error): return error + "\nRun ```help plot_channel``` if you're unsure."
+        
+        args = self.unpackArgs(user_arg_dict)
+        return self.scanbot.plotChannel(*args)
+        
     def getTemp(self,user_args,_help=False):
         arg_dict = {'' : ['', 0, "Call this function to return STM and Cryo Temps"]}
         

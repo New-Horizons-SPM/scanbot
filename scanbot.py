@@ -683,13 +683,13 @@ class scanbot():
         
         self.interface.sendReply("Bias dependent imaging complete",message=message)
         
-    def zDep(self,nb,bdc,bi,bf,px,suffix,message=""):
+    def zDep(self,nb,bdc,px,zf,zi=None,suffix=None,message=""):
         NTCP,connection_error = self.connect()                                  # Connect to nanonis via TCP
         if(connection_error): return connection_error                           # Return error message if there was a problem connecting
         
         self.interface.reactToMessage("working_on_it",message=message)
         
-        biasList = np.linspace(bi,bf,nb)
+        zList = np.linspace(zi,zf,nb)
         
         scan = Scan(NTCP)
         
@@ -719,10 +719,10 @@ class scanbot():
         if(self.checkEventFlags()): biasList=[]                                 # Check event flags
         if(not filePath): biasList=[]
         
-        for idx,b in enumerate(biasList):
-            if(b == 0): continue                                                # Don't set the bias to zero ever
+        for idz,z in enumerate(zList):
+            # if(b == 0): continue                                                # Don't set the bias to zero ever
             
-            scan.PropsSet(series_name=tempBasename + str(b) + "V_")             # Set the basename in nanonis for this survey
+            scan.PropsSet(series_name=tempBasename + str(z) + "_nm_")             # Set the basename in nanonis for this survey
             ## Bias dep scan
             self.rampBias(NTCP, b)
             scan.BufferSet(pixels=scanPixels,lines=scanLines)

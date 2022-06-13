@@ -413,6 +413,24 @@ class scanbot_interface(object):
         func = lambda : self.scanbot.biasDep(*args,message=self.bot_message.copy())
         return self.threadTask(func)
     
+    def zDep(self,user_args,_help=False):
+        arg_dict = {'-n'   : ['5',   lambda x: int(x),   "(int) Number of images to take b/w initial and final bias"],
+                    '-bdc' : ['-1',  lambda x: float(x), "(float) Drift correct image bias"],
+                    '-zi'  : ['None',  lambda x: float(x), "(float) Initial Z (default None)"],
+                    '-zf'  : ['100e-9',   lambda x: float(x), "(float) Final Z (m, relative if zi is None"],
+                    '-px'  : ['128', lambda x: int(x),   "(int) Pixels in drift correct image. 0=no drift correction"],
+                    '-s'   : ['sb-zdep', lambda x: str(x), "(str) Suffix for the set of z dep sxm files"]}
+        
+        if(_help): return arg_dict
+        
+        error,user_arg_dict = self.userArgs(arg_dict,user_args)
+        if(error): return error + "\nRun ```help z_dep``` if you're unsure."
+        
+        args = self.unpackArgs(user_arg_dict)
+        
+        func = lambda : self.scanbot.zDep(*args,message=self.bot_message.copy())
+        return self.threadTask(func)
+    
     def setBias(self,user_args,_help=False):
         arg_dict = {'-bias'   : ['0',   lambda x: float(x), "(float) Change the tip bias to this value. 0=No change"]}
         

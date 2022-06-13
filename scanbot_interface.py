@@ -164,7 +164,8 @@ class scanbot_interface(object):
                          'safety_props'     : self.safetyProps,
                          'channel'          : self.channelSelect,
                          'get_temp'         : self.getTemp,
-                         'plot_channel'     : self.plotChannel
+                         'plot_channel'     : self.plotChannel,
+                         'z_dep'            : self.zDep
         }
     
 ###############################################################################
@@ -414,13 +415,13 @@ class scanbot_interface(object):
         return self.threadTask(func)
     
     def zDep(self,user_args,_help=False):
-        arg_dict = {'-n'   : ['5',   lambda x: int(x),   "(int) Number of images to take b/w initial and final bias"],
+        arg_dict = {'-n'   : ['5',      lambda x: int(x),   "(int) Number of images to take b/w initial and final bias"],
                     '-bdc' : ['20e-3',  lambda x: float(x), "(float) Drift correct image bias"],
-                    '-zi'  : ['0',  lambda x: float(x), "(float) Initial Z (m, relative to drift correct setpoint)"],
-                    '-zf'  : ['.1e-9',   lambda x: float(x), "(float) Final Z (m, relative if zi is None"],
-                    '-bzs' : ['1.5e-9',   lambda x: float(x), "(float) bias during constant height scan"],
-                    '-px'  : ['128', lambda x: int(x),   "(int) Pixels in drift correct image. 0=no drift correction"],
-                    '-s'   : ['sb-zdep', lambda x: str(x), "(str) Suffix for the set of z dep sxm files"]}
+                    '-zi'  : ['0',      lambda x: float(x), "(float) Initial Z (m, relative to drift correct setpoint)"],
+                    '-zf'  : ['.1e-9',  lambda x: float(x), "(float) Final Z (m, relative if zi is 0)"],
+                    '-bzs' : ['1.5e-3', lambda x: float(x), "(float) bias during constant height scan"],
+                    '-px'  : ['128',    lambda x: int(x),   "(int) Pixels in drift correct image. 0=no drift correction"],
+                    '-s'   : ['sb-zdep',lambda x: str(x),   "(str) Suffix for the set of z dep sxm files"]}
         
         if(_help): return arg_dict
         

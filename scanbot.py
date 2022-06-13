@@ -683,13 +683,13 @@ class scanbot():
         
         self.interface.sendReply("Bias dependent imaging complete",message=message)
         
-    def zDep(self,nb,bdc,zi,zf,bzs,px,suffix,message=""):
+    def zDep(self,nz,bdc,zi,zf,bzs,px,suffix,message=""):
         NTCP,connection_error = self.connect()                                  # Connect to nanonis via TCP
         if(connection_error): return connection_error                           # Return error message if there was a problem connecting
         
         self.interface.reactToMessage("working_on_it",message=message)
         
-        zList = np.linspace(zi,zf,nb)                                           # list of relative z positions
+        zList = np.linspace(zi,zf,nz)                                           # list of relative z positions
         
         scan = Scan(NTCP)
         zcontroller = ZController(NTCP)
@@ -723,13 +723,11 @@ class scanbot():
         if(not filePath): zList=[]
         
         for idz,dz in enumerate(zList):
-            # if(b == 0): continue                                                # Don't set the bias to zero ever
-            
             scan.PropsSet(series_name=tempBasename + str(dz) + "_nm_")             # Set the basename in nanonis for this survey
             ## constant Z scan
             zcontroller.OnOffSet(False)
+            self.rampBias(NTCP, bzs, zhold=False)                               # zhold=False leaves the zhold setting as is during bias ramp (i.e. don't turn controller on after bias ramp complete)
             zcontroller.ZPosSet(z_initial+dz)
-            self.rampBias(NTCP, bzs)
             scan.BufferSet(pixels=scanPixels,lines=scanLines)
             scan.Action('start',scan_direction='down')
             _, _, filePath = scan.WaitEndOfScan()
@@ -737,12 +735,9 @@ class scanbot():
             
             _,scanData,_ = scan.FrameDataGrab(18, 1)                            # 14 = z., 18 is Freq. shift
             
-            
             pngFilename = self.makePNG(scanData, filePath)                      # Generate a png from the scan data
             
-            notify = True
-            if(not filePath): notify= False                                     # Don't @ users if the image isn't complete
-            self.interface.sendPNG(pngFilename,notify=notify,message=message)   # Send a png over zulip
+            self.interface.sendPNG(pngFilename,notify=True,message=message)     # Send a png over zulip
             
             if(self.checkEventFlags()): break                                   # Check event flags
             

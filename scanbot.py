@@ -682,6 +682,92 @@ class scanbot():
         global_.running.clear()
         
         self.interface.sendReply("Bias dependent imaging complete",message=message)
+        
+    def zDep(self,nb,bdc,bi,bf,px,suffix,message=""):
+        NTCP,connection_error = self.connect()                                  # Connect to nanonis via TCP
+        if(connection_error): return connection_error                           # Return error message if there was a problem connecting
+        
+        self.interface.reactToMessage("working_on_it",message=message)
+        
+        biasList = np.linspace(bi,bf,nb)
+        
+        scan = Scan(NTCP)
+        
+        basename     = scan.PropsGet()[3]                                       # Get the save basename
+        tempBasename = basename + '_' + suffix + '_'                            # Create a temp basename for this survey
+        scan.PropsSet(series_name=tempBasename)                                 # Set the basename in nanonis for this survey
+        
+        scanPixels,scanLines = scan.BufferGet()[2:]
+        lx = int((scanLines/scanPixels)*px)
+        
+        x,y,w,h,angle = scan.FrameGet()
+        
+        ## Initial drift correct frame
+        dxy = []
+        initialDriftCorrect = []
+        if(px > 0):
+            self.rampBias(NTCP, bdc)
+            scan.BufferSet(pixels=px,lines=lx)
+            scan.Action('start',scan_direction='up')
+            _, _, filePath = scan.WaitEndOfScan()
+            scan.PropsSet(series_name=tempBasename + str(bdc) + "V-DC_")        # Set the basename in nanonis for this survey
+            _,initialDriftCorrect,_ = scan.FrameDataGrab(14, 1)
+            
+            dx  = w/px; dy  = h/lx
+            dxy = np.array([dx,dy])
+        
+        if(self.checkEventFlags()): biasList=[]                                 # Check event flags
+        if(not filePath): biasList=[]
+        
+        for idx,b in enumerate(biasList):
+            if(b == 0): continue                                                # Don't set the bias to zero ever
+            
+            scan.PropsSet(series_name=tempBasename + str(b) + "V_")             # Set the basename in nanonis for this survey
+            ## Bias dep scan
+            self.rampBias(NTCP, b)
+            scan.BufferSet(pixels=scanPixels,lines=scanLines)
+            scan.Action('start',scan_direction='down')
+            _, _, filePath = scan.WaitEndOfScan()
+            if(not filePath): break
+            
+            _,scanData,_ = scan.FrameDataGrab(14, 1)
+            
+            
+            pngFilename = self.makePNG(scanData, filePath)                      # Generate a png from the scan data
+            
+            notify = True
+            if(not filePath): notify= False                                     # Don't @ users if the image isn't complete
+            self.interface.sendPNG(pngFilename,notify=notify,message=message)   # Send a png over zulip
+            
+            if(self.checkEventFlags()): break                                   # Check event flags
+            
+            if(not len(initialDriftCorrect)): continue                          # If we haven't taken out initial dc image, dc must be turned off so continue
+            
+            if(idx+1 == len(biasList)): break
+            
+            scan.PropsSet(series_name=tempBasename + str(bdc) + "V-DC_")        # Set the basename in nanonis for this survey
+            ## Drift correct scan
+            self.rampBias(NTCP, bdc)
+            scan.BufferSet(pixels=px,lines=lx)
+            scan.Action('start',scan_direction='up')
+            timeoutStatus, _, filePath = scan.WaitEndOfScan()
+            if(not filePath): break
+            _,driftCorrectFrame,_ = scan.FrameDataGrab(14, 1)
+            
+            if(self.checkEventFlags()): break                                   # Check event flags
+            
+            ox,oy = nut.getFrameOffset(initialDriftCorrect,driftCorrectFrame,dxy)
+            x,y   = np.array([x,y]) - np.array([ox,oy])
+            
+            scan.FrameSet(x,y,w,h)
+            
+        scan.PropsSet(series_name=basename)                                     # Put back the original basename
+        
+        self.disconnect(NTCP)
+        
+        global_.running.clear()
+        
+        self.interface.sendReply("Bias dependent imaging complete",message=message)
     
     def setBias(self,bias):
         NTCP,connection_error = self.connect()                                  # Connect to nanonis via TCP

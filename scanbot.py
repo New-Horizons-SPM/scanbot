@@ -683,15 +683,16 @@ class scanbot():
         
         self.interface.sendReply("Bias dependent imaging complete",message=message)
         
-    def zDep(self,nb,bdc,px,zf,zi=None,suffix=None,message=""):
+    def zDep(self,nb,bdc,zi,zf,bzs,px,suffix,message=""):
         NTCP,connection_error = self.connect()                                  # Connect to nanonis via TCP
         if(connection_error): return connection_error                           # Return error message if there was a problem connecting
         
         self.interface.reactToMessage("working_on_it",message=message)
         
-        zList = np.linspace(zi,zf,nb)
+        zList = np.linspace(zi,zf,nb)                                           # list of relative z positions
         
         scan = Scan(NTCP)
+        zcontroller = ZController(NTCP)
         
         basename     = scan.PropsGet()[3]                                       # Get the save basename
         tempBasename = basename + '_' + suffix + '_'                            # Create a temp basename for this survey
@@ -716,21 +717,25 @@ class scanbot():
             dx  = w/px; dy  = h/lx
             dxy = np.array([dx,dy])
         
-        if(self.checkEventFlags()): biasList=[]                                 # Check event flags
-        if(not filePath): biasList=[]
+        z_initial = zcontroller.ZPosGet()
         
-        for idz,z in enumerate(zList):
+        if(self.checkEventFlags()): zList=[]                                    # Check event flags
+        if(not filePath): zList=[]
+        
+        for idz,dz in enumerate(zList):
             # if(b == 0): continue                                                # Don't set the bias to zero ever
             
-            scan.PropsSet(series_name=tempBasename + str(z) + "_nm_")             # Set the basename in nanonis for this survey
-            ## Bias dep scan
-            self.rampBias(NTCP, b)
+            scan.PropsSet(series_name=tempBasename + str(dz) + "_nm_")             # Set the basename in nanonis for this survey
+            ## constant Z scan
+            zcontroller.OnOffSet(False)
+            zcontroller.ZPosSet(z_initial+dz)
+            self.rampBias(NTCP, bzs)
             scan.BufferSet(pixels=scanPixels,lines=scanLines)
             scan.Action('start',scan_direction='down')
             _, _, filePath = scan.WaitEndOfScan()
             if(not filePath): break
             
-            _,scanData,_ = scan.FrameDataGrab(14, 1)
+            _,scanData,_ = scan.FrameDataGrab(18, 1)                            # 14 = z., 18 is Freq. shift
             
             
             pngFilename = self.makePNG(scanData, filePath)                      # Generate a png from the scan data
@@ -743,16 +748,18 @@ class scanbot():
             
             if(not len(initialDriftCorrect)): continue                          # If we haven't taken out initial dc image, dc must be turned off so continue
             
-            if(idx+1 == len(biasList)): break
+            if(idz+1 == len(zList)): break
             
             scan.PropsSet(series_name=tempBasename + str(bdc) + "V-DC_")        # Set the basename in nanonis for this survey
             ## Drift correct scan
+            zcontroller.OnOffSet(True)
             self.rampBias(NTCP, bdc)
             scan.BufferSet(pixels=px,lines=lx)
             scan.Action('start',scan_direction='up')
             timeoutStatus, _, filePath = scan.WaitEndOfScan()
             if(not filePath): break
             _,driftCorrectFrame,_ = scan.FrameDataGrab(14, 1)
+            z_initial = zcontroller.ZPosGet()
             
             if(self.checkEventFlags()): break                                   # Check event flags
             
@@ -767,7 +774,7 @@ class scanbot():
         
         global_.running.clear()
         
-        self.interface.sendReply("Bias dependent imaging complete",message=message)
+        self.interface.sendReply("Z dependent imaging complete",message=message)
     
     def setBias(self,bias):
         NTCP,connection_error = self.connect()                                  # Connect to nanonis via TCP

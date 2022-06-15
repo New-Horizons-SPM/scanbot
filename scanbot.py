@@ -28,6 +28,8 @@ import matplotlib.pyplot as plt
 import nanonispyfit as nap
 
 import time
+from datetime import datetime as dt
+from datetime import timedelta as td
 import ntpath                                                                   # os.path but for windows paths
 
 import global_
@@ -693,6 +695,7 @@ class scanbot():
         
         scan = Scan(NTCP)
         zcontroller = ZController(NTCP)
+        folme = FolMe(NTCP)
         
         basename     = scan.PropsGet()[3]                                       # Get the save basename
         tempBasename = basename + '_' + suffix + '_'                            # Create a temp basename for this survey
@@ -714,7 +717,19 @@ class scanbot():
         if(lxdc == '-default'): lxdc = 0
         if(lxdc < 1): lxdc = int((lx/px)*pxdc)                                  # Keep the same ratio of px:lx if lxdc not entered
         
-        x,y,w,h,angle = scan.FrameGet()
+        startTime = dt.now()
+        completionTime = int((2*tl*lx + 2*tdc*lxdc)*nz + nz)                    # Estimated time until completion (s). *2 for fwd and bwd line scans. +nz for ~overhead times
+        hours = int(completionTime/3600)                                        # Number of hours
+        minutes = int((completionTime%3600)/60)                                 # Number of minutes
+        seconds = int((completionTime%3600)%60)                                 # Number of seconds
+        
+        endTime = startTime + td(seconds=completionTime)
+        self.interface.sendReply("Estimated completion time: " + 
+                                 str(hours)+":"+str(minutes)+":"+str(seconds) +
+                                 " to finish at " + str(endTime),message=message)
+        
+        tipX,tipY = folme.XYPosGet(Wait_for_newest_data=True)                   # Get the x,y position of the tip. Will use this location for setting the 
+        x,y,w,h,angle = scan.FrameGet()                                         # Get the size and location of the scan frame. Will update these values according to DC
         
         ## Initial drift correct frame
         dxy = []
@@ -731,12 +746,15 @@ class scanbot():
             dx  = w/px; dy  = h/lxdc
             dxy = np.array([dx,dy])
         
+        folme.XYPosSet(tipX, tipY,Wait_end_of_move=True)
+        time.sleep(0.25)
         z_initial = zcontroller.ZPosGet()
         
         if(self.checkEventFlags()): zList=[]                                    # Check event flags
         if(not filePath): zList=[]
-            
+        
         for idz,dz in enumerate(zList):
+            self.interface.sendReply("Taking image " + str(idz+1) + "/" + str(nz) + "... ETC: " + str(endTime))
             scan.PropsSet(series_name=tempBasename + str(dz) + "_nm_")             # Set the basename in nanonis for this survey
             ## constant Z scan
             zcontroller.OnOffSet(False)
@@ -770,7 +788,6 @@ class scanbot():
             timeoutStatus, _, filePath = scan.WaitEndOfScan()
             if(not filePath): break
             _,driftCorrectFrame,_ = scan.FrameDataGrab(14, 1)
-            z_initial = zcontroller.ZPosGet()
             
             if(self.checkEventFlags()): break                                   # Check event flags
             
@@ -778,6 +795,11 @@ class scanbot():
             x,y   = np.array([x,y]) - np.array([ox,oy])
             
             scan.FrameSet(x,y,w,h)
+            
+            tipX,tipY = np.array([tipX,tipY]) - np.array([ox,oy])
+            folme.XYPosSet(tipX, tipY,Wait_end_of_move=True)
+            time.sleep(0.25)
+            z_initial = zcontroller.ZPosGet()
             
         scan.PropsSet(series_name=basename)                                     # Put back the original basename
         

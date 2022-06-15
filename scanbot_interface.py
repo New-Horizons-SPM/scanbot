@@ -423,7 +423,7 @@ class scanbot_interface(object):
                     '-zi'  : ['0',      lambda x: float(x), "(float) Initial Z (m, relative to drift correct setpoint)"],
                     '-zf'  : ['.1e-9',  lambda x: float(x), "(float) Final Z (m, relative if zi is 0)"],
                     '-bzs' : ['1.5e-3', lambda x: float(x), "(float) bias during constant height scan"],
-                    '-px'  : ['128',    lambda x: int(x),   "(int) Pixels in drift correct image. 0=no drift correction"],
+                    '-px'  : ['-default',lambda x: int(x),   "(int) Pixels in drift correct image. 0=no drift correction"],
                     '-lx'  : ['0',      lambda x: int(x),   "(int) Lines in drift correct image. 0=same as px"],
                     '-tl'  : ['-default',lambda x: float(x), "(float) Time per line (s)"],
                     '-s'   : ['sb-zdep',lambda x: str(x),   "(str) Suffix for the set of z dep sxm files"]}

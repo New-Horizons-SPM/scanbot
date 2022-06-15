@@ -755,6 +755,10 @@ class scanbot():
         if(self.checkEventFlags()): zList=[]                                    # Check event flags
         if(not filePath): zList=[]
         
+        status, vx, vy, vz, _, _, _ = piezo.DriftCompGet()
+        if not status:
+            piezo.DriftCompSet(on=False, vx=0, vy=0, vz=0)
+        
         for idz,dz in enumerate(zList):
             
             lastframeZ = z_initial
@@ -810,8 +814,6 @@ class scanbot():
             
             z_drift_velocity = (z_initial - lastframeZ) / (dt.now() - lastframeTime).total_seconds()
             status, _, _, vz, _, _, _ = piezo.DriftCompGet()                    # the vz velocity
-            if not status:
-                vz = 0
             piezo.DriftCompSet(on=True,vz=vz+z_drift_velocity)
             
             endTime = (dt.now() - startTime) / (idz + 1) * nz + startTime

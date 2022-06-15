@@ -804,7 +804,7 @@ class scanbot():
             if(self.checkEventFlags()): break                                   # Check event flags
             
             ox,oy = nut.getFrameOffset(initialDriftCorrect,driftCorrectFrame,dxy)
-            x,y   = np.array([x,y]) - np.array([ox,oy])
+            x,y   = np.array([x,y]) - np.array([ox,oy])                         # x, y drift in m
             
             scan.FrameSet(x,y,w,h)
             
@@ -812,11 +812,16 @@ class scanbot():
             folme.XYPosSet(tipX, tipY,Wait_end_of_move=True)
             time.sleep(0.25)
             
-            z_initial = zcontroller.ZPosGet()
             
-            z_drift_velocity = (z_initial - lastframeZ) / (dt.now() - lastframeTime).total_seconds()
-            status, _, _, vz, _, _, _ = piezo.DriftCompGet()                    # the vz velocity
-            piezo.DriftCompSet(on=True,vz=vz+z_drift_velocity)
+            deltaT = (dt.now() - lastframeTime).total_seconds()
+            dvx = ox / deltaT
+            dvy = oy / deltaT
+            
+            z_initial = zcontroller.ZPosGet()
+            dvz = (z_initial - lastframeZ) / deltaT
+            
+            status, vx, vy, vz, _, _, _ = piezo.DriftCompGet()                    # the vz velocity
+            piezo.DriftCompSet(on=True, vx=vx+dvx, vy=vy+dvy, vz=vz+dvz)
             
             endTime = (dt.now() - startTime) / (idz + 1) * nz + startTime
             

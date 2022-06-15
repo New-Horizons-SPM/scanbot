@@ -417,10 +417,15 @@ class scanbot_interface(object):
     def zDep(self,user_args,_help=False):
         arg_dict = {'-n'   : ['5',      lambda x: int(x),   "(int) Number of images to take b/w initial and final bias"],
                     '-bdc' : ['20e-3',  lambda x: float(x), "(float) Drift correct image bias"],
+                    '-tdc' : ['0.3',    lambda x: float(x), "(float) Time per line in drift correct image (s)"],
+                    '-pxdc': ['128',    lambda x: int(x),  "(int) Pixels in image"],
+                    '-lxdc': ['-default',lambda x: int(x),  "(int) Lines in image. If not provided, keeps same ratio as px:lx"],
                     '-zi'  : ['0',      lambda x: float(x), "(float) Initial Z (m, relative to drift correct setpoint)"],
                     '-zf'  : ['.1e-9',  lambda x: float(x), "(float) Final Z (m, relative if zi is 0)"],
                     '-bzs' : ['1.5e-3', lambda x: float(x), "(float) bias during constant height scan"],
                     '-px'  : ['128',    lambda x: int(x),   "(int) Pixels in drift correct image. 0=no drift correction"],
+                    '-lx'  : ['0',      lambda x: int(x),   "(int) Lines in drift correct image. 0=same as px"],
+                    '-tl'  : ['-default',lambda x: float(x), "(float) Time per line (s)"],
                     '-s'   : ['sb-zdep',lambda x: str(x),   "(str) Suffix for the set of z dep sxm files"]}
         
         if(_help): return arg_dict

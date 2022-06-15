@@ -683,7 +683,7 @@ class scanbot():
         
         self.interface.sendReply("Bias dependent imaging complete",message=message)
         
-    def zDep(self,nz,bdc,zi,zf,bzs,px,suffix,message=""):
+    def zDep(self,nz,bdc,tdc,pxdc,lxdc,zi,zf,bzs,px,lx,tl,suffix,message=""):
         NTCP,connection_error = self.connect()                                  # Connect to nanonis via TCP
         if(connection_error): return connection_error                           # Return error message if there was a problem connecting
         
@@ -699,22 +699,32 @@ class scanbot():
         scan.PropsSet(series_name=tempBasename)                                 # Set the basename in nanonis for this survey
         
         scanPixels,scanLines = scan.BufferGet()[2:]
-        lx = int((scanLines/scanPixels)*px)
+        
+        if(px == '-default'): px = 0
+        if(lx == '-default'): lx = 0
+        if(px < 1):
+            px = scanPixels                                                     # use what's in nanonis if px not entered
+            lx = scanLines
+        if(lx < 1): lx = px                                                     # make lx the same as px if px is enetered but not lx
+        
+        if(lxdc == '-default'): lxdc = 0
+        if(lxdc < 1): lxdc = int((lx/px)*pxdc)                                  # Keep the same ratio of px:lx if lxdc not entered
         
         x,y,w,h,angle = scan.FrameGet()
         
         ## Initial drift correct frame
         dxy = []
         initialDriftCorrect = []
-        if(px > 0):
+        if(pxdc > 0):
             self.rampBias(NTCP, bdc)
-            scan.BufferSet(pixels=px,lines=lx)
+            scan.BufferSet(pixels=pxdc,lines=lxdc)
+            scan.SpeedSet(fwd_line_time=tdc,speed_ratio=1)
             scan.Action('start',scan_direction='up')
             _, _, filePath = scan.WaitEndOfScan()
             scan.PropsSet(series_name=tempBasename + str(bdc) + "V-DC_")        # Set the basename in nanonis for this survey
             _,initialDriftCorrect,_ = scan.FrameDataGrab(14, 1)
             
-            dx  = w/px; dy  = h/lx
+            dx  = w/px; dy  = h/lxdc
             dxy = np.array([dx,dy])
         
         z_initial = zcontroller.ZPosGet()
@@ -728,7 +738,8 @@ class scanbot():
             zcontroller.OnOffSet(False)
             self.rampBias(NTCP, bzs, zhold=False)                               # zhold=False leaves the zhold setting as is during bias ramp (i.e. don't turn controller on after bias ramp complete)
             zcontroller.ZPosSet(z_initial+dz)
-            scan.BufferSet(pixels=scanPixels,lines=scanLines)
+            scan.BufferSet(pixels=px,lines=lx)
+            scan.SpeedSet(fwd_line_time=tl,speed_ratio=1)
             scan.Action('start',scan_direction='down')
             _, _, filePath = scan.WaitEndOfScan()
             if(not filePath): break
@@ -749,7 +760,8 @@ class scanbot():
             ## Drift correct scan
             zcontroller.OnOffSet(True)
             self.rampBias(NTCP, bdc)
-            scan.BufferSet(pixels=px,lines=lx)
+            scan.BufferSet(pixels=lxdc,lines=lxdc)
+            scan.SpeedSet(fwd_line_time=tdc,speed_ratio=1)
             scan.Action('start',scan_direction='up')
             timeoutStatus, _, filePath = scan.WaitEndOfScan()
             if(not filePath): break

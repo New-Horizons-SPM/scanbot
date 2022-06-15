@@ -15,6 +15,7 @@ from nanonisTCP.Motor import Motor
 from nanonisTCP.AutoApproach import AutoApproach
 from nanonisTCP.Current import Current
 from nanonisTCP.Signals import Signals
+from nanonisTCP.Piezo import Piezo
 
 import nanonisUtils as nut
 
@@ -696,6 +697,7 @@ class scanbot():
         scan = Scan(NTCP)
         zcontroller = ZController(NTCP)
         folme = FolMe(NTCP)
+        piezo = Piezo(NTCP)
         
         basename     = scan.PropsGet()[3]                                       # Get the save basename
         tempBasename = basename + '_' + suffix + '_'                            # Create a temp basename for this survey
@@ -754,6 +756,10 @@ class scanbot():
         if(not filePath): zList=[]
         
         for idz,dz in enumerate(zList):
+            
+            lastframeZ = z_initial.deepcopy()
+            lastframeTime = dt.now()
+            
             self.interface.sendReply("Taking image " + str(idz+1) + "/" + str(nz) + "... ETC: " + str(endTime))
             scan.PropsSet(series_name=tempBasename + str(dz) + "_nm_")             # Set the basename in nanonis for this survey
             ## constant Z scan
@@ -799,7 +805,14 @@ class scanbot():
             tipX,tipY = np.array([tipX,tipY]) - np.array([ox,oy])
             folme.XYPosSet(tipX, tipY,Wait_end_of_move=True)
             time.sleep(0.25)
+            
             z_initial = zcontroller.ZPosGet()
+            
+            z_drift_velocity = (z_initial - lastframeZ) / (dt.now() - lastframeTime)
+            status, _, _, vz, _, _, _ = piezo.DriftCompGet()                    # the vz velocity
+            if not status:
+                vz = 0
+            piezo.DriftCompSet(on=True,vz=vz+z_drift_velocity)
             
             endTime = (dt.now() - startTime) / (idz + 1) * nz + startTime
             

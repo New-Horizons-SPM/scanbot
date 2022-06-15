@@ -700,6 +700,10 @@ class scanbot():
         
         scanPixels,scanLines = scan.BufferGet()[2:]
         
+        speedRatio = 1
+        if(tl == '-default'):
+            _,_,tl,_,_,speedRatio = scan.SpeedGet()
+            
         if(px == '-default'): px = 0
         if(lx == '-default'): lx = 0
         if(px < 1):
@@ -731,7 +735,7 @@ class scanbot():
         
         if(self.checkEventFlags()): zList=[]                                    # Check event flags
         if(not filePath): zList=[]
-        
+            
         for idz,dz in enumerate(zList):
             scan.PropsSet(series_name=tempBasename + str(dz) + "_nm_")             # Set the basename in nanonis for this survey
             ## constant Z scan
@@ -739,7 +743,7 @@ class scanbot():
             self.rampBias(NTCP, bzs, zhold=False)                               # zhold=False leaves the zhold setting as is during bias ramp (i.e. don't turn controller on after bias ramp complete)
             zcontroller.ZPosSet(z_initial+dz)
             scan.BufferSet(pixels=px,lines=lx)
-            scan.SpeedSet(fwd_line_time=tl,speed_ratio=1)
+            scan.SpeedSet(fwd_line_time=tl,speed_ratio=speedRatio)
             scan.Action('start',scan_direction='down')
             _, _, filePath = scan.WaitEndOfScan()
             if(not filePath): break

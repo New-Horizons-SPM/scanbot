@@ -808,7 +808,7 @@ class scanbot():
             
             z_initial = zcontroller.ZPosGet()
             
-            z_drift_velocity = (z_initial - lastframeZ) / (dt.now() - lastframeTime)
+            z_drift_velocity = (z_initial - lastframeZ) / (dt.now() - lastframeTime).total_seconds()
             status, _, _, vz, _, _, _ = piezo.DriftCompGet()                    # the vz velocity
             if not status:
                 vz = 0

@@ -737,7 +737,9 @@ class scanbot():
         dxy = []
         initialDriftCorrect = []
         if(pxdc > 0):
+            zcontroller.ZPosSet(zcontroller.ZPosGet()+200e-9)
             self.rampBias(NTCP, bdc)
+            zcontroller.OnOffSet(on=True)
             scan.BufferSet(pixels=pxdc,lines=lxdc)
             scan.SpeedSet(fwd_line_time=tdc,speed_ratio=1)
             scan.Action('start',scan_direction='up')
@@ -819,6 +821,10 @@ class scanbot():
             endTime = (dt.now() - startTime) / (idz + 1) * nz + startTime
             
         scan.PropsSet(series_name=basename)                                     # Put back the original basename
+        
+        zcontroller.ZPosSet(zcontroller.ZPosGet()+200e-9)                       # restore feedback at drift correct bias
+        self.rampBias(NTCP, bdc)
+        zcontroller.OnOffSet(on=True)
         
         self.disconnect(NTCP)
         

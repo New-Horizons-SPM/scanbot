@@ -516,6 +516,7 @@ class scanbot_interface(object):
                 self.bot_handler.send_reply(replyTo, reply)                     # Send the message
                 #r = self.bot_handler.send_reply(replyTo, reply)                 # Send the message. The sent message dict is returned to r
                 # return r['id']                                                  # Return the ID of the sent message
+                return
         
         print(reply)                                                            # Print reply to console
     

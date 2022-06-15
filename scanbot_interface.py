@@ -513,8 +513,9 @@ class scanbot_interface(object):
             if(self.bot_handler):                                               # If our reply pathway is zulip
                 replyTo = message                                               # If we're replying to a specific message
                 if(not replyTo): replyTo = self.bot_message                     # If we're just replying to the last message sent by user
-                r = self.bot_handler.send_reply(replyTo, reply)                 # Send the message. The sent message dict is returnred to r
-                return r['id']                                                  # Return the ID of the sent message
+                self.bot_handler.send_reply(replyTo, reply)                     # Send the message
+                #r = self.bot_handler.send_reply(replyTo, reply)                 # Send the message. The sent message dict is returned to r
+                # return r['id']                                                  # Return the ID of the sent message
         
         print(reply)                                                            # Print reply to console
     

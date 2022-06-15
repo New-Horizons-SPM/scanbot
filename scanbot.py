@@ -757,7 +757,7 @@ class scanbot():
         
         for idz,dz in enumerate(zList):
             
-            lastframeZ = z_initial.deepcopy()
+            lastframeZ = z_initial
             lastframeTime = dt.now()
             
             self.interface.sendReply("Taking image " + str(idz+1) + "/" + str(nz) + "... ETC: " + str(endTime))

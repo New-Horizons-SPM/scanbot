@@ -801,6 +801,8 @@ class scanbot():
             time.sleep(0.25)
             z_initial = zcontroller.ZPosGet()
             
+            endTime = (dt.now() - startTime) / (idz + 1) * nz + startTime
+            
         scan.PropsSet(series_name=basename)                                     # Put back the original basename
         
         self.disconnect(NTCP)

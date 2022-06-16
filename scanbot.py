@@ -776,7 +776,7 @@ class scanbot():
             lastframeZ = z_initial
             lastframeTime = dt.now()
             
-            self.interface.sendReply("Taking image " + str(idz+1) + "/" + str(nz) + "... ETC: " + str(endTime))
+            self.interface.sendReply("Taking image " + str(idz+1) + "/" + str(nz) + "... ETC: " + str(endTime),message=message)
             scan.PropsSet(series_name=tempBasename + str(dz) + "_nm_")             # Set the basename in nanonis for this survey
             ## constant Z scan
             zcontroller.OnOffSet(False)

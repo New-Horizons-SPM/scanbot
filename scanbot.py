@@ -21,6 +21,7 @@ import nanonisUtils as nut
 
 import numpy as np
 from scipy.interpolate import interp1d
+import math
 
 import matplotlib
 matplotlib.use('Agg')
@@ -732,6 +733,9 @@ class scanbot():
         
         tipX,tipY = folme.XYPosGet(Wait_for_newest_data=True)                   # Get the x,y position of the tip. Will use this location for setting the 
         x,y,w,h,angle = scan.FrameGet()                                         # Get the size and location of the scan frame. Will update these values according to DC
+        theta = -angle*math.pi/180                                              # In nanonis, +ve angle is clockwise. Convert to radians
+        R = np.array([[math.cos(theta)**2,math.sin(theta)**2],                  # Rotation matrix to account for angle of scan frame
+                      [math.sin(theta)**2,math.cos(theta)**2]])
         
         ## Initial drift correct frame
         dxy = []
@@ -810,9 +814,10 @@ class scanbot():
             if(self.checkEventFlags()): break                                   # Check event flags
             
             ox,oy = nut.getFrameOffset(initialDriftCorrect,driftCorrectFrame,dxy)
+            ox,oy = np.matmul(R,np.array([ox,oy]).T)                            # Account for angle of scan frame
             x,y   = np.array([x,y]) - np.array([ox,oy])                         # x, y drift in m
             
-            scan.FrameSet(x,y,w,h)
+            scan.FrameSet(x,y,w,h,angle)
             
             tipX,tipY = np.array([tipX,tipY]) - np.array([ox,oy])
             folme.XYPosSet(tipX, tipY,Wait_end_of_move=True)

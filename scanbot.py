@@ -825,8 +825,8 @@ class scanbot():
             
             
             deltaT = (dt.now() - lastframeTime).total_seconds()
-            dvx = ox / deltaT
-            dvy = oy / deltaT
+            dvx = -ox / deltaT
+            dvy = -oy / deltaT
             
             z_initial = zcontroller.ZPosGet()
             dvz = (z_initial - lastframeZ) / deltaT

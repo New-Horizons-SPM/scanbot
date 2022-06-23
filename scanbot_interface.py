@@ -54,6 +54,7 @@ class scanbot_interface(object):
                     'firebase_storage_path'     : '',
                     'port_list'                 : '6501,6502,6503,6504',
                     'ip'                        : '127.0.0.1',
+                    'creeplist'                 : '127.0.0.1',
                     'notify_list'               : '',
                     'temp_calibration_curve'    : ''}
         
@@ -133,6 +134,7 @@ class scanbot_interface(object):
                          'help'             : self._help,
                          'add_user'         : self.addUsers,
                          'list_users'       : lambda args: str(self.whitelist),
+                         'lockout'          : self.lockout,
                          'noti'             : self.noti,
                          'set_ip'           : self.setIP,
                          'get_ip'           : lambda args: self.IP,
@@ -164,12 +166,24 @@ class scanbot_interface(object):
                          'safety_props'     : self.safetyProps,
                          'channel'          : self.channelSelect,
                          'get_temp'         : self.getTemp,
-                         'plot_channel'     : self.plotChannel
+                         'plot_channel'     : self.plotChannel,
+                         'z_dep'            : self.zDep
         }
     
 ###############################################################################
 # Scanbot
 ###############################################################################
+    def lockout(self):
+        if self.whitelist == self.bot_message['sender_email']:
+            self.whitelist = self.whole_whitelist
+        else:
+            self.whole_whitelist = self.whitelist
+            self.whitelist = self.bot_message['sender_email']
+        
+        whiteStr = 'whitelist now: ' + str(self.whitelist)
+        
+        return whiteStr
+
     def plotChannel(self,user_args,_help=False):
         arg_dict = {'-c' : ['14', lambda x: int(x), "(int) Scan buffer channel display. Run without -c to see available channels"]}
         
@@ -396,11 +410,16 @@ class scanbot_interface(object):
         self.scanbot.pulse()
         
     def biasDep(self,user_args,_help=False):
-        arg_dict = {'-n'   : ['5',   lambda x: int(x),   "(int) Number of images to take b/w initial and final bias"],
-                    '-bdc' : ['-1',  lambda x: float(x), "(float) Drift correct image bias"],
-                    '-bi'  : ['-1',  lambda x: float(x), "(float) Initial Bias"],
-                    '-bf'  : ['1',   lambda x: float(x), "(float) Final Bias"],
-                    '-px'  : ['128', lambda x: int(x),   "(int) Pixels in drift correct image. 0=no drift correction"],
+        arg_dict = {'-n'   : ['5',      lambda x: int(x),   "(int) Number of images to take b/w initial and final bias"],
+                    '-bdc' : ['-1',     lambda x: float(x), "(float) Drift correct image bias"],
+                    '-tdc' : ['0.3',    lambda x: float(x), "(float) Time per line in drift correct image (s)"],
+                    '-pxdc': ['128',    lambda x: int(x),  "(int) Pixels in drift correct image. 0=no drift correction"],
+                    '-lxdc': ['-default',lambda x: int(x),  "(int) Lines in drift correct image. If not provided, keeps same ratio as px:lx"],
+                    '-bi'  : ['-1',     lambda x: float(x), "(float) Initial Bias"],
+                    '-bf'  : ['1',      lambda x: float(x), "(float) Final Bias"],
+                    '-px'  : ['-default', lambda x: int(x),   "(int) Pixels in image. "],
+                    '-lx'  : ['0',      lambda x: int(x),   "(int) Lines in drift correct image. 0=same as px"],
+                    '-tl'  : ['-default',lambda x: float(x), "(float) Time per line (s)"],
                     '-s'   : ['sb-biasdep', lambda x: str(x), "(str) Suffix for the set of bias dep sxm files"]}
         
         if(_help): return arg_dict
@@ -411,6 +430,30 @@ class scanbot_interface(object):
         args = self.unpackArgs(user_arg_dict)
         
         func = lambda : self.scanbot.biasDep(*args,message=self.bot_message.copy())
+        return self.threadTask(func)
+    
+    def zDep(self,user_args,_help=False):
+        arg_dict = {'-n'   : ['5',      lambda x: int(x),   "(int) Number of images to take b/w initial and final bias"],
+                    '-bdc' : ['20e-3',  lambda x: float(x), "(float) Drift correct image bias"],
+                    '-tdc' : ['0.3',    lambda x: float(x), "(float) Time per line in drift correct image (s)"],
+                    '-pxdc': ['128',    lambda x: int(x),  "(int) Pixels in drift correct image. 0=no drift correction"],
+                    '-lxdc': ['-default',lambda x: int(x),  "(int) Lines in image. If not provided, keeps same ratio as px:lx"],
+                    '-zi'  : ['0',      lambda x: float(x), "(float) Initial Z (m, relative to drift correct setpoint)"],
+                    '-zf'  : ['.1e-9',  lambda x: float(x), "(float) Final Z (m, relative if zi is 0)"],
+                    '-bzs' : ['1.5e-3', lambda x: float(x), "(float) bias during constant height scan"],
+                    '-px'  : ['-default',lambda x: int(x),   "(int) Pixels in drift correct image. "],
+                    '-lx'  : ['0',      lambda x: int(x),   "(int) Lines in drift correct image. 0=same as px"],
+                    '-tl'  : ['-default',lambda x: float(x), "(float) Time per line (s)"],
+                    '-s'   : ['sb-zdep',lambda x: str(x),   "(str) Suffix for the set of z dep sxm files"]}
+        
+        if(_help): return arg_dict
+        
+        error,user_arg_dict = self.userArgs(arg_dict,user_args)
+        if(error): return error + "\nRun ```help z_dep``` if you're unsure."
+        
+        args = self.unpackArgs(user_arg_dict)
+        
+        func = lambda : self.scanbot.zDep(*args,message=self.bot_message.copy())
         return self.threadTask(func)
     
     def setBias(self,user_args,_help=False):
@@ -463,7 +506,7 @@ class scanbot_interface(object):
             reply = "Invalid command. Run *list_commands* to see command list"
             self.sendReply(reply)
             return
-        
+
         reply = self.commands[command](args)
         
         if(reply): self.sendReply(reply)
@@ -488,8 +531,10 @@ class scanbot_interface(object):
             if(self.bot_handler):                                               # If our reply pathway is zulip
                 replyTo = message                                               # If we're replying to a specific message
                 if(not replyTo): replyTo = self.bot_message                     # If we're just replying to the last message sent by user
-                r = self.bot_handler.send_reply(replyTo, reply)                 # Send the message. The sent message dict is returnred to r
-                return r['id']                                                  # Return the ID of the sent message
+                self.bot_handler.send_reply(replyTo, reply)                     # Send the message
+                #r = self.bot_handler.send_reply(replyTo, reply)                 # Send the message. The sent message dict is returned to r
+                # return r['id']                                                  # Return the ID of the sent message
+                return
         
         print(reply)                                                            # Print reply to console
     

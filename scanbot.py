@@ -15,11 +15,13 @@ from nanonisTCP.Motor import Motor
 from nanonisTCP.AutoApproach import AutoApproach
 from nanonisTCP.Current import Current
 from nanonisTCP.Signals import Signals
+from nanonisTCP.Piezo import Piezo
 
 import nanonisUtils as nut
 
 import numpy as np
 from scipy.interpolate import interp1d
+import math
 
 import matplotlib
 matplotlib.use('Agg')
@@ -28,6 +30,8 @@ import matplotlib.pyplot as plt
 import nanonispyfit as nap
 
 import time
+from datetime import datetime as dt
+from datetime import timedelta as td
 import ntpath                                                                   # os.path but for windows paths
 
 import global_
@@ -597,7 +601,7 @@ class scanbot():
         self.disconnect(NTCP)
         self.interface.reactToMessage("explosion")
     
-    def biasDep(self,nb,bdc,bi,bf,px,suffix,message=""):
+    def biasDep(self,nb,bdc,tdc,pxdc,lxdc,bi,bf,px,lx,tl,suffix,message=""):
         NTCP,connection_error = self.connect()                                  # Connect to nanonis via TCP
         if(connection_error): return connection_error                           # Return error message if there was a problem connecting
         
@@ -606,6 +610,7 @@ class scanbot():
         biasList = np.linspace(bi,bf,nb)
         
         scan = Scan(NTCP)
+        piezo = Piezo(NTCP)
         
         basename     = scan.PropsGet()[3]                                       # Get the save basename
         tempBasename = basename + '_' + suffix + '_'                            # Create a temp basename for this survey
@@ -614,32 +619,71 @@ class scanbot():
         scanPixels,scanLines = scan.BufferGet()[2:]
         lx = int((scanLines/scanPixels)*px)
         
-        x,y,w,h,angle = scan.FrameGet()
+        x,y,w,h,angle = scan.FrameGet()                                         # Get the size and location of the scan frame. Will update these values according to DC
+        theta = -angle*math.pi/180                                              # In nanonis, +ve angle is clockwise. Convert to radians
+        R = np.array([[math.cos(theta)**2,math.sin(theta)**2],                  # Rotation matrix to account for angle of scan frame
+                      [math.sin(theta)**2,math.cos(theta)**2]])
+
+            
+        speedRatio = 1
+        if(tl == '-default'):
+            _,_,tl,_,_,speedRatio = scan.SpeedGet()
+            
+        if(px == '-default'): px = 0
+        if(lx == '-default'): lx = 0
+        if(px < 1):
+            px = scanPixels                                                     # use what's in nanonis if px not entered
+            lx = scanLines
+        if(lx < 1): lx = px                                                     # make lx the same as px if px is enetered but not lx
+        
+        if(lxdc == '-default'): lxdc = 0
+        if(lxdc < 1): lxdc = int((lx/px)*pxdc)                                  # Keep the same ratio of px:lx if lxdc not entered
+        
+            
+        startTime = dt.now()
+        completionTime = int((2*tl*lx + 2*tdc*lxdc)*nb + nb)                   # Estimated time until completion (s). *2 for fwd and bwd line scans. +nz for ~overhead times
+        hours = int(completionTime/3600)                                       # Number of hours
+        minutes = int((completionTime%3600)/60)                                # Number of minutes
+        seconds = int((completionTime%3600)%60)                                # Number of seconds
+        
+        endTime = startTime + td(seconds=completionTime)
+        self.interface.sendReply("Estimated completion time: " + 
+                                 str(hours)+":"+str(minutes)+":"+str(seconds) +
+                                 " to finish at " + endTime.strftime("%d/%m/%Y, %H:%M"),message=message)
         
         ## Initial drift correct frame
         dxy = []
         initialDriftCorrect = []
-        if(px > 0):
+        if(pxdc > 0):
             self.rampBias(NTCP, bdc)
-            scan.BufferSet(pixels=px,lines=lx)
+            scan.BufferSet(pixels=pxdc,lines=lxdc)
             scan.Action('start',scan_direction='up')
             _, _, filePath = scan.WaitEndOfScan()
             scan.PropsSet(series_name=tempBasename + str(bdc) + "V-DC_")        # Set the basename in nanonis for this survey
             _,initialDriftCorrect,_ = scan.FrameDataGrab(14, 1)
             
-            dx  = w/px; dy  = h/lx
+            dx  = w/pxdc; dy  = h/lxdc
             dxy = np.array([dx,dy])
         
         if(self.checkEventFlags()): biasList=[]                                 # Check event flags
         if(not filePath): biasList=[]
         
+        status, vx, vy, vz, _, _, _ = piezo.DriftCompGet()
+        if not status:
+            piezo.DriftCompSet(on=False, vx=0, vy=0, vz=0)
+        
+        lastdriftcorrectTime = dt.now()
         for idx,b in enumerate(biasList):
             if(b == 0): continue                                                # Don't set the bias to zero ever
+            
+            # lastframeTime = dt.now()
+            
+            self.interface.sendReply("Taking image " + str(idx+1) + "/" + str(nb) + "... ETC: " + endTime.strftime("%d/%m/%Y, %H:%M"),message=message)
             
             scan.PropsSet(series_name=tempBasename + str(b) + "V_")             # Set the basename in nanonis for this survey
             ## Bias dep scan
             self.rampBias(NTCP, b)
-            scan.BufferSet(pixels=scanPixels,lines=scanLines)
+            scan.BufferSet(pixels=px,lines=lx)
             scan.Action('start',scan_direction='down')
             _, _, filePath = scan.WaitEndOfScan()
             if(not filePath): break
@@ -662,7 +706,7 @@ class scanbot():
             scan.PropsSet(series_name=tempBasename + str(bdc) + "V-DC_")        # Set the basename in nanonis for this survey
             ## Drift correct scan
             self.rampBias(NTCP, bdc)
-            scan.BufferSet(pixels=px,lines=lx)
+            scan.BufferSet(pixels=pxdc,lines=lxdc)
             scan.Action('start',scan_direction='up')
             timeoutStatus, _, filePath = scan.WaitEndOfScan()
             if(not filePath): break
@@ -671,9 +715,26 @@ class scanbot():
             if(self.checkEventFlags()): break                                   # Check event flags
             
             ox,oy = nut.getFrameOffset(initialDriftCorrect,driftCorrectFrame,dxy)
-            x,y   = np.array([x,y]) - np.array([ox,oy])
+            ox,oy = np.matmul(R,np.array([ox,oy]).T)                            # Account for angle of scan frame
+            x,y   = np.array([x,y]) - np.array([ox,oy])                         # x, y drift in m
             
             scan.FrameSet(x,y,w,h)
+            
+            dvx=0
+            dvy=0
+            if np.abs(ox) > 0 or np.abs(oy) > 0:
+                deltaT = (dt.now() - lastdriftcorrectTime).total_seconds()
+                dvx = -ox / deltaT
+                dvy = -oy / deltaT
+                lastdriftcorrectTime = dt.now()
+            
+            # z_initial = zcontroller.ZPosGet()
+            # dvz = (z_initial - lastframeZ) / deltaT
+            
+            status, vx, vy, vz, _, _, _ = piezo.DriftCompGet()                    # the vz velocity
+            piezo.DriftCompSet(on=True, vx=vx+dvx, vy=vy+dvy, vz=0)
+            
+            endTime = (dt.now() - startTime) / (idx + 1) * nb + startTime
             
         scan.PropsSet(series_name=basename)                                     # Put back the original basename
         
@@ -682,6 +743,176 @@ class scanbot():
         global_.running.clear()
         
         self.interface.sendReply("Bias dependent imaging complete",message=message)
+        
+    def zDep(self,nz,bdc,tdc,pxdc,lxdc,zi,zf,bzs,px,lx,tl,suffix,message=""):
+        NTCP,connection_error = self.connect()                                  # Connect to nanonis via TCP
+        if(connection_error): return connection_error                           # Return error message if there was a problem connecting
+        
+        self.interface.reactToMessage("working_on_it",message=message)
+        
+        zList = np.linspace(zi,zf,nz)                                           # list of relative z positions
+        
+        scan = Scan(NTCP)
+        zcontroller = ZController(NTCP)
+        folme = FolMe(NTCP)
+        piezo = Piezo(NTCP)
+        
+        basename     = scan.PropsGet()[3]                                       # Get the save basename
+        tempBasename = basename + '_' + suffix + '_'                            # Create a temp basename for this survey
+        scan.PropsSet(series_name=tempBasename)                                 # Set the basename in nanonis for this survey
+        
+        scanPixels,scanLines = scan.BufferGet()[2:]
+        
+        speedRatio = 1
+        if(tl == '-default'):
+            _,_,tl,_,_,speedRatio = scan.SpeedGet()
+            
+        if(px == '-default'): px = 0
+        if(lx == '-default'): lx = 0
+        if(px < 1):
+            px = scanPixels                                                     # use what's in nanonis if px not entered
+            lx = scanLines
+        if(lx < 1): lx = px                                                     # make lx the same as px if px is enetered but not lx
+        
+        if(lxdc == '-default'): lxdc = 0
+        if(lxdc < 1): lxdc = int((lx/px)*pxdc)                                  # Keep the same ratio of px:lx if lxdc not entered
+        
+        startTime = dt.now()
+        completionTime = int((2*tl*lx + 2*tdc*lxdc)*nz + nz)                    # Estimated time until completion (s). *2 for fwd and bwd line scans. +nz for ~overhead times
+        hours = int(completionTime/3600)                                        # Number of hours
+        minutes = int((completionTime%3600)/60)                                 # Number of minutes
+        seconds = int((completionTime%3600)%60)                                 # Number of seconds
+        
+        endTime = startTime + td(seconds=completionTime)
+        self.interface.sendReply("Estimated completion time: " + 
+                                 str(hours)+":"+str(minutes)+":"+str(seconds) +
+                                 " to finish at " + endTime.strftime("%d/%m/%Y, %H:%M"),message=message)
+        
+        tipX,tipY = folme.XYPosGet(Wait_for_newest_data=True)                   # Get the x,y position of the tip. Will use this location for setting the 
+        x,y,w,h,angle = scan.FrameGet()                                         # Get the size and location of the scan frame. Will update these values according to DC
+        theta = -angle*math.pi/180                                              # In nanonis, +ve angle is clockwise. Convert to radians
+        R = np.array([[math.cos(theta)**2,math.sin(theta)**2],                  # Rotation matrix to account for angle of scan frame
+                      [math.sin(theta)**2,math.cos(theta)**2]])
+        
+        ## Initial drift correct frame
+        dxy = []
+        initialDriftCorrect = []
+        if(pxdc > 0):
+            if(not zcontroller.OnOffGet()):                                     # If the controller isn't on, retract a bit and then ramp bias and then turn on feedback
+                zcontroller.ZPosSet(zcontroller.ZPosGet()+0.2e-9)
+                time.sleep(0.25)
+                self.rampBias(NTCP, bdc)
+                time.sleep(0.25)
+                zcontroller.OnOffSet(on=True)
+                time.sleep(10)                                                  # Wait for approach. no wait_until_done flag in nanonisTCP for this
+            
+            self.rampBias(NTCP, bdc)
+            scan.BufferSet(pixels=pxdc,lines=lxdc)
+            scan.SpeedSet(fwd_line_time=tdc,speed_ratio=1)
+            scan.Action('start',scan_direction='up')
+            _, _, filePath = scan.WaitEndOfScan()
+            scan.PropsSet(series_name=tempBasename + str(bdc) + "V-DC_")        # Set the basename in nanonis for this survey
+            _,initialDriftCorrect,_ = scan.FrameDataGrab(14, 1)
+            
+            dx  = w/px; dy  = h/lxdc
+            dxy = np.array([dx,dy])
+        
+        folme.XYPosSet(tipX, tipY,Wait_end_of_move=True)
+        time.sleep(0.25)
+        z_initial = zcontroller.ZPosGet()
+        
+        if(self.checkEventFlags()): zList=[]                                    # Check event flags
+        if(not filePath): zList=[]
+        
+        status, vx, vy, vz, _, _, _ = piezo.DriftCompGet()
+        if not status:
+            piezo.DriftCompSet(on=False, vx=0, vy=0, vz=0)
+        
+        lastdriftcorrectTime = dt.now()
+        for idz,dz in enumerate(zList):
+            
+            lastframeZ = z_initial
+            lastframeTime = dt.now()
+            
+            self.interface.sendReply("Taking image " + str(idz+1) + "/" + str(nz) + "... ETC: " + endTime.strftime("%d/%m/%Y, %H:%M"),message=message)
+            scan.PropsSet(series_name=tempBasename + str(dz) + "_nm_")             # Set the basename in nanonis for this survey
+            ## constant Z scan
+            zcontroller.OnOffSet(False)
+            self.rampBias(NTCP, bzs, zhold=False)                               # zhold=False leaves the zhold setting as is during bias ramp (i.e. don't turn controller on after bias ramp complete)
+            zcontroller.ZPosSet(z_initial+dz)
+            scan.BufferSet(pixels=px,lines=lx)
+            scan.SpeedSet(fwd_line_time=tl,speed_ratio=speedRatio)
+            scan.Action('start',scan_direction='down')
+            _, _, filePath = scan.WaitEndOfScan()
+            if(not filePath): break
+            
+            _,scanData,_ = scan.FrameDataGrab(18, 1)                            # 14 = z., 18 is Freq. shift
+            
+            pngFilename = self.makePNG(scanData, filePath)                      # Generate a png from the scan data
+            
+            self.interface.sendPNG(pngFilename,notify=True,message=message)     # Send a png over zulip
+            
+            if(self.checkEventFlags()): break                                   # Check event flags
+            
+            if(not len(initialDriftCorrect)): continue                          # If we haven't taken out initial dc image, dc must be turned off so continue
+            
+            if(idz+1 == len(zList)): break
+            
+            scan.PropsSet(series_name=tempBasename + str(bdc) + "V-DC_")        # Set the basename in nanonis for this survey
+            ## Drift correct scan
+            zcontroller.OnOffSet(True)
+            self.rampBias(NTCP, bdc)
+            scan.BufferSet(pixels=lxdc,lines=lxdc)
+            scan.SpeedSet(fwd_line_time=tdc,speed_ratio=1)
+            scan.Action('start',scan_direction='up')
+            timeoutStatus, _, filePath = scan.WaitEndOfScan()
+            if(not filePath): break
+            _,driftCorrectFrame,_ = scan.FrameDataGrab(14, 1)
+            
+            if(self.checkEventFlags()): break                                   # Check event flags
+            
+            ox,oy = nut.getFrameOffset(initialDriftCorrect,driftCorrectFrame,dxy)
+            ox,oy = np.matmul(R,np.array([ox,oy]).T)                            # Account for angle of scan frame
+            x,y   = np.array([x,y]) - np.array([ox,oy])                         # x, y drift in m
+            
+            scan.FrameSet(x,y,w,h,angle)
+            
+            tipX,tipY = np.array([tipX,tipY]) - np.array([ox,oy])
+            folme.XYPosSet(tipX, tipY,Wait_end_of_move=True)
+            time.sleep(0.25)
+            
+            
+            deltaT = (dt.now() - lastframeTime).total_seconds()
+            z_initial = zcontroller.ZPosGet()
+            dvz = (z_initial - lastframeZ) / deltaT
+            
+            dvx = 0
+            dvy = 0
+            if np.abs(ox) > 0 or np.abs(oy) > 0:
+                deltaT = (dt.now() - lastdriftcorrectTime).total_seconds()
+                dvx = -ox / deltaT
+                dvy = -oy / deltaT
+                lastdriftcorrectTime = dt.now()
+            
+            
+            status, vx, vy, vz, _, _, _ = piezo.DriftCompGet()                    # the vz velocity
+            piezo.DriftCompSet(on=True, vx=vx+dvx, vy=vy+dvy, vz=vz+dvz)
+            
+            endTime = (dt.now() - startTime) / (idz + 1) * nz + startTime
+            
+        scan.PropsSet(series_name=basename)                                     # Put back the original basename
+        
+        zcontroller.ZPosSet(zcontroller.ZPosGet()+1e-9)                         # restore feedback at drift correct bias
+        time.sleep(0.25)
+        self.rampBias(NTCP, bdc)
+        time.sleep(0.25)
+        zcontroller.OnOffSet(on=True)
+        
+        self.disconnect(NTCP)
+        
+        global_.running.clear()
+        
+        self.interface.sendReply("Z dependent imaging complete",message=message)
     
     def setBias(self,bias):
         NTCP,connection_error = self.connect()                                  # Connect to nanonis via TCP

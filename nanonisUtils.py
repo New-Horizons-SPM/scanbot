@@ -141,7 +141,11 @@ def makeGif(storage,storagePath,surveyName,delete):
         biasList = [float(fname.split(surveyName)[-1].split('V_')[0].strip('_')) for fname in localFiles]
         localFiles = [f for _,f in sorted(zip(biasList,localFiles))]
     except:
-        reply = "Could not sort by bias"
+        try:
+            zlist = [float(fname.split(surveyName)[-1].split('nm_')[0].strip('_')) for fname in localFiles]
+            localFiles = [f for _,f in sorted(zip(zlist,localFiles))]
+        except:
+            reply = "Could not sort by bias or tip height"
         
     images = [Image.open(x) for x in localFiles]
     

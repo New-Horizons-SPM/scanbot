@@ -54,6 +54,7 @@ class scanbot_interface(object):
                     'firebase_storage_path'     : '',
                     'port_list'                 : '6501,6502,6503,6504',
                     'ip'                        : '127.0.0.1',
+                    'creeplist'                 : '127.0.0.1',
                     'notify_list'               : '',
                     'temp_calibration_curve'    : ''}
         
@@ -172,12 +173,12 @@ class scanbot_interface(object):
 ###############################################################################
 # Scanbot
 ###############################################################################
-    def lockout(self, message):
-        if self.whitelist == message['sender_email']:
+    def lockout(self):
+        if self.whitelist == self.bot_message['sender_email']:
             self.whitelist = self.whole_whitelist
         else:
             self.whole_whitelist = self.whitelist
-            self.whitelist = message['sender_email']
+            self.whitelist = self.bot_message['sender_email']
         
         whiteStr = 'whitelist now: ' + str(self.whitelist)
         
@@ -505,10 +506,8 @@ class scanbot_interface(object):
             reply = "Invalid command. Run *list_commands* to see command list"
             self.sendReply(reply)
             return
-        if command == 'lockout':
-            reply = self.commands[command](message)
-        else:
-            reply = self.commands[command](args)
+
+        reply = self.commands[command](args)
         
         if(reply): self.sendReply(reply)
     

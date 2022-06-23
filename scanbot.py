@@ -619,8 +619,10 @@ class scanbot():
         scanPixels,scanLines = scan.BufferGet()[2:]
         lx = int((scanLines/scanPixels)*px)
         
-        x,y,w,h,angle = scan.FrameGet()
-        
+        x,y,w,h,angle = scan.FrameGet()                                         # Get the size and location of the scan frame. Will update these values according to DC
+        theta = -angle*math.pi/180                                              # In nanonis, +ve angle is clockwise. Convert to radians
+        R = np.array([[math.cos(theta)**2,math.sin(theta)**2],                  # Rotation matrix to account for angle of scan frame
+                      [math.sin(theta)**2,math.cos(theta)**2]])
 
             
         speedRatio = 1
@@ -670,11 +672,11 @@ class scanbot():
         if not status:
             piezo.DriftCompSet(on=False, vx=0, vy=0, vz=0)
         
-        
+        lastdriftcorrectTime = dt.now()
         for idx,b in enumerate(biasList):
             if(b == 0): continue                                                # Don't set the bias to zero ever
             
-            lastframeTime = dt.now()
+            # lastframeTime = dt.now()
             
             self.interface.sendReply("Taking image " + str(idx+1) + "/" + str(nb) + "... ETC: " + endTime.strftime("%d/%m/%Y, %H:%M"),message=message)
             
@@ -713,13 +715,18 @@ class scanbot():
             if(self.checkEventFlags()): break                                   # Check event flags
             
             ox,oy = nut.getFrameOffset(initialDriftCorrect,driftCorrectFrame,dxy)
-            x,y   = np.array([x,y]) - np.array([ox,oy])
+            ox,oy = np.matmul(R,np.array([ox,oy]).T)                            # Account for angle of scan frame
+            x,y   = np.array([x,y]) - np.array([ox,oy])                         # x, y drift in m
             
             scan.FrameSet(x,y,w,h)
             
-            deltaT = (dt.now() - lastframeTime).total_seconds()
-            dvx = -ox / deltaT
-            dvy = -oy / deltaT
+            dvx=0
+            dvy=0
+            if np.abs(ox) > 0 or np.abs(oy) > 0:
+                deltaT = (dt.now() - lastdriftcorrectTime).total_seconds()
+                dvx = -ox / deltaT
+                dvy = -oy / deltaT
+                lastdriftcorrectTime = dt.now()
             
             # z_initial = zcontroller.ZPosGet()
             # dvz = (z_initial - lastframeZ) / deltaT
@@ -821,6 +828,7 @@ class scanbot():
         if not status:
             piezo.DriftCompSet(on=False, vx=0, vy=0, vz=0)
         
+        lastdriftcorrectTime = dt.now()
         for idz,dz in enumerate(zList):
             
             lastframeZ = z_initial
@@ -875,11 +883,17 @@ class scanbot():
             
             
             deltaT = (dt.now() - lastframeTime).total_seconds()
-            dvx = -ox / deltaT
-            dvy = -oy / deltaT
-            
             z_initial = zcontroller.ZPosGet()
             dvz = (z_initial - lastframeZ) / deltaT
+            
+            dvx = 0
+            dvy = 0
+            if np.abs(ox) > 0 or np.abs(oy) > 0:
+                deltaT = (dt.now() - lastdriftcorrectTime).total_seconds()
+                dvx = -ox / deltaT
+                dvy = -oy / deltaT
+                lastdriftcorrectTime = dt.now()
+            
             
             status, vx, vy, vz, _, _, _ = piezo.DriftCompGet()                    # the vz velocity
             piezo.DriftCompSet(on=True, vx=vx+dvx, vy=vy+dvy, vz=vz+dvz)

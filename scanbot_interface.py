@@ -397,11 +397,16 @@ class scanbot_interface(object):
         self.scanbot.pulse()
         
     def biasDep(self,user_args,_help=False):
-        arg_dict = {'-n'   : ['5',   lambda x: int(x),   "(int) Number of images to take b/w initial and final bias"],
-                    '-bdc' : ['-1',  lambda x: float(x), "(float) Drift correct image bias"],
-                    '-bi'  : ['-1',  lambda x: float(x), "(float) Initial Bias"],
-                    '-bf'  : ['1',   lambda x: float(x), "(float) Final Bias"],
-                    '-px'  : ['128', lambda x: int(x),   "(int) Pixels in drift correct image. 0=no drift correction"],
+        arg_dict = {'-n'   : ['5',      lambda x: int(x),   "(int) Number of images to take b/w initial and final bias"],
+                    '-bdc' : ['-1',     lambda x: float(x), "(float) Drift correct image bias"],
+                    '-tdc' : ['0.3',    lambda x: float(x), "(float) Time per line in drift correct image (s)"],
+                    '-pxdc': ['128',    lambda x: int(x),  "(int) Pixels in drift correct image. 0=no drift correction"],
+                    '-lxdc': ['-default',lambda x: int(x),  "(int) Lines in drift correct image. If not provided, keeps same ratio as px:lx"],
+                    '-bi'  : ['-1',     lambda x: float(x), "(float) Initial Bias"],
+                    '-bf'  : ['1',      lambda x: float(x), "(float) Final Bias"],
+                    '-px'  : ['-default', lambda x: int(x),   "(int) Pixels in image. "],
+                    '-lx'  : ['0',      lambda x: int(x),   "(int) Lines in drift correct image. 0=same as px"],
+                    '-tl'  : ['-default',lambda x: float(x), "(float) Time per line (s)"],
                     '-s'   : ['sb-biasdep', lambda x: str(x), "(str) Suffix for the set of bias dep sxm files"]}
         
         if(_help): return arg_dict
@@ -418,12 +423,12 @@ class scanbot_interface(object):
         arg_dict = {'-n'   : ['5',      lambda x: int(x),   "(int) Number of images to take b/w initial and final bias"],
                     '-bdc' : ['20e-3',  lambda x: float(x), "(float) Drift correct image bias"],
                     '-tdc' : ['0.3',    lambda x: float(x), "(float) Time per line in drift correct image (s)"],
-                    '-pxdc': ['128',    lambda x: int(x),  "(int) Pixels in image"],
+                    '-pxdc': ['128',    lambda x: int(x),  "(int) Pixels in drift correct image. 0=no drift correction"],
                     '-lxdc': ['-default',lambda x: int(x),  "(int) Lines in image. If not provided, keeps same ratio as px:lx"],
                     '-zi'  : ['0',      lambda x: float(x), "(float) Initial Z (m, relative to drift correct setpoint)"],
                     '-zf'  : ['.1e-9',  lambda x: float(x), "(float) Final Z (m, relative if zi is 0)"],
                     '-bzs' : ['1.5e-3', lambda x: float(x), "(float) bias during constant height scan"],
-                    '-px'  : ['-default',lambda x: int(x),   "(int) Pixels in drift correct image. 0=no drift correction"],
+                    '-px'  : ['-default',lambda x: int(x),   "(int) Pixels in drift correct image. "],
                     '-lx'  : ['0',      lambda x: int(x),   "(int) Lines in drift correct image. 0=same as px"],
                     '-tl'  : ['-default',lambda x: float(x), "(float) Time per line (s)"],
                     '-s'   : ['sb-zdep',lambda x: str(x),   "(str) Suffix for the set of z dep sxm files"]}

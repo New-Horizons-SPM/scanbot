@@ -133,6 +133,7 @@ class scanbot_interface(object):
                          'help'             : self._help,
                          'add_user'         : self.addUsers,
                          'list_users'       : lambda args: str(self.whitelist),
+                         'lockout'          : self.lockout,
                          'noti'             : self.noti,
                          'set_ip'           : self.setIP,
                          'get_ip'           : lambda args: self.IP,
@@ -171,6 +172,17 @@ class scanbot_interface(object):
 ###############################################################################
 # Scanbot
 ###############################################################################
+    def lockout(self, message):
+        if self.whitelist == message['sender_email']:
+            self.whitelist = self.whole_whitelist
+        else:
+            self.whole_whitelist = self.whitelist
+            self.whitelist = message['sender_email']
+        
+        whiteStr = 'whitelist now: ' + str(self.whitelist)
+        
+        return whiteStr
+
     def plotChannel(self,user_args,_help=False):
         arg_dict = {'-c' : ['14', lambda x: int(x), "(int) Scan buffer channel display. Run without -c to see available channels"]}
         
@@ -493,8 +505,10 @@ class scanbot_interface(object):
             reply = "Invalid command. Run *list_commands* to see command list"
             self.sendReply(reply)
             return
-        
-        reply = self.commands[command](args)
+        if command == 'lockout':
+            reply = self.commands[command](message)
+        else:
+            reply = self.commands[command](args)
         
         if(reply): self.sendReply(reply)
     

@@ -27,9 +27,9 @@ class scanbot_interface(object):
 ###############################################################################
     def __init__(self):
         print("Initialising app...")
+        self.scanbot = scanbot(self)
         self.loadConfig()
         self.initCommandDict()
-        self.scanbot = scanbot(self)
     
 ###############################################################################
 # Initialisation
@@ -143,7 +143,9 @@ class scanbot_interface(object):
             print('No whitelist found... create one with add_user')
     
     def initCommandDict(self):
-        self.commands = {'help'             : self._help,
+        self.commands = {
+                        # Configuration commands
+                         'help'             : self._help,
                          'set_ip'           : self.setIP,
                          'get_ip'           : lambda args: self.IP,
                          'set_portlist'     : self.setPortList,
@@ -153,13 +155,28 @@ class scanbot_interface(object):
                          'add_user'         : self.addUser,
                          'get_users'        : lambda args: str(self.whitelist),
                          'set_path'         : self.setPath,
-                         'get_path'         : lambda args: self.path
+                         'get_path'         : lambda args: self.path,
+                         'plot_channel'     : self.plotChannel,
+                        # Scanbot commands
+                         'plot'             : self.plot,
+                        # Misc
+                         'quit'             : self._quit
+                         
         }
         
 ###############################################################################
 # Scanbot Commands
 ###############################################################################
-    
+    def plot(self,user_args,_help=False):
+        arg_dict = {'-c' : ['-1', lambda x: int(x), "(int) Channel to plot. -1 plots the default channel which can be set using plot_channel"]}
+        
+        if(_help): return arg_dict
+        
+        error,user_arg_dict = self.userArgs(arg_dict,user_args)
+        if(error): return error + "\nRun ```help plot``` if you're unsure."
+        
+        args = self.unpackArgs(user_arg_dict)
+        return self.scanbot.plot(*args)
 ###############################################################################
 # Config Commands
 ###############################################################################
@@ -207,6 +224,9 @@ class scanbot_interface(object):
             self.reactToMessage('cross_mark')
             return "Invalid Method. Available methods:\n" + "\n". join(self.validUploadMethods)
         
+        if(uploadMethod == 'path'):
+            Path(self.path).mkdir(parents=True, exist_ok=True)
+            
         self.uploadMethod = uploadMethod
         self.reactToMessage('all_good')
         
@@ -240,12 +260,27 @@ class scanbot_interface(object):
                 
             if(self.uploadMethod == 'path'):
                 self.path = path
-                Path(self.path).mkdir(parents=True, exist_ok=True)
                 if(not self.path.endswith('/')):
                     self.path += '/'
+                Path(self.path).mkdir(parents=True, exist_ok=True)
                 self.reactToMessage('all_good')
         except Exception as e:
             return str(e)
+        
+    def plotChannel(self,user_args,_help=False):
+        arg_dict = {'-c' : ['-1', lambda x: int(x), "(int) Set default channel for scanbot to look at. -1 means no change. Run without options to see available channels"],
+                    '-a' : ['-1', lambda x: int(x), "(int) Add channel to the scan buffer. -1 means no change. Run without options to see available channels"],
+                    '-r' : ['-1', lambda x: int(x), "(int) Remove channel from the scan buffer. -1 means no change. Run without options to see available channels"]}
+        
+        if(_help): return arg_dict
+        
+        if(not len(user_args)): return self.scanbot.plotChannel()
+        
+        error,user_arg_dict = self.userArgs(arg_dict,user_args)
+        if(error): return error + "\nRun ```help plot_channel``` if you're unsure."
+        
+        args = self.unpackArgs(user_arg_dict)
+        return self.scanbot.plotChannel(*args)
 ###############################################################################
 # Comms
 ###############################################################################
@@ -350,20 +385,21 @@ class scanbot_interface(object):
             uploaded_file_reply = "[{}]({})".format(path.name, upload["uri"])
             self.sendReply(notifyString + pngFilename,message)
             self.sendReply(uploaded_file_reply,message)
+            os.remove(path)
             
         if(self.uploadMethod == 'firebase'):
             bucket = storage.bucket()
-            blob   = bucket.blob(self.firebaseStoragePath + pngFilename)
+            blob   = bucket.blob(self.path + pngFilename)
             blob.upload_from_filename(str(path))
         
             url = blob.generate_signed_url(expiration=9999999999)
             self.sendReply(notifyString + "[" + pngFilename + "](" + url + ")",message)
+            os.remove(path)
         
         if(self.uploadMethod == 'path'):
             os.replace(path, self.path + pngFilename)
             self.sendReply(notifyString + self.path + pngFilename)
             
-        os.remove(path)
 ###############################################################################
 # Misc
 ###############################################################################
@@ -394,11 +430,67 @@ class scanbot_interface(object):
         
         return helpStr
 
+    def userArgs(self,arg_dict,user_args):
+        error = ""
+        for arg in user_args:                                                   # Override the defaults if user inputs them
+            try:
+                key,value = arg.split('=')
+            except:
+                error = "Invalid argument"
+                break
+            if(not key in arg_dict):
+                error = "invalid argument: " + key                              # return error message
+                break
+            try:
+                arg_dict[key][1](value)                                         # Validate the value
+            except:
+                error  = "Invalid value for arg " + key + "."                   # Error if the value doesn't match the required data type
+                break
+            
+            arg_dict[key][0] = value
+        
+        return [error,arg_dict]
+    
+    def unpackArgs(self,arg_dict):
+        args = []
+        for key,value in arg_dict.items():
+            if(value[0] == "-default"):                                         # If the value is -default...
+                args.append("-default")                                         # leave it so the function can retrieve the value from nanonis
+                continue
+            
+            args.append(value[1](value[0]))                                     # Convert the string into data type
+        
+        return args
+    
+    def _quit(self,arg_dict):
+        sys.exit()
+        
 ###############################################################################
 # Run
 ###############################################################################
 handler_class = scanbot_interface
 
+if('-z' in sys.argv):
+    rcfile = ''
+    try:
+        with open('scanbot_config.ini','r') as f:                                   # Go through the config file to see what defaults need to be overwritten
+            line = "begin"
+            while(line):
+                line = f.readline()[:-1]
+                key, value = line.split('=')                                        # Format for valid line is "Key=Value"
+                if(key == 'zuliprc'):                                               # Look for the bot rc file
+                    rcfile = value
+                    break
+    except:
+        print("scanbot_config.ini not found.")
+        sys.exit()
+    
+    if(not rcfile):
+        print("zulip bot rc file not in scanbot_config.ini")
+        sys.exit()
+    
+    os.system("zulip-run-bot scanbot_interface.py --config=" + rcfile)
+    
 if('-c' in sys.argv):
     print("Console mode: type 'exit' to end scanbot")
     go = True
@@ -408,5 +500,36 @@ if('-c' in sys.argv):
         if(message == 'exit'):
             break
         handler_class.handle_message(message)
+    
+    finish = True
+
+# if('-g' in sys.argv and not finish):
+    # print("Booting in GUI mode...")
+    # import tkinter as tk
+    # from tkinter import *
+    # from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
+    # import matplotlib.pyplot as plt
+    # import subprocess
+    
+    # master    = tk.Tk()
+    # dpi       = master.winfo_fpixels('1i')
+    
+    # # Set up canvas
+    # width = 512; height = 512
+    # # canvas = FigureCanvasTkAgg(master=master)
+    # # canvas.get_tk_widget().configure(width=width, height=height)
+    
+    # # # Figure
+    # # fig = plt.figure(figsize=(width/dpi,height/dpi),dpi=dpi)
+    # # ax  = fig.add_subplot(111)
+    # # canvas.figure = fig
+    # # canvas.draw()
+    # termf = Frame(master, height=height, width=width)
+    
+    # termf.pack(fill=BOTH, expand=YES)
+    # wid = termf.winfo_id()
+    # subprocess.run('cmd.exe -into %d -geometry 40x20 -sb &' % wid)
+    
+    # master.mainloop()
     
     

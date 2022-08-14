@@ -8,6 +8,7 @@ Created on Fri August 8 22:06:52 2022
 from nanonisTCP import nanonisTCP
 from nanonisTCP.Scan import Scan
 from nanonisTCP.Signals import Signals
+from nanonisTCP.Piezo import Piezo
 
 import time
 import ntpath
@@ -42,13 +43,32 @@ class scanbot():
         _,scanData,_ = scan.FrameDataGrab(channel, 1)                           # Grab the data within the scan frame. Channel 14 is . 1 is forward data direction
         
         try:
-            pngFilename = 'im-c' + str(channel) + '.png'                            # All unsaved (incomplete) scans are saved as im.png
-            pngFilename = self.makePNG(scanData,pngFilename=pngFilename)            # Generate a png from the scan data
-            self.interface.sendPNG(pngFilename,notify=False)                        # Send a png over zulip
+            pngFilename = 'im-c' + str(channel) + '.png'                        # All unsaved (incomplete) scans are saved as im.png
+            pngFilename = self.makePNG(scanData,pngFilename=pngFilename)        # Generate a png from the scan data
+            self.interface.sendPNG(pngFilename,notify=False)                    # Send a png over zulip
         except:
             self.interface.reactToMessage("cross_mark")
         
         self.disconnect(NTCP)                                                   # Close the TCP connection
+    
+    def survey(self,bias,n,i,suffix,xy,dx,px,sleepTime,ox=0,oy=0,message="",enhance=False):
+        NTCP,connection_error = self.connect()                                  # Connect to nanonis via TCP
+        if(connection_error): return connection_error                           # Return error message if there was a problem connecting   
+        
+        piezo = Piezo(NTCP)
+        range_x,range_y,_ = piezo.RangeGet()
+        
+        gridOK = True
+        gridRange = n*dx + xy
+        if(gridRange >= range_x): gridOK = False
+        if(gridRange >= range_y): gridOK = False
+        
+        if(not gridOK):
+            self.interface.sendReply("Survey error: Grid size exceeds scan area",message=message)
+            self.disconnect(NTCP)                                               # Close the TCP connection
+            return
+        
+        startCoord = 
         
 ###############################################################################
 # Config

@@ -159,6 +159,7 @@ class scanbot_interface(object):
                          'plot_channel'     : self.plotChannel,
                         # Scanbot commands
                          'plot'             : self.plot,
+                         'survey'           : self.survey,
                         # Misc
                          'quit'             : self._quit
                          
@@ -177,6 +178,26 @@ class scanbot_interface(object):
         
         args = self.unpackArgs(user_arg_dict)
         return self.scanbot.plot(*args)
+    
+    def survey(self,user_args,_help=False):
+        arg_dict = {'-bias' : ['-default', lambda x: float(x), "(float) Scan bias"],
+                    '-n'    : ['5',        lambda x: int(x),   "(int) Size of the nxn grid of scans"],
+                    '-i'    : ['1',        lambda x: int(x),   "(int) Start the grid from this index"],
+                    '-s'    : ['scanbot',  lambda x: str(x),   "(str) Suffix at the end of autosaved sxm files"],
+                    '-xy'   : ['100e-9',   lambda x: float(x), "(float) Length and width of the scan frame (m)"],
+                    '-dx'   : ['150e-9',   lambda x: float(x), "(float) Scan grid spacing (m)"],
+                    '-px'   : ['-default', lambda x: int(x),   "(int) Number of pixels"],
+                    '-st'   : ['10',       lambda x: float(x), "(float) Drift compensation time (s)"]}
+        
+        if(_help): return arg_dict
+        
+        error,user_arg_dict = self.userArgs(arg_dict,user_args)
+        if(error): return error + "\nRun ```help survey``` if you're unsure."
+        
+        args = self.unpackArgs(user_arg_dict)
+        
+        func = lambda : self.scanbot.survey(*args,message=self.bot_message.copy())
+        return self.threadTask(func)
 ###############################################################################
 # Config Commands
 ###############################################################################

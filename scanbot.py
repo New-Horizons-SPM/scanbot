@@ -16,6 +16,10 @@ import numpy as np
 import nanonispyfit as nap
 import matplotlib.pyplot as plt
 
+import global_
+
+import pickle
+
 class scanbot():
     channel = 14
 ###############################################################################
@@ -27,6 +31,15 @@ class scanbot():
 ###############################################################################
 # Actions
 ###############################################################################
+    def stop(self):
+        NTCP,connection_error = self.connect()                                  # Connect to nanonis via TCP
+        if(connection_error): return connection_error                           # Return error message if there was a problem connecting        
+        
+        scan = Scan(NTCP)                                                       # Nanonis scan module
+        scan.Action('stop')                                                     # Stop the current scan
+        
+        self.disconnect(NTCP)                                                   # Close the NTCP connection
+        
     def plot(self,channel=-1):
         NTCP,connection_error = self.connect()                                  # Connect to nanonis via TCP
         if(connection_error): return connection_error                           # Return error message if there was a problem connecting        
@@ -55,20 +68,64 @@ class scanbot():
         NTCP,connection_error = self.connect()                                  # Connect to nanonis via TCP
         if(connection_error): return connection_error                           # Return error message if there was a problem connecting   
         
+        scan  = Scan(NTCP)
         piezo = Piezo(NTCP)
         range_x,range_y,_ = piezo.RangeGet()
         
-        gridOK = True
-        gridRange = n*dx + xy
-        if(gridRange >= range_x): gridOK = False
-        if(gridRange >= range_y): gridOK = False
+        x = np.linspace(-1, 1,n) * (n-1)*dx/2
+        y = x
         
-        if(not gridOK):
-            self.interface.sendReply("Survey error: Grid size exceeds scan area",message=message)
-            self.disconnect(NTCP)                                               # Close the TCP connection
-            return
+        frames = []
+        for j in y:
+            for i in x:
+                frames.append([i+ox, j+oy, xy, xy])
+                if(i+ox>range_x/2 or j+oy>range_y/2):
+                    self.interface.sendReply("Survey error: Grid size exceeds scan area",message=message)
+                    self.disconnect(NTCP)                                       # Close the TCP connection
+                    return
+            x = np.array(list(reversed(x)))                                     # Snake the grid - better for drift
+            
+        if(bias != "-default"): self.rampBias(NTCP, bias)                       # Change the scan bias if the user wants to
         
-        startCoord = 
+        basename = self.interface.topoBasename                                  # Get the basename that's been set in config file
+        if(not basename): basename = scan.PropsGet()[3]                         # Get the save basename from nanonis if one isn't supplied
+        tempBasename = basename + '_' + suffix + '_'                            # Create a temp basename for this survey
+        scan.PropsSet(series_name=tempBasename)                                 # Set the basename in nanonis for this survey
+        
+        if(px != "-default"):
+            px = int(np.ceil(px/16)*16)                                         # Pixels must be divisible by 16
+            scan.BufferSet(pixels=px,lines=px)
+        
+        for frame in frames:
+            slept = 0
+            scan.FrameSet(*frame)                                               # Set the coordinates and size of the frame window in nanonis
+            scan.Action('start')                                                # Start the scan. default direction is "up"
+            while(slept < sleepTime):                                           # This loop makes running 'stop' more responsive
+                time.sleep(0.2)                                                 # Wait for drift to settle
+                slept += 0.2
+                if(self.checkEventFlags()): break                               # Check event flags
+            if(self.checkEventFlags()): break                                   # Check event flags
+            
+            timeoutStatus = 1
+            scan.Action('start')                                                # Start the scan. default direction is "up"
+            while(timeoutStatus):
+                timeoutStatus, _, filePath = scan.WaitEndOfScan(timeout=200)    # Wait until the scan finishes
+                if(self.checkEventFlags()): break                               # Check event flags
+            if(self.checkEventFlags()): break                                   # Check event flags
+                
+            if(not filePath): time.sleep(0.2); continue                         # If user stops the scan, filePath will be blank, then go to the next scan
+            
+            _,scanData,_ = scan.FrameDataGrab(14, 1)                            # Grab the data within the scan frame. Channel 14 is . 1 is forward data direction
+            pngFilename = self.makePNG(scanData, filePath)                      # Generate a png from the scan data
+            self.interface.sendPNG(pngFilename,notify=True,message=message)     # Send a png over zulip
+            
+            if(self.interface.sendToCloud):
+                self.interface.uploadToCloud(self.pklData(scanData, filePath))  # Send data to cloud database
+        
+        scan.PropsSet(series_name=basename)                                     # Put back the original basename
+        self.disconnect(NTCP)                                                   # Close the TCP connection
+        
+        self.interface.sendReply('survey \'' + suffix + '\' done',message=message) # Send a notification that the survey has completed
         
 ###############################################################################
 # Config
@@ -101,11 +158,17 @@ class scanbot():
         if(c == -1 and a == -1 and r == -1): self.disconnect(NTCP); return helpStr
         
         # Validations first
-        if(c != -1 and not c in channels):  self.disconnect(NTCP); return "Invalid signal -c=" + str(c) + " is not in the buffer\n" + helpStr
-        if(a != -1 and not a in range(24)): self.disconnect(NTCP); return "Invalid signal -a=" + str(a) + "\n" + helpStr
-        if(a != -1 and a in channels):      self.disconnect(NTCP); return "-a=" + str(a) + " is already in the buffer\n" + helpStr
-        if(r != -1 and not r in channels):  self.disconnect(NTCP); return "-r=" + str(r) + " is not in the buffer\n" + helpStr
-        if(r == self.channel):              self.disconnect(NTCP); return "-r=" + str(r) + " cannot be removed while selected\n" + helpStr
+        errmsg = ''
+        if(c != -1 and not c in channels):  errmsg += "Invalid signal -c=" + str(c) + " is not in the buffer\n"
+        if(a != -1 and not a in range(24)): errmsg += "Invalid signal -a=" + str(a) + "\n"
+        if(a != -1 and a in channels):      errmsg += "-a=" + str(a) + " is already in the buffer\n"
+        if(r != -1 and not r in channels):  errmsg += "-r=" + str(r) + " is not in the buffer\n"
+        if(r == self.channel):              errmsg += "-r=" + str(r) + " cannot be removed while selected\n"
+        
+        if(errmsg):
+            self.disconnect(NTCP)
+            errmsg += helpStr
+            return errmsg
         
         # Then process
         setBuf = False
@@ -140,6 +203,45 @@ class scanbot():
         
         return pngFilename
     
+    def pklData(self,scanData,filePath):
+        NTCP,connection_error = self.connect()                                  # Connect to nanonis via TCP
+        if(connection_error): return "scanbot/pkldata: " + connection_error
+        
+        # scan = Scan(NTCP)
+        
+        filename = ntpath.split(filePath)[1]
+        pklDict = { "sxm"   : filename,
+                    "data"  : scanData}
+        
+        pickle.dump(pklDict, open(filename + ".pkl", 'wb'))                     # Pickle containing config settings and unlabelled data
+        
+        return filename + ".pkl"
+        
+    def checkEventFlags(self,message = ""):
+        if(not global_.running.is_set()):
+            self.interface.reactToMessage("stop_button")
+            return 1                                                            # Running flag
+        
+        if(global_.pause.is_set()):
+            NTCP,connection_error = self.connect()                              # Connect to nanonis via TCP
+            if(connection_error):
+                self.interface.sendReply(connection_error)                      # Return error message if there was a problem connecting
+                return 1
+            scan = Scan(NTCP)
+            scan.Action(scan_action='pause')
+            
+            self.interface.reactToMessage("pause")
+            
+            while global_.pause.is_set():
+                time.sleep(2)                                                   # Sleep for a bit
+                if(not global_.running.is_set()):
+                    self.interface.reactToMessage("stop_button")
+                    self.disconnect(NTCP)
+                    return 1
+                
+            self.interface.reactToMessage("play")
+            scan.Action(scan_action='resume')
+            self.disconnect(NTCP)
 ###############################################################################
 # Nanonis TCP Connection
 ###############################################################################

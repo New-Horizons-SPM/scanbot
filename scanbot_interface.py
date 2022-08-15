@@ -13,9 +13,13 @@ from firebase_admin import credentials, storage
 
 import os
 import sys
+import subprocess
 from pathlib import Path
 
 import ipaddress
+
+import global_
+import threading
 
 class scanbot_interface(object):
     bot_message = []
@@ -29,6 +33,7 @@ class scanbot_interface(object):
         print("Initialising app...")
         self.scanbot = scanbot(self)
         self.loadConfig()
+        self.initGlobals()
         self.initCommandDict()
     
 ###############################################################################
@@ -44,14 +49,17 @@ class scanbot_interface(object):
         print("Loading scanbot_config.ini...")
         initDict = {'zuliprc'                   : '',                           # Zulip rc file. See https://zulip.com/api/running-bots
                     'upload_method'             : 'path',                       # Ping data via this channel.
-                    'path'                      : './sbData',                   # Path to save data (if upload_method=path)
+                    'path'                      : 'sbData',                     # Path to save data (if upload_method=path)
                     'firebase_credentials'      : '',                           # Credentials for firebase (if upload_method=firebase)
                     'firebase_storage_bucket'   : '',                           # Firebase bucket. Firebase path uses "path" key
                     'port_list'                 : '6501,6502,6503,6504',        # Ports (see nanonis => Main Options => TCP Programming Interface)
                     'ip'                        : '127.0.0.1',                  # IP of the pc controlling nanonis
                     'creeplist'                 : '',                           # IP addresses to creep
                     'notify_list'               : '',                           # Comma delimited zulip users to @notify when sending data
-                    'temp_calibration_curve'    : ''}                           # Path to temp calibration curve (see nanonis Temperature modules)
+                    'temp_calibration_curve'    : '',                           # Path to temp calibration curve (see nanonis Temperature modules)
+                    'topo_basename'             : '',                           # basename for topographic images
+                    'send_to_cloud'             : '0',                          # Flag to send data to the cloud
+                    'cloud_path'                : ''}                           # user@clouddatabase:path.
         
         try:
             with open('scanbot_config.ini','r') as f:                           # Go through the config file to see what defaults need to be overwritten
@@ -59,7 +67,9 @@ class scanbot_interface(object):
                 while(line):
                     line = f.readline()[:-1]
                     if(line.startswith('#')): print(line); continue             # Comment
-                    if(not '=' in line):      print(line); continue             # Comment
+                    if(not '=' in line):
+                        print("Warning, invalid line in config file: " + line)
+                        continue
                     key, value = line.split('=')                                # Format for valid line is "Key=Value"
                     if(not key in initDict):                                    # Key must be one of initDict keys
                         print("Invalid key in scanbot_config.txt: " + key)
@@ -119,6 +129,14 @@ class scanbot_interface(object):
         
         self.tempCurve = initDict['temp_calibration_curve']
         
+        self.topoBasename = initDict['topo_basename']
+        
+        self.sendToCloud = initDict['send_to_cloud']
+        self.cloudPath = initDict['cloud_path']
+        if(self.sendToCloud == 1):
+            if(not self.cloudPath):
+                raise Exception("Check config file... cloud path not provided")
+                
         self.loadWhitelist()
         
     def firebaseInit(self):
@@ -142,6 +160,11 @@ class scanbot_interface(object):
         except:
             print('No whitelist found... create one with add_user')
     
+    def initGlobals(self):
+        global_.tasks   = []
+        global_.running = threading.Event()                                     # event to stop threads
+        global_.pause   = threading.Event()                                     # event to pause threads
+        
     def initCommandDict(self):
         self.commands = {
                         # Configuration commands
@@ -158,6 +181,7 @@ class scanbot_interface(object):
                          'get_path'         : lambda args: self.path,
                          'plot_channel'     : self.plotChannel,
                         # Scanbot commands
+                         'stop'             : self.stop,
                          'plot'             : self.plot,
                          'survey'           : self.survey,
                         # Misc
@@ -168,6 +192,26 @@ class scanbot_interface(object):
 ###############################################################################
 # Scanbot Commands
 ###############################################################################
+    def stop(self,user_args,_help=False):
+        arg_dict = {'-s' : ['1', lambda x: int(x), "(int) Stop scan in progress. 1=Yes"]}
+        
+        if(_help): return arg_dict
+        
+        error,user_arg_dict = self.userArgs(arg_dict,user_args)
+        if(error): return error + "\nRun ```help plot``` if you're unsure."
+        
+        args = self.unpackArgs(user_arg_dict)
+        
+        if(global_.running.is_set()):
+            global_.running.clear()
+            global_.pause.clear()
+            
+            if(args[0] == 1): self.scanbot.stop()
+            
+            global_.tasks.join()
+        else:
+            if(args[0] == 1): self.scanbot.stop()
+        
     def plot(self,user_args,_help=False):
         arg_dict = {'-c' : ['-1', lambda x: int(x), "(int) Channel to plot. -1 plots the default channel which can be set using plot_channel"]}
         
@@ -196,6 +240,7 @@ class scanbot_interface(object):
         
         args = self.unpackArgs(user_arg_dict)
         
+        # self.scanbot.survey(*args,message=self.bot_message.copy())
         func = lambda : self.scanbot.survey(*args,message=self.bot_message.copy())
         return self.threadTask(func)
 ###############################################################################
@@ -302,6 +347,10 @@ class scanbot_interface(object):
         
         args = self.unpackArgs(user_arg_dict)
         return self.scanbot.plotChannel(*args)
+    
+    def getStatus(self,user_args,_help=False):
+        return ("Running flag: " + global_.running.is_set() + "\n" +
+                "Pause flag:   " + global_.pause.is_set())
 ###############################################################################
 # Comms
 ###############################################################################
@@ -424,6 +473,14 @@ class scanbot_interface(object):
 ###############################################################################
 # Misc
 ###############################################################################
+    def threadTask(self,func,override=False):
+        if(override): self.stop(args=[])
+        if global_.running.is_set(): return "Error: something already running"
+        global_.running.set()
+        t = threading.Thread(target=func)
+        global_.tasks = t
+        t.start()
+        
     def _help(self,args):
         if(not len(args)):
             helpStr = "Type ```help <command name>``` for more info\n"
@@ -482,6 +539,14 @@ class scanbot_interface(object):
             args.append(value[1](value[0]))                                     # Convert the string into data type
         
         return args
+    
+    def uploadToCloud(self,filename):
+        try:
+            subprocess.run(["scp", filename, self.cloudPath])
+            os.remove(filename)
+        except Exception as e:
+            self.sendReply("Error uploading file to cloud with command\nscp " +
+                           filename + " " + self.cloudPath + "\n\n" + str(e))
     
     def _quit(self,arg_dict):
         sys.exit()

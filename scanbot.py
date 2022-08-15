@@ -82,6 +82,7 @@ class scanbot():
                 if(i+ox>range_x/2 or j+oy>range_y/2):
                     self.interface.sendReply("Survey error: Grid size exceeds scan area",message=message)
                     self.disconnect(NTCP)                                       # Close the TCP connection
+                    global_.running.clear()                                     # Free up the running flag
                     return
             x = np.array(list(reversed(x)))                                     # Snake the grid - better for drift
             
@@ -119,11 +120,14 @@ class scanbot():
             pngFilename = self.makePNG(scanData, filePath)                      # Generate a png from the scan data
             self.interface.sendPNG(pngFilename,notify=True,message=message)     # Send a png over zulip
             
+            print("taken image")
             if(self.interface.sendToCloud):
+                print("calling pkl data")
                 self.interface.uploadToCloud(self.pklData(scanData, filePath))  # Send data to cloud database
         
         scan.PropsSet(series_name=basename)                                     # Put back the original basename
         self.disconnect(NTCP)                                                   # Close the TCP connection
+        global_.running.clear()                                                 # Free up the running flag
         
         self.interface.sendReply('survey \'' + suffix + '\' done',message=message) # Send a notification that the survey has completed
         
@@ -203,18 +207,31 @@ class scanbot():
         
         return pngFilename
     
-    def pklData(self,scanData,filePath):
+    def pklData(self,scanData,filePath,comments=""):
+        print("pkling data")
         NTCP,connection_error = self.connect()                                  # Connect to nanonis via TCP
         if(connection_error): return "scanbot/pkldata: " + connection_error
-        
-        # scan = Scan(NTCP)
+        print("getting params")
+        scan = Scan(NTCP)
+        x,y,w,h,angle    = scan.FrameGet()
+        _,_,pixels,lines = scan.BufferGet()
         
         filename = ntpath.split(filePath)[1]
-        pklDict = { "sxm"   : filename,
-                    "data"  : scanData}
-        
+        pklDict = { "sxm"       : filename,
+                    "data"      : scanData,
+                    "comments"  : comments,
+                    "pixels"    : pixels,
+                    "lines"     : lines,
+                    "x"         : x,
+                    "y"         : y,
+                    "w"         : w,
+                    "h"         : h,
+                    "angle"     : angle}
+        print("saving pkl")
         pickle.dump(pklDict, open(filename + ".pkl", 'wb'))                     # Pickle containing config settings and unlabelled data
         
+        self.disconnect(NTCP); 
+        print(filename)
         return filename + ".pkl"
         
     def checkEventFlags(self,message = ""):

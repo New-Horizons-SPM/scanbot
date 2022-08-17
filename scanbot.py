@@ -66,7 +66,7 @@ class scanbot():
         
         self.disconnect(NTCP)                                                   # Close the TCP connection
     
-    def survey(self,bias,n,i,suffix,xy,dx,px,sleepTime,ox=0,oy=0,message="",enhance=False):
+    def survey(self,bias,n,startAt,suffix,xy,dx,px,sleepTime,ox=0,oy=0,message="",enhance=False):
         NTCP,connection_error = self.connect()                                  # Connect to nanonis via TCP
         if(connection_error): return connection_error                           # Return error message if there was a problem connecting   
         
@@ -100,7 +100,7 @@ class scanbot():
             scan.BufferSet(pixels=px,lines=px)
         
         for idx,frame in enumerate(frames):
-            if(idx < i-1): continue
+            if(idx < startAt-1): continue
             
             self.interface.sendReply('Running scan ' + str(idx + 1) + '/' + str(n**2),message=message) # Send a message that the next scan is starting
             

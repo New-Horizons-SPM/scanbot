@@ -9,6 +9,8 @@ from nanonisTCP import nanonisTCP
 from nanonisTCP.Scan import Scan
 from nanonisTCP.Signals import Signals
 from nanonisTCP.Piezo import Piezo
+from nanonisTCP.Bias import Bias
+from nanonisTCP.ZController import ZController
 
 import time
 import ntpath
@@ -128,7 +130,7 @@ class scanbot():
         global_.running.clear()                                                 # Free up the running flag
         
         self.interface.sendReply('survey \'' + suffix + '\' done',message=message) # Send a notification that the survey has completed
-        
+    
 ###############################################################################
 # Config
 ###############################################################################
@@ -187,6 +189,25 @@ class scanbot():
 ###############################################################################
 # Utilities
 ###############################################################################
+    def rampBias(self,NTCP,bias,dbdt=1,db=50e-3,zhold=True):                    # Ramp the tip bias from current value to final value at a rate of db/dt
+        if(bias == 0): return
+        biasModule = Bias(NTCP)                                                 # Nanonis Bias module
+        zController = ZController(NTCP)                                         # Nanonis ZController module
+        
+        sleepTime   = db/dbdt                                                   # Sleep interval for changing bias by step size
+        currentBias = biasModule.Get()                                          # Grab the current tip bias from nanonis
+        
+        if(zhold): zController.OnOffSet(False)                                  # Turn off the z-controller if we need to
+        
+        if(bias < currentBias): db = -db                                        # flip the sign of db if we're going down in bias
+        for b in np.arange(currentBias,bias,db):                                # Change the bias according to step size
+            if(b and abs(b) <= 10): biasModule.Set(b)                           # Set the tip bias in nanonis. skip b == 0
+            time.sleep(sleepTime)                                               # sleep a bit
+        
+        biasModule.Set(bias)                                                    # Set the final bias in case the step size doesn't get us there nicely
+        
+        if(zhold): zController.OnOffSet(True)                                   # Turn the controller back on if we need to
+        
     def makePNG(self,scanData,filePath='',pngFilename='im.png'):
         fig, ax = plt.subplots(1,1)
         

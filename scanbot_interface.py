@@ -240,7 +240,6 @@ class scanbot_interface(object):
         
         args = self.unpackArgs(user_arg_dict)
         
-        # self.scanbot.survey(*args,message=self.bot_message.copy())
         func = lambda : self.scanbot.survey(*args,message=self.bot_message.copy())
         return self.threadTask(func)
 ###############################################################################
@@ -541,14 +540,11 @@ class scanbot_interface(object):
         return args
     
     def uploadToCloud(self,filename):
-        print(filename)
         if(not filename.endswith(".pkl")): return filename
         try:
-            print("Uploading to cloud")
             subprocess.run(["scp", filename, self.cloudPath])
             os.remove(filename)
         except Exception as e:
-            print("Failed")
             self.sendReply("Error uploading file to cloud with command\nscp " +
                            filename + " " + self.cloudPath + "\n\n" + str(e))
     

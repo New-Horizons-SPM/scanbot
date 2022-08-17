@@ -120,9 +120,7 @@ class scanbot():
             pngFilename = self.makePNG(scanData, filePath)                      # Generate a png from the scan data
             self.interface.sendPNG(pngFilename,notify=True,message=message)     # Send a png over zulip
             
-            print("taken image")
             if(self.interface.sendToCloud):
-                print("calling pkl data")
                 self.interface.uploadToCloud(self.pklData(scanData, filePath))  # Send data to cloud database
         
         scan.PropsSet(series_name=basename)                                     # Put back the original basename
@@ -208,10 +206,9 @@ class scanbot():
         return pngFilename
     
     def pklData(self,scanData,filePath,comments=""):
-        print("pkling data")
         NTCP,connection_error = self.connect()                                  # Connect to nanonis via TCP
         if(connection_error): return "scanbot/pkldata: " + connection_error
-        print("getting params")
+        
         scan = Scan(NTCP)
         x,y,w,h,angle    = scan.FrameGet()
         _,_,pixels,lines = scan.BufferGet()
@@ -227,11 +224,11 @@ class scanbot():
                     "w"         : w,
                     "h"         : h,
                     "angle"     : angle}
-        print("saving pkl")
+        
         pickle.dump(pklDict, open(filename + ".pkl", 'wb'))                     # Pickle containing config settings and unlabelled data
         
         self.disconnect(NTCP); 
-        print(filename)
+        
         return filename + ".pkl"
         
     def checkEventFlags(self,message = ""):

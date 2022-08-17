@@ -99,7 +99,11 @@ class scanbot():
             px = int(np.ceil(px/16)*16)                                         # Pixels must be divisible by 16
             scan.BufferSet(pixels=px,lines=px)
         
-        for frame in frames:
+        for idx,frame in enumerate(frames):
+            if(idx < i-1): continue
+            
+            self.interface.sendReply('Running scan ' + str(idx + 1) + '/' + str(n**2),message=message) # Send a message that the next scan is starting
+            
             slept = 0
             scan.FrameSet(*frame)                                               # Set the coordinates and size of the frame window in nanonis
             scan.Action('start')                                                # Start the scan. default direction is "up"

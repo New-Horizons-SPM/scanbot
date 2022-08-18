@@ -176,6 +176,7 @@ uploadFolder = browseFolder()
 while(uploadFolder):
     file_list = os.listdir(uploadFolder)
     sxmFiles = [uploadFolder + "/" + f for f in file_list if f.endswith(".sxm")]    # Get .sxm filenames in selected directory
+    sendMessage(zulipClient,"---\nUploading data from local path\n" + uploadFolder)
     for sxmFile in sxmFiles:
         sxm = nap.read.Scan(sxmFile)
         scanData = np.array(sxm.signals["Z"]['forward'])

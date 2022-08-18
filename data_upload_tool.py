@@ -98,6 +98,8 @@ def loadConfig():
     if(not cloudPath):
         raise Exception("Check config file... cloud path not provided\n" + 
                         "cloud_path is also used to save data locally when send_to_cloud = 0")
+    if(not cloudPath.endswith('/')):
+        cloudPath += '/'
         
     return zulipClient, path, sendToCloud, cloudPath
 

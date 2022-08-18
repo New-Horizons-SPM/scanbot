@@ -24,6 +24,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import ntpath
 import time
+import pickle
 
 def firebaseInit(firebaseCert,firebaseStorageBucket):
     try:
@@ -172,8 +173,18 @@ def browseFolder():
 ###############################################################################
 zulipClient, path, sendToCloud, cloudPath = loadConfig()
 
+try:
+    alreadyUploaded = pickle.load(open(path + 'uploaded_directories.pkl','rb'))
+except:
+    alreadyUploaded = []
+    
 uploadFolder = browseFolder()
 while(uploadFolder):
+    if(uploadFolder in alreadyUploaded):
+        print("Path already uploaded:\n" + uploadFolder)
+        uploadFolder = browseFolder()
+        continue
+        
     file_list = os.listdir(uploadFolder)
     sxmFiles = [uploadFolder + "/" + f for f in file_list if f.endswith(".sxm")]    # Get .sxm filenames in selected directory
     sendMessage(zulipClient,"---\nUploading data from local path\n" + uploadFolder)
@@ -193,7 +204,8 @@ while(uploadFolder):
         pklFile = utilities.pklDict(scanData, sxmFile, x, y, w, h, angle, pixels, lines)
         uploadToCloud(pklFile,cloudPath)
         time.sleep(1)
-
+    
+    alreadyUploaded.append(uploadFolder)
     uploadFolder = browseFolder()
 
 

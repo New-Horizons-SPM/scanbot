@@ -174,7 +174,7 @@ def browseFolder():
 zulipClient, path, sendToCloud, cloudPath = loadConfig()
 
 try:
-    alreadyUploaded = pickle.load(open(path + 'uploaded_directories.pkl','rb')) # Keep track of directories we've already uploaded
+    alreadyUploaded = pickle.load(open(cloudPath + 'uploaded_directories.pkl','rb')) # Keep track of directories we've already uploaded
 except:
     alreadyUploaded = []
     
@@ -209,4 +209,4 @@ while(uploadFolder):
     uploadFolder = browseFolder()
 
 
-pickle.dump(alreadyUploaded, open(path + 'uploaded_directories.pkl', 'wb'))     # Pickle containing entire list of directories already uploaded
+pickle.dump(alreadyUploaded, open(cloudPath + 'uploaded_directories.pkl', 'wb'))     # Pickle containing entire list of directories already uploaded

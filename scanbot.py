@@ -15,12 +15,13 @@ from nanonisTCP.ZController import ZController
 import time
 import ntpath
 import numpy as np
-import nanonispyfit as nap
+import nanonispyfit as napfit
 import matplotlib.pyplot as plt
 
 import global_
 
 import pickle
+import utilities
 
 class scanbot():
     channel = 14
@@ -127,7 +128,9 @@ class scanbot():
             self.interface.sendPNG(pngFilename,notify=True,message=message)     # Send a png over zulip
             
             if(self.interface.sendToCloud):
-                self.interface.uploadToCloud(self.pklData(scanData, filePath))  # Send data to cloud database
+                metaData = self.getMetaData(filePath)
+                pklFile = utilities.pklDict(scanData,filePath,*metaData,comments="scanbot")
+                self.interface.uploadToCloud(pklFile)                           # Send data to cloud database
         
         scan.PropsSet(series_name=basename)                                     # Put back the original basename
         self.disconnect(NTCP)                                                   # Close the TCP connection
@@ -217,8 +220,8 @@ class scanbot():
         
         mask = np.isnan(scanData)                                               # Mask the Nan's
         scanData[mask == True] = np.nanmean(scanData)                           # Replace the Nan's with the mean so it doesn't affect the plane fit
-        scanData = nap.plane_fit_2d(scanData)                                   # Flattern the image
-        vmin, vmax = nap.filter_sigma(scanData)                                 # cmap saturation
+        scanData = napfit.plane_fit_2d(scanData)                                # Flattern the image
+        vmin, vmax = napfit.filter_sigma(scanData)                              # cmap saturation
         
         ax.imshow(scanData, cmap='Blues_r', vmin=vmin, vmax=vmax)               # Plot
         ax.axis('off')
@@ -230,31 +233,17 @@ class scanbot():
         
         return pngFilename
     
-    def pklData(self,scanData,filePath,comments=""):
+    def getMetaData(self,filePath):
         NTCP,connection_error = self.connect()                                  # Connect to nanonis via TCP
-        if(connection_error): return "scanbot/pkldata: " + connection_error
+        if(connection_error): return "getMetaData: " + connection_error
         
         scan = Scan(NTCP)
         x,y,w,h,angle    = scan.FrameGet()
         _,_,pixels,lines = scan.BufferGet()
         
-        filename = ntpath.split(filePath)[1]
-        pklDict = { "sxm"       : filename,
-                    "data"      : scanData,
-                    "comments"  : comments,
-                    "pixels"    : pixels,
-                    "lines"     : lines,
-                    "x"         : x,
-                    "y"         : y,
-                    "w"         : w,
-                    "h"         : h,
-                    "angle"     : angle}
-        
-        pickle.dump(pklDict, open(filename + ".pkl", 'wb'))                     # Pickle containing config settings and unlabelled data
-        
         self.disconnect(NTCP); 
         
-        return filename + ".pkl"
+        return [x,y,w,h,angle,pixels,lines]
         
     def checkEventFlags(self,message = ""):
         if(not global_.running.is_set()):

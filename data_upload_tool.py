@@ -191,21 +191,25 @@ while(uploadFolder):
     sxmFiles = [uploadFolder + "/" + f for f in file_list if f.endswith(".sxm")]    # Get .sxm filenames in selected directory
     sendMessage(zulipClient,"---\nUploading data from local path\n" + uploadFolder)
     for sxmFile in sxmFiles:
-        sxm = nap.read.Scan(sxmFile)
-        scanData = np.array(sxm.signals["Z"]['forward'])
-        x,y = sxm.header['scan_offset']
-        w,h = sxm.header['scan_range']
-        angle = float(sxm.header['scan_angle'])
-        pixels,lines = sxm.header['scan_pixels']
-        comments = "Data upload tool"
-        
-        pngFilename = makePNG(scanData,sxmFile)
-        message = uploadPNG(pngFilename,path,uploadMethod="firebase")
-        sendMessage(zulipClient,message)
-        
-        pklFile = utilities.pklDict(scanData, sxmFile, x, y, w, h, angle, pixels, lines)
-        uploadToCloud(pklFile,cloudPath)
-        time.sleep(1)
+        try:
+            sxm = nap.read.Scan(sxmFile)
+            scanData = np.array(sxm.signals["Z"]['forward'])
+            if(np.isnan(scanData).any()): continue
+            x,y = sxm.header['scan_offset']
+            w,h = sxm.header['scan_range']
+            angle = float(sxm.header['scan_angle'])
+            pixels,lines = sxm.header['scan_pixels']
+            comments = "Data upload tool"
+            
+            pngFilename = makePNG(scanData,sxmFile)
+            message = uploadPNG(pngFilename,path,uploadMethod="firebase")
+            sendMessage(zulipClient,message)
+            
+            pklFile = utilities.pklDict(scanData, sxmFile, x, y, w, h, angle, pixels, lines)
+            uploadToCloud(pklFile,cloudPath)
+            time.sleep(0.2)
+        except:
+            print("error processing " + sxmFile)
     
     alreadyUploaded.append(uploadFolder)
     uploadFolder = browseFolder()

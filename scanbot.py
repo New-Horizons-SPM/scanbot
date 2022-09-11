@@ -23,6 +23,8 @@ import global_
 import pickle
 import utilities
 
+import imageio
+
 class scanbot():
     channel = 14
 ###############################################################################
@@ -67,7 +69,7 @@ class scanbot():
         
         self.disconnect(NTCP)                                                   # Close the TCP connection
     
-    def survey(self,bias,n,startAt,suffix,xy,dx,px,sleepTime,ox=0,oy=0,message="",enhance=False):
+    def survey(self,bias,n,startAt,suffix,xy,dx,px,sleepTime,stitch,ox=0,oy=0,message="",enhance=False):
         NTCP,connection_error = self.connect()                                  # Connect to nanonis via TCP
         if(connection_error): return connection_error                           # Return error message if there was a problem connecting   
         
@@ -100,6 +102,11 @@ class scanbot():
             px = int(np.ceil(px/16)*16)                                         # Pixels must be divisible by 16
             scan.BufferSet(pixels=px,lines=px)
         
+        stitchedSurvey = []
+        if(stitch == 1):
+            _,_,px,lines = scan.BufferGet()
+            stitchedSurvey = np.zeros((lines*n,px*n))
+        
         for idx,frame in enumerate(frames):
             if(idx < startAt-1): continue
             
@@ -124,13 +131,21 @@ class scanbot():
             if(not filePath): time.sleep(0.2); continue                         # If user stops the scan, filePath will be blank, then go to the next scan
             
             _,scanData,_ = scan.FrameDataGrab(14, 1)                            # Grab the data within the scan frame. Channel 14 is . 1 is forward data direction
-            pngFilename = self.makePNG(scanData, filePath)                      # Generate a png from the scan data
+            pngFilename,im = self.makePNG(scanData, filePath)                   # Generate a png from the scan data
             self.interface.sendPNG(pngFilename,notify=True,message=message)     # Send a png over zulip
+            
+            if(stitch):
+                row = idx//n
+                col = ((row)%2)*((n-1) - idx%n) + ((row+1)%2)*idx%n
+                stitchedSurvey[row*lines,px*col] = im
             
             if(self.interface.sendToCloud):
                 metaData = self.getMetaData(filePath)
                 pklFile = utilities.pklDict(scanData,filePath,*metaData,comments="scanbot")
                 self.interface.uploadToCloud(pklFile)                           # Send data to cloud database
+        
+        stitchFilepath = self.makePNG(stitchedSurvey,pngFilename = suffix)
+        self.interface.sendPNG(pngFilename,notify=True,message=message)     # Send a png over zulip
         
         scan.PropsSet(series_name=basename)                                     # Put back the original basename
         self.disconnect(NTCP)                                                   # Close the TCP connection
@@ -215,7 +230,7 @@ class scanbot():
         
         if(zhold): zController.OnOffSet(True)                                   # Turn the controller back on if we need to
         
-    def makePNG(self,scanData,filePath='',pngFilename='im.png'):
+    def makePNG(self,scanData,filePath='',pngFilename='im.png',returnPNG=False):
         fig, ax = plt.subplots(1,1)
         
         mask = np.isnan(scanData)                                               # Mask the Nan's
@@ -228,9 +243,12 @@ class scanbot():
         
         if filePath: pngFilename = ntpath.split(filePath)[1] + '.png'
         
-        fig.savefig(pngFilename, dpi=60, bbox_inches='tight', pad_inches=0)
+        fig.savefig(pngFilename, dpi=150, bbox_inches='tight', pad_inches=0)
         plt.close('all')
         
+        im = imageio.imread(pngFilename)
+        
+        if(returnPNG): return pngFilename,im
         return pngFilename
     
     def getMetaData(self,filePath):

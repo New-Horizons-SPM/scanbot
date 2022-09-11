@@ -231,7 +231,8 @@ class scanbot_interface(object):
                     '-xy'   : ['100e-9',   lambda x: float(x), "(float) Length and width of the scan frame (m)"],
                     '-dx'   : ['150e-9',   lambda x: float(x), "(float) Scan grid spacing (m)"],
                     '-px'   : ['-default', lambda x: int(x),   "(int) Number of pixels"],
-                    '-st'   : ['10',       lambda x: float(x), "(float) Drift compensation time (s)"]}
+                    '-st'   : ['10',       lambda x: float(x), "(float) Drift compensation time (s)"],
+                    '-stitch':['1',        lambda x: float(x), "(int) Return the stitched survey after completion. 1: Yes, else No"]}
         
         if(_help): return arg_dict
         

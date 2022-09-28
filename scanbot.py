@@ -13,6 +13,7 @@ from nanonisTCP.Bias import Bias
 from nanonisTCP.ZController import ZController
 from nanonisTCP.Motor import Motor
 from nanonisTCP.AutoApproach import AutoApproach
+from nanonisTCP.Current import Current
 
 import time
 import ntpath
@@ -31,6 +32,7 @@ class scanbot():
 ###############################################################################
     def __init__(self,interface):
         self.interface = interface
+        self.safetyParams = [5e-9,2100,270]                                     # [0]: safe current threshold. [1]: safe retract motor frequency. [2]: safe retract motor voltage
 
 ###############################################################################
 # Actions
@@ -421,6 +423,58 @@ class scanbot():
             self.interface.reactToMessage("play")
             scan.Action(scan_action='resume')
             self.disconnect(NTCP)
+            
+    def safeCurrentCheck(self,NTCP):
+        motor         = Motor(NTCP)                                             # Nanonis Motor module
+        zController   = ZController(NTCP)                                       # Nanonis Z-Controller module
+        currentModule = Current(NTCP)                                           # Nanonis Current module
+        
+        current = abs(currentModule.Get())                                      # Get the tip current
+        threshold = self.safetyParams[0]                                        # Threshold current from safety params
+        
+        print("Safe check... Current: " + str(current)
+            + ", threshold: " + str(threshold))
+        
+        if(current < threshold):
+            return True                                                         # All good if the current is below the threshold
+        
+        self.interface.sendReply("---\nWarning: Safe retract has been triggered.\n"
+                                 + "Current: " + str(current*1e9) + " nA\n"
+                                 + "Threshold: " + str(threshold*1e9) + " nA\n")
+        
+        zController.Withdraw(wait_until_finished=False)                         # Retract the tip
+        
+        try:                                                                    # Stop anything running. try/except is probably overkill but just in case
+            print("Stopping other processes...")
+            self.interface.stop(args=[])
+        except Exception as e:
+            self.interface.sendReply("---\nWarning: error stopping processes during safe retract...")
+            self.interface.sendReply(str(e) + "\n---")
+        
+        safeFreq    = self.safetyParams[1]                                      # Motor frequency for safe retract from safety parameters
+        safeVoltage = self.safetyParams[2]                                      # Motor voltage for safe retract from safety parameters
+        motor.FreqAmpSet(safeFreq,safeVoltage)                                  # Set the motor frequency/voltage in the nanonis motor control module
+        motor.StartMove(direction="Z+", steps=50,wait_until_finished=True)      # Move up 50 steps immediately
+        print("Retracted and moved 50 motor steps up")
+        
+        count = 0                                                               # Keep track of how many steps we've gone up
+        while(current > threshold):                                             # Kepp moving 50 steps in Z+ until the current is < threshold
+            if(count%5 == 0):                                                   # Send a warning over the interface every 250 motor steps
+                self.interface.sendReply("---\n"
+                                     + "Warning: Safe retract has been triggered.\n"
+                                     + "Current still above threshold after "
+                                     + str((count+1)*50) + " Z+ motor steps.\n" 
+                                     + "Current: " + str(current*1e9) + " nA\n"
+                                     + "Threshold: " + str(threshold*1e9) + " nA\n")
+                
+            motor.StartMove(direction="Z+", steps=50,wait_until_finished=True)  # Move another 50 steps up
+            current = abs(currentModule.Get())                                  # Get the tip current after moving
+            count += 1
+            print("Retracting another 50 steps... current: " + str(current*1e9) + " nA")
+        
+        self.interface.sendReply("Warning: Safe retract complete... current: " + str(current*1e9) + " nA\n---\n")
+        return False
+    
 ###############################################################################
 # Nanonis TCP Connection
 ###############################################################################

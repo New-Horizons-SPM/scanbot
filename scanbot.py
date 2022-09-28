@@ -225,7 +225,7 @@ class scanbot():
         
         self.interface.reactToMessage("working_on_it")
         
-        self.stop(args=[])
+        self.stop()
         
         print("withdrawing")
         zController.Withdraw(wait_until_finished=True,timeout=3)                # Withdwar the tip

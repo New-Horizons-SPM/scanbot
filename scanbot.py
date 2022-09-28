@@ -20,10 +20,7 @@ import matplotlib.pyplot as plt
 
 import global_
 
-import pickle
 import utilities
-
-import imageio
 
 class scanbot():
     channel = 14

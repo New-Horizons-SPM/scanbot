@@ -184,6 +184,7 @@ class scanbot_interface(object):
                          'stop'             : self.stop,
                          'plot'             : self.plot,
                          'survey'           : self.survey,
+                         'move_area'        : self.moveArea,
                         # Misc
                          'quit'             : self._quit
                          
@@ -244,6 +245,25 @@ class scanbot_interface(object):
         
         func = lambda : self.scanbot.survey(*args,message=self.bot_message.copy())
         return self.threadTask(func)
+    
+    def moveArea(self,user_args,_help=False):
+        arg_dict = {'-up'    : ['20',   lambda x: int(x),   "(int) Steps to go up before moving across. min 10"],
+                    '-upV'   : ['270',  lambda x: float(x), "(float) Controller amplitude during up motor steps"],
+                    '-upF'   : ['2100', lambda x: float(x), "(float) Controller frequency during up motor steps"],
+                    '-dir'   : ['Y+',   lambda x: str(x),   "(str) Direction to go across (either X+, X-, Y+, Y-)"],
+                    '-steps' : ['10',   lambda x: int(x),   "(int) Steps to move across after moving -up number of steps"],
+                    '-dirV'  : ['130',  lambda x: float(x), "(float) Controller amplitude during across motor steps"],
+                    '-dirF'  : ['2100', lambda x: float(x), "(float) Controller frequency during across motor steps"],
+                    '-zon'   : ['1',    lambda x: int(x),   "(int) Turn the z-controller on after approaching. 1=on, 0=off"]}
+        
+        if(_help): return arg_dict
+        
+        error,user_arg_dict = self.userArgs(arg_dict,user_args)
+        if(error): return error + "\nRun ```help move_area``` if you're unsure."
+        
+        args = self.unpackArgs(user_arg_dict)
+        
+        self.scanbot.moveArea(*args)
 ###############################################################################
 # Config Commands
 ###############################################################################

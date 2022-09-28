@@ -11,6 +11,8 @@ from nanonisTCP.Signals import Signals
 from nanonisTCP.Piezo import Piezo
 from nanonisTCP.Bias import Bias
 from nanonisTCP.ZController import ZController
+from nanonisTCP.Motor import Motor
+from nanonisTCP.AutoApproach import AutoApproach
 
 import time
 import ntpath
@@ -151,7 +153,140 @@ class scanbot():
         global_.running.clear()                                                 # Free up the running flag
         
         self.interface.sendReply('survey \'' + suffix + '\' done',message=message) # Send a notification that the survey has completed
-    
+        
+    def moveArea(self,up,upV,upF,direction,steps,dirV,dirF,zon):
+        NTCP,connection_error = self.connect()                                  # Connect to nanonis via TCP
+        if(connection_error): return connection_error                           # Return error message if there was a problem connecting        
+        
+        # Safety checks
+        if(up < 10):
+            self.disconnect(NTCP)
+            self.interface.sendReply("-up must be > 10")
+            return
+        
+        if(upV > 300):
+            self.disconnect(NTCP)
+            self.interface.sendReply("-upV 300 V max")
+            return
+        
+        if(upF > 2.5e3):
+            self.disconnect(NTCP)
+            self.interface.sendReply("-upF 2.5 kHz max")
+            return
+        
+        if(dirV > 200):
+            self.disconnect(NTCP)
+            self.interface.sendReply("-dirV 200 V max")
+            return
+        
+        if(dirF > 2.5e3):
+            self.disconnect(NTCP)
+            self.interface.sendReply("-dirF 2.5 kHz max")
+            return
+        
+        if(upV < 1):
+            self.disconnect(NTCP)                                               # Close the TCP connection
+            self.interface.sendReply("-upV must be between 1 V and 200 V")
+            return
+            
+        if(upF < 500):
+            self.disconnect(NTCP)                                               # Close the TCP connection
+            self.interface.sendReply("-upF must be between 500 Hz and 2.5 kHz")
+            return
+        
+        if(dirV < 1):
+            self.disconnect(NTCP)                                               # Close the TCP connection
+            self.interface.sendReply("-upV must be between 1 V and 200 V")
+            return
+            
+        if(dirF < 500):
+            self.disconnect(NTCP)                                               # Close the TCP connection
+            self.interface.sendReply("-upF must be between 500 Hz and 2.5 kHz")
+            return
+        
+        if(not direction in ["X+","X-","Y+","Y-"]):
+            self.disconnect(NTCP)                                               # Close the TCP connection
+            self.interface.sendReply("-dir can only be X+, X-, Y+, Y-")
+            return
+        
+        if(steps < 0):
+            self.disconnect(NTCP)
+            self.interface.sendReply("-steps must be > 0")
+            return
+        
+        if(up < 0):
+            self.disconnect(NTCP)
+            self.interface.sendReply("-up must be > 0")
+            return
+        
+        motor         = Motor(NTCP)                                             # Nanonis Motor module
+        zController   = ZController(NTCP)                                       # Nanonis ZController module
+        autoApproach  = AutoApproach(NTCP)                                      # Nanonis AutoApproach module
+        
+        self.interface.reactToMessage("working_on_it")
+        
+        self.stop(args=[])
+        
+        print("withdrawing")
+        zController.Withdraw(wait_until_finished=True,timeout=3)                # Withdwar the tip
+        print("withdrew")
+        time.sleep(0.25)
+        
+        motor.FreqAmpSet(upF,upV)                                               # Set the motor controller params appropriate for Z piezos
+        motor.StartMove("Z+",up,wait_until_finished=True)                       # Retract the tip +Z direction
+        print("Moving motor: Z+" + " " + str(up) + "steps")
+        time.sleep(0.5)
+        
+        stepsAtATime = 10                                                       # Moving the motor across 10 steps at a time to be safe
+        leftOver     = steps%stepsAtATime                                       # Continue moving motor a few steps if stes is not divisible by 10
+        steps        = int(steps/stepsAtATime)                                  # Sets of 10 steps
+        
+        isSafe = True
+        motor.FreqAmpSet(dirF,dirV)                                             # Set the motor controller params appropriate for XY piezos
+        for s in range(steps):
+            motor.StartMove(direction,stepsAtATime,wait_until_finished=True)    # Move safe number of steps at a time
+            print("Moving motor: " + direction + " " + str(stepsAtATime) + "steps")
+            isSafe = self.safeCurrentCheck(NTCP)                                # Safe retract if current overload
+            if(not isSafe):
+                self.disconnect(NTCP)                                           # Close the TCP connection
+                self.interface.sendReply("Could not complete move_area...")
+                self.interface.sendReply("Safe retract was triggered because the current exceeded "
+                                         + str(self.safetyParams[0]*1e9) + " nA"
+                                         + " while moving areas")
+                return
+                
+            time.sleep(0.25)
+        
+        motor.StartMove(direction,leftOver,wait_until_finished=True)
+        print("Moving motor: " + direction + " " + str(leftOver) + "steps")
+        time.sleep(0.5)
+        
+        isSafe = self.safeCurrentCheck(NTCP)                                    # Safe retract if current overload
+        if(not isSafe):
+            self.disconnect(NTCP)                                               # Close the TCP connection
+            self.interface.sendReply("Could not complete move_area...")
+            self.interface.sendReply("Safe retract was triggered because the current exceeded "
+                                     + str(self.safetyParams[0]*1e9) + " nA"
+                                     + " while moving areas")
+            return
+        
+        self.interface.reactToMessage("double_down")
+        motor.FreqAmpSet(upF,upV)
+        autoApproach.Open()
+        autoApproach.OnOffSet(on_off=True)
+        
+        while(autoApproach.OnOffGet()):
+            print("Still approaching...")
+            time.sleep(1)
+        
+        time.sleep(1)
+        if(zon): zController.OnOffSet(True)
+        
+        time.sleep(3)
+        self.interface.reactToMessage("sparkler")
+        
+        self.disconnect(NTCP)                                                   # Close the TCP connection
+        
 ###############################################################################
 # Config
 ###############################################################################

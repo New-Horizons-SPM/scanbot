@@ -142,13 +142,14 @@ class scanbot():
                 col = ((row)%2)*((n-1) - idx%n) + ((row+1)%2)*idx%n
                 stitchedSurvey[(n-1-row)*lines:(n-1-row)*lines+lines,px*col:px*col+px] = scanData
             
-            if(self.interface.sendToCloud):
+            if(self.interface.sendToCloud == 1):
                 metaData = self.getMetaData(filePath)
                 pklFile = utilities.pklDict(scanData,filePath,*metaData,comments="scanbot")
                 self.interface.uploadToCloud(pklFile)                           # Send data to cloud database
         
-        stitchFilepath = self.makePNG(stitchedSurvey,pngFilename = suffix + '.png',dpi=150*n, fit=False)
-        self.interface.sendPNG(stitchFilepath,notify=False,message=message)     # Send a png over zulip
+        if(stitch == 1 and not np.isnan(stitchedSurvey).all()):
+            stitchFilepath = self.makePNG(stitchedSurvey,pngFilename = suffix + '.png',dpi=150*n, fit=False)
+            self.interface.sendPNG(stitchFilepath,notify=False,message=message)     # Send a png over zulip
         
         scan.PropsSet(series_name=basename)                                     # Put back the original basename
         self.disconnect(NTCP)                                                   # Close the TCP connection

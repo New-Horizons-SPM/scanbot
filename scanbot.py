@@ -396,11 +396,11 @@ class scanbot():
                 ox,oy = utilities.getFrameOffset(initialDC,driftCorrection,dxy)
                 print("DC: ox,oy: " + str([ox,oy]))
                 
-                scanFrame[0] += ox
-                scanFrame[1] += oy
+                scanFrame[0] -= ox
+                scanFrame[1] -= oy
                 scanModule.FrameSet(*scanFrame)
                 
-                tipPos += np.array([ox,oy])
+                tipPos -= np.array([ox,oy])
                 
             time.sleep(0.25)
             zController.OnOffSet(on=1)                                          # Turn on the controller to get reference

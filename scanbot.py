@@ -14,12 +14,16 @@ from nanonisTCP.ZController import ZController
 from nanonisTCP.Motor import Motor
 from nanonisTCP.AutoApproach import AutoApproach
 from nanonisTCP.Current import Current
+from nanonisTCP.FolMe import FolMe
 
 import time
+from datetime import datetime as dt
 import ntpath
 import numpy as np
 import nanonispyfit as napfit
 import matplotlib.pyplot as plt
+
+import numpy as np
 
 import global_
 
@@ -149,7 +153,7 @@ class scanbot():
         
         if(stitch == 1 and not np.isnan(stitchedSurvey).all()):
             stitchFilepath = self.makePNG(stitchedSurvey,pngFilename = suffix + '.png',dpi=150*n, fit=False)
-            self.interface.sendPNG(stitchFilepath,notify=False,message=message)     # Send a png over zulip
+            self.interface.sendPNG(stitchFilepath,notify=False,message=message) # Send a png over zulip
         
         scan.PropsSet(series_name=basename)                                     # Put back the original basename
         self.disconnect(NTCP)                                                   # Close the TCP connection
@@ -289,7 +293,184 @@ class scanbot():
         self.interface.reactToMessage("sparkler")
         
         self.disconnect(NTCP)                                                   # Close the TCP connection
+    
+    def zdep(self,zi,zf,nz,iset,dciset,bias,dcbias,ft,bt,dct,px,dcpx,lx,dclx,suffix,message=""):
+        NTCP,connection_error = self.connect()                                  # Connect to nanonis via TCP
+        if(connection_error): return connection_error                           # Return error message if there was a problem connecting        
         
+        scanModule = Scan(NTCP)
+        biasModule = Bias(NTCP)
+        zController = ZController(NTCP)
+        folme = FolMe(NTCP)
+        piezo = Piezo(NTCP)
+        
+        tipPos    = folme.XYPosGet(Wait_for_newest_data=1)
+        scanFrame = scanModule.FrameGet()
+        if(not self.tipInFrame(tipPos,scanFrame)):
+            self.interface.sendReply("Tip must be in scan frame to get setpoint")
+            self.disconnect(NTCP)                                                   # Close the TCP connection
+            return
+        
+        currentISet = zController.SetpntGet()
+        if(not iset == '-default'):                                             # Only update setpoint if the user provided it
+            if(abs(iset) > 1e-9):                                               # Limit to 1 nA to avoid accidental setpoints
+                self.interface.sendReply('Maximum setpoint using -iset is 1 nA. If you want iset > 1 nA, put the setting into nanonis and run zdep without the -iset param.')
+                self.disconnect(NTCP)
+                return
+        else:
+            iset = currentISet
+            
+        if(not dciset == '-default'):                                           # Only update setpoint if the user provided it
+            if(abs(dciset) > 1e-9):                                             # Limit to 1 nA to avoid accidental setpoints
+                self.interface.sendReply('Maximum setpoint using -dciset is 1 nA. If you want iset > 1 nA, put the setting into nanonis and run zdep without the -iset param.')
+                self.disconnect(NTCP)
+                return
+        else:
+            dciset = currentISet
+        
+        basename = self.interface.topoBasename                                  # Get the basename that's been set in config file
+        if(not basename): basename = scanModule.PropsGet()[3]                   # Get the save basename from nanonis if one isn't supplied
+        tempBasename = basename + '_' + suffix + '_'                            # Create a temp basename for this survey
+        scanModule.PropsSet(series_name=tempBasename)                           # Set the basename in nanonis for this survey
+        
+        _,_,pixels,lines = scanModule.BufferGet()
+        if(px   == '-default'):
+            px = pixels
+            lx = lines
+        if(dcpx == '-default'):
+            dcpx = pixels
+            dclx = lines
+            
+        if(lx   == 0): lx = px                                                  # Scan frame is square if lx = 0
+        if(dclx == 0): dclx = dcpx                                              # Scan frame is square if dclx = 0
+        
+        _,_,fwdTime,bwdTime,_,_ = scanModule.SpeedGet()
+        if(ft == '-default'): ft = fwdTime
+        if(bt == '-default'): bt = bwdTime
+        speedRatio = ft/bt                                                      # Speed ratio is forward time per line/backward time per line
+        
+        if(dct == '-default'): dct = fwdTime
+        
+        v = biasModule.Get()
+        if(bias   == '-default'): bias   = v
+        if(dcbias == '-default'): dcbias = v
+        
+        status, vx, vy, vz, _, _, _ = piezo.DriftCompGet()
+        if not status:
+            piezo.DriftCompSet(on=False, vx=0, vy=0, vz=0)
+            
+        previous_zref = {}
+        dx  = scanFrame[2]/px; dy  = scanFrame[3]/dclx
+        dxy = np.array([dx,dy])
+        ox,oy = np.array([0,0])
+        dzList = np.linspace(zi, zf, nz)
+        initialDC = np.zeros((dcpx,dcpx))
+        print("dzList: " + str(dzList))
+        for dz in dzList:
+            print("doing dz = " + str(dz*1e9) + " nm")
+            if(abs(dcbias) > 0):                                                # If drift correction is turned on, take a drift correction image
+                time.sleep(0.25)
+                zController.OnOffSet(on=1)                                      # Turn on the controller to get reference
+                
+                time.sleep(0.25)
+                print("DC: Setpoint: " + str(dciset*1e12) + " pA")
+                zController.SetpntSet(setpoint=abs(dciset))                     # Update setpoint current in nanonis
+                time.sleep(0.25)
+                
+                print("DC: px,lx: " + str([dcpx,dclx]))
+                scanModule.BufferSet(pixels=dcpx,lines=dclx)
+                print("DC: tpl: " + str(dct) + " s")
+                scanModule.SpeedSet(fwd_line_time=dct,speed_ratio=1)
+                
+                print("DC: Ramping bias: " + str(dcbias))
+                self.rampBias(NTCP, dcbias)
+                time.sleep(0.25)
+                
+                print("DC: Taking scan")
+                scanModule.PropsSet(series_name=tempBasename + str(dcbias) + "V-DC_") # Set the basename in nanonis for this survey
+                scanModule.Action('start',scan_direction='up')
+                _, _, filePath = scanModule.WaitEndOfScan()
+                _,driftCorrection,_ = scanModule.FrameDataGrab(14, 1)
+                
+                if(np.sum(initialDC) == 0): initialDC = driftCorrection
+                ox,oy = utilities.getFrameOffset(initialDC,driftCorrection,dxy)
+                print("DC: ox,oy: " + str([ox,oy]))
+                
+                scanFrame[0] += ox
+                scanFrame[1] += oy
+                scanModule.FrameSet(*scanFrame)
+                
+                tipPos += np.array([ox,oy])
+                
+            time.sleep(0.25)
+            zController.OnOffSet(on=1)                                          # Turn on the controller to get reference
+            print("CH: Moving tip: " + str(tipPos))
+            folme.XYPosSet(tipPos[0], tipPos[1], Wait_end_of_move=True)
+            
+            time.sleep(0.5)
+            print("CH: Setpoint: " + str(iset*1e12) + " pA")
+            zController.SetpntSet(setpoint=abs(iset))                           # Update setpoint current in nanonis
+            
+            zref = 0
+            time.sleep(0.5)
+            for i in range(100):
+                zref += zController.ZPosGet()/100                               # Average 100 values of z position. This is the position zi and zf are relative to
+                time.sleep(0.01)                                                # 10 ms sample rate
+            
+            if('time' in previous_zref):
+                deltaz = zref - previous_zref['z']
+                deltat = (dt.now() - previous_zref['time']).total_seconds()
+                dvz = deltaz/deltat
+                status, vx, vy, vz, _, _, _ = piezo.DriftCompGet()              # the vz velocity
+                print("deltaz/deltat = " + str(deltaz) + "/" + str(deltat))
+                print("vz,dvz,vz+dvz = " + str(vz) + "," + str(dvz) + "," + str(dvz + vz))
+                piezo.DriftCompSet(on=True, vx=vx, vy=vy, vz=vz+dvz)
+                
+            previous_zref = {'z' : zref,
+                             'time' : dt.now()}
+            print("setting previous zref to: " + str(previous_zref))
+            
+            print("CH: zref 100 averages: " + str(zref*1e9) + " nm")
+            zController.OnOffSet(on=False)                                      # Turn off the controller
+            
+            print("CH: Ramping bias: " + str(bias) + " V")
+            self.rampBias(NTCP, bias, zhold=False)                              # zhold=False leaves the zhold setting as is during bias ramp (i.e. don't turn controller on after bias ramp complete)
+            
+            time.sleep(0.25)
+            print("CH: moving to z=" + str(1e9*zref + 1e9*dz))
+            zController.ZPosSet(zpos=zref + dz)                                 # Go to the next position
+            
+            print("CH: px,lx: " + str([px,lx]))
+            scanModule.BufferSet(pixels=px,lines=lx)
+            print("CH: fwd,ratio: " + str([ft,speedRatio]))
+            scanModule.SpeedSet(fwd_line_time=ft,speed_ratio=speedRatio)
+            scanModule.Action('start',scan_direction='down')
+            _, _, filePath = scanModule.WaitEndOfScan()
+            if(not filePath): break
+            
+            _,scanData,_ = scanModule.FrameDataGrab(18, 1)                      # 14 = z., 18 is Freq. shift
+            
+            pngFilename = self.makePNG(scanData, filePath)                      # Generate a png from the scan data
+            
+            self.interface.sendPNG(pngFilename,notify=False,message=message)    # Send a png over zulip
+            
+        print("Finishing up.. turning controller on")
+        time.sleep(0.25)
+        zController.OnOffSet(on=1)                                              # Turn on the controller
+        
+        time.sleep(0.25)
+        zController.SetpntSet(setpoint=abs(iset))                               # Update setpoint current in nanonis
+        time.sleep(0.25)
+        scanModule.PropsSet(series_name=basename)                               # Put back the original basename
+        
+    def tipInFrame(self,tipPos,scanFrame):
+        tipX,tipY     = tipPos
+        x,y,w,h,angle = scanFrame
+        
+        if(tipX < x - w/2 or tipX > x + w/2): return False
+        if(tipY < y - h/2 or tipY > y + h/2): return False
+        
+        return True
 ###############################################################################
 # Config
 ###############################################################################

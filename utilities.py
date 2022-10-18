@@ -7,6 +7,9 @@ Created on Thu Aug 18 10:35:50 2022
 
 import ntpath
 import pickle
+import math
+import numpy as np
+import scipy.signal as sp
 
 def pklDict(scanData,filePath,x,y,w,h,angle,pixels,lines,comments=""):
     filename = ntpath.split(filePath)[1]
@@ -23,3 +26,43 @@ def pklDict(scanData,filePath,x,y,w,h,angle,pixels,lines,comments=""):
     
     pickle.dump(pklDict, open(filename + ".pkl", 'wb'))                         # Pickle containing config settings and unlabelled data
     return filename + ".pkl"
+
+###############################################################################
+# Drift Correction - gets the real-space offset between two frames
+###############################################################################
+def getFrameOffset(im1,im2,dxy=[1,1],theta=0):
+    """
+    Returns the offset of im2 relative to im1. im1 and im2 must be the same
+    size and scale. Keep dxy=[1,1] to return offset in units of pixels
+
+    Parameters
+    ----------
+    im1 : image to compare against
+    im2 : image to get the offset of
+    dxy : pixel size in x and y: [dx,dy]
+
+    Returns
+    -------
+    [ox,oy] : offset in x and y
+
+    """
+    im1_diff = np.diff(im1,axis=0)                                              # Differentiate along x
+    im2_diff = np.diff(im2,axis=0)                                              # Differentiate along x
+        
+    xcor = sp.correlate2d(im1_diff,im2_diff, boundary='symm', mode='same')
+    y,x  = np.unravel_index(xcor.argmax(), xcor.shape)
+
+    ni = np.array(xcor.shape)
+    oy,ox = np.array([y,x]).astype(int) - (ni/2).astype(int)
+    
+    ox += x%2                                                                   # Add in this offset because differentiating results in odd number of px 
+    
+    ox *= dxy[0]
+    oy *= -dxy[1]
+    
+    R = np.array([[math.cos(theta)**2,math.sin(theta)**2],                      # Rotation matrix to account for angle of scan frame
+                  [math.sin(theta)**2,math.cos(theta)**2]])
+    
+    ox,oy = np.matmul(R,np.array([ox,oy]).T)                                    # Account for angle of scan frame
+    
+    return np.array([ox,oy])

@@ -64,13 +64,24 @@ def getFrameOffset(im1,im2,dxy=[1,1],theta=0):
     oy *= -dxy[1]
     
     theta *= math.pi/180                                                        # Convert to radians
-    R = np.array([[math.cos(theta)**2,math.sin(theta)**2],                      # Rotation matrix to account for angle of scan frame
-                  [math.sin(theta)**2,math.cos(theta)**2]])
-    
-    ox,oy = np.matmul(R,np.array([ox,oy]).T)                                    # Account for angle of scan frame
+    ox,oy = rotate([0,0],[ox,oy],theta)
     
     return np.array([ox,oy])
 
+def rotate(origin, point, angle):
+    """
+    Taken from:
+    https://stackoverflow.com/questions/34372480/rotate-point-about-another-point-in-degrees-python
+    Rotate a point counterclockwise by a given angle around a given origin.
+
+    The angle should be given in radians.
+    """
+    ox, oy = origin
+    px, py = point
+
+    qx = ox + math.cos(angle) * (px - ox) - math.sin(angle) * (py - oy)
+    qy = oy + math.sin(angle) * (px - ox) + math.cos(angle) * (py - oy)
+    return qx, qy
 ###############################################################################
 # Make gif
 ###############################################################################

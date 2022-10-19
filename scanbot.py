@@ -309,7 +309,8 @@ class scanbot():
         scanFrame = scanModule.FrameGet()
         if(not self.tipInFrame(tipPos,scanFrame)):
             self.interface.sendReply("Tip must be in scan frame to get setpoint")
-            self.disconnect(NTCP)                                                   # Close the TCP connection
+            self.disconnect(NTCP)                                               # Close the TCP connection
+            global_.running.clear()                                             # Free up the running flag
             return
         
         currentISet = zController.SetpntGet()
@@ -317,6 +318,7 @@ class scanbot():
             if(abs(iset) > 1e-9):                                               # Limit to 1 nA to avoid accidental setpoints
                 self.interface.sendReply('Maximum setpoint using -iset is 1 nA. If you want iset > 1 nA, put the setting into nanonis and run zdep without the -iset param.')
                 self.disconnect(NTCP)
+                global_.running.clear()                                             # Free up the running flag
                 return
         else:
             iset = currentISet
@@ -325,6 +327,7 @@ class scanbot():
             if(abs(dciset) > 1e-9):                                             # Limit to 1 nA to avoid accidental setpoints
                 self.interface.sendReply('Maximum setpoint using -dciset is 1 nA. If you want iset > 1 nA, put the setting into nanonis and run zdep without the -iset param.')
                 self.disconnect(NTCP)
+                global_.running.clear()                                             # Free up the running flag
                 return
         else:
             dciset = currentISet
@@ -406,6 +409,7 @@ class scanbot():
                 _,driftCorrection,_ = scanModule.FrameDataGrab(14, 1)
                 
                 if(np.sum(initialDC) == 0): initialDC = driftCorrection
+                print("Scan Angle: " + str(scanFrame[4]))
                 ox,oy = utilities.getFrameOffset(initialDC,driftCorrection,dxy,theta=-scanFrame[4]) # Frame offset for drift correction. passing negative scan angle because nanonis is backwards
                 print("DC: ox,oy: " + str([ox,oy]))
                 

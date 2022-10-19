@@ -290,7 +290,8 @@ class scanbot_interface(object):
         
         args = self.unpackArgs(user_arg_dict)
         
-        self.scanbot.zdep(*args)
+        func = lambda : self.scanbot.zdep(*args,message=self.bot_message.copy())
+        return self.threadTask(func)
         
 ###############################################################################
 # Config Commands

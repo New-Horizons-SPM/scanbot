@@ -24,7 +24,7 @@ import threading
 class scanbot_interface(object):
     bot_message = []
     bot_handler = []
-    validUploadMethods = ['path','zulip','firebase']
+    validUploadMethods = ['path','zulip','firebase','no_upload']
     
 ###############################################################################
 # Constructor
@@ -48,7 +48,7 @@ class scanbot_interface(object):
         """
         print("Loading scanbot_config.ini...")
         initDict = {'zuliprc'                   : '',                           # Zulip rc file. See https://zulip.com/api/running-bots
-                    'upload_method'             : 'path',                       # Ping data via this channel.
+                    'upload_method'             : 'no_upload',                  # Ping data via this channel.
                     'path'                      : 'sbData',                     # Path to save data (if upload_method=path)
                     'firebase_credentials'      : '',                           # Credentials for firebase (if upload_method=firebase)
                     'firebase_storage_bucket'   : '',                           # Firebase bucket. Firebase path uses "path" key
@@ -185,6 +185,7 @@ class scanbot_interface(object):
                          'plot'             : self.plot,
                          'survey'           : self.survey,
                          'move_area'        : self.moveArea,
+                         'zdep'             : self.zdep,
                         # Misc
                          'quit'             : self._quit
                          
@@ -264,6 +265,33 @@ class scanbot_interface(object):
         args = self.unpackArgs(user_arg_dict)
         
         self.scanbot.moveArea(*args)
+    
+    def zdep(self,user_args,_help=False):
+        arg_dict = {'-zi'       : ['-10e-12',  lambda x: float(x), "(float) Initial tip lift from setpoint (m)"],
+                    '-zf'       : ['10e-12',   lambda x: float(x), "(float) Final tip lift from setpoint (m)"],
+                    '-nz'       : ['5',        lambda x: int(x),   "(int) Number of scans between zi and zf"],
+                    '-iset'     : ['-default', lambda x: float(x), "(float) Setpoint current (A). Limited to 1 nA. zi and zf are relative to this setpoint"],
+                    '-dciset'   : ['-default', lambda x: float(x), "(float) Setpoint current for drift correction (A)"],
+                    '-bias'     : ['-default', lambda x: float(x), "(float) Scan bias during constant height (V)"],
+                    '-dcbias'   : ['-default', lambda x: float(x), "(float) Scan bias during drift correction. 0 = dc off(V)"],
+                    '-ft'       : ['-default', lambda x: float(x), "(float) Forward scan time per line during constant height (s)"],
+                    '-bt'       : ['-default', lambda x: float(x), "(float) Backward scan time per line during constant height (s)"],
+                    '-dct'      : ['-default', lambda x: float(x), "(float) Forward and backward time per line during drift correction (s)"],
+                    '-px'       : ['-default', lambda x: int(x),   "(int) Number of pixels for constant height image"],
+                    '-dcpx'     : ['-default', lambda x: int(x),   "(int) Number of pixels for drift correction image"],
+                    '-lx'       : ['0',        lambda x: int(x),   "(int) Number of lines for constant height image. 0=same as -px"],
+                    '-dclx'     : ['0',        lambda x: int(x),   "(int) Number of lines for drift correction image. 0=same as -dcpx"],
+                    '-s'        : ['sb-zdep',  lambda x: str(x),   "(str) Suffix at the end of autosaved sxm files"]}
+        
+        if(_help): return arg_dict
+        
+        error,user_arg_dict = self.userArgs(arg_dict,user_args)
+        if(error): return error + "\nRun ```help zdep``` if you're unsure."
+        
+        args = self.unpackArgs(user_arg_dict)
+        
+        self.scanbot.zdep(*args)
+        
 ###############################################################################
 # Config Commands
 ###############################################################################
@@ -490,6 +518,9 @@ class scanbot_interface(object):
         if(self.uploadMethod == 'path'):
             os.replace(path, self.path + pngFilename)
             self.sendReply(notifyString + self.path + pngFilename)
+        
+        if(self.uploadMethod == "no_upload"):
+            os.remove(path)
             
 ###############################################################################
 # Misc

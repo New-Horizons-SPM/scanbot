@@ -281,7 +281,8 @@ class scanbot_interface(object):
                     '-dcpx'     : ['-default', lambda x: int(x),   "(int) Number of pixels for drift correction image"],
                     '-lx'       : ['0',        lambda x: int(x),   "(int) Number of lines for constant height image. 0=same as -px"],
                     '-dclx'     : ['0',        lambda x: int(x),   "(int) Number of lines for drift correction image. 0=same as -dcpx"],
-                    '-s'        : ['sb-zdep',  lambda x: str(x),   "(str) Suffix at the end of autosaved sxm files"]}
+                    '-s'        : ['sb-zdep',  lambda x: str(x),   "(str) Suffix at the end of autosaved sxm files"],
+                    '-gif'      : ['1',        lambda x: int(x),   "(int) Turn scans into a gif after completion. 0=No,1=Yes"]}
         
         if(_help): return arg_dict
         

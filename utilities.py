@@ -10,6 +10,7 @@ import pickle
 import math
 import numpy as np
 import scipy.signal as sp
+from PIL import Image
 
 def pklDict(scanData,filePath,x,y,w,h,angle,pixels,lines,comments=""):
     filename = ntpath.split(filePath)[1]
@@ -85,7 +86,7 @@ def rotate(origin, point, angle):
 ###############################################################################
 # Make gif
 ###############################################################################
-def makeGif(data):
+def makeGif(GIF):
     """
     To Do: pass in list of images and turn them into a gif
 

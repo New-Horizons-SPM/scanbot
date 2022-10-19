@@ -295,7 +295,7 @@ class scanbot():
         
         self.disconnect(NTCP)                                                   # Close the TCP connection
     
-    def zdep(self,zi,zf,nz,iset,dciset,bias,dcbias,ft,bt,dct,px,dcpx,lx,dclx,suffix,message=""):
+    def zdep(self,zi,zf,nz,iset,dciset,bias,dcbias,ft,bt,dct,px,dcpx,lx,dclx,suffix,makeGIF,message=""):
         NTCP,connection_error = self.connect()                                  # Connect to nanonis via TCP
         if(connection_error): return connection_error                           # Return error message if there was a problem connecting        
         
@@ -377,6 +377,7 @@ class scanbot():
            scanTime  += 2*dclx*dct
            delayTime += 1.5
         
+        GIF = np.empty((len(dzList)),lx,px)
         eta = len(dzList)*(scanTime + delayTime)
         completionTime = dt.now() + timedelta(seconds=eta)
         self.interface.sendReply("Starting zdep.. ETA: " + str(completionTime))
@@ -467,8 +468,8 @@ class scanbot():
             if(not filePath): break
             
             _,scanData,_ = scanModule.FrameDataGrab(18, 1)                      # 14 = z., 18 is Freq. shift
-            
             pngFilename = self.makePNG(scanData, filePath)                      # Generate a png from the scan data
+            GIF[idx] = scanData
             
             self.interface.sendPNG(pngFilename,notify=False,message=message)    # Send a png over zulip
             
@@ -480,6 +481,8 @@ class scanbot():
         zController.SetpntSet(setpoint=abs(iset))                               # Update setpoint current in nanonis
         time.sleep(0.25)
         scanModule.PropsSet(series_name=basename)                               # Put back the original basename
+        
+        # self.interface.sendPNG(utilities.makeGif(GIF),notify=False,message=message)
         
         self.interface.sendReply("zdep " + suffix + " complete")
         

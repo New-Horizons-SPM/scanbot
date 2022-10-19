@@ -18,6 +18,7 @@ from nanonisTCP.FolMe import FolMe
 
 import time
 from datetime import datetime as dt
+from datetime import timedelta
 import ntpath
 import numpy as np
 import nanonispyfit as napfit
@@ -366,7 +367,18 @@ class scanbot():
         dzList = np.linspace(zi, zf, nz)
         initialDC = np.zeros((dcpx,dcpx))
         print("dzList: " + str(dzList))
-        for dz in dzList:
+        
+        scanTime  = lx*(ft + bt)
+        delayTime = 4
+        if(abs(dcbias) > 0):
+           scanTime  += 2*dclx*dct
+           delayTime += 1.5
+        
+        eta = len(dzList)*(scanTime + delayTime)
+        completionTime = dt.now() + timedelta(seconds=eta)
+        self.interface.sendReply("Starting zdep.. ETA: " + str(completionTime))
+        for idx,dz in enumerate(dzList):
+            self.interface.sendReply("Scan " + str(idx+1) + "/" + str(len(dzList)))
             print("doing dz = " + str(dz*1e9) + " nm")
             if(abs(dcbias) > 0):                                                # If drift correction is turned on, take a drift correction image
                 time.sleep(0.25)
@@ -390,6 +402,7 @@ class scanbot():
                 scanModule.PropsSet(series_name=tempBasename + str(dcbias) + "V-DC_") # Set the basename in nanonis for this survey
                 scanModule.Action('start',scan_direction='up')
                 _, _, filePath = scanModule.WaitEndOfScan()
+                if(not filePath): break                                         # If the scan was stopped before finishing, stop zdep
                 _,driftCorrection,_ = scanModule.FrameDataGrab(14, 1)
                 
                 if(np.sum(initialDC) == 0): initialDC = driftCorrection
@@ -444,6 +457,7 @@ class scanbot():
             scanModule.BufferSet(pixels=px,lines=lx)
             print("CH: fwd,ratio: " + str([ft,speedRatio]))
             scanModule.SpeedSet(fwd_line_time=ft,speed_ratio=speedRatio)
+            scanModule.PropsSet(series_name=tempBasename + str(dz) + "pm_")     # Set the basename in nanonis for this survey
             scanModule.Action('start',scan_direction='down')
             _, _, filePath = scanModule.WaitEndOfScan()
             if(not filePath): break
@@ -462,6 +476,10 @@ class scanbot():
         zController.SetpntSet(setpoint=abs(iset))                               # Update setpoint current in nanonis
         time.sleep(0.25)
         scanModule.PropsSet(series_name=basename)                               # Put back the original basename
+        
+        self.interface.sendReply("zdep " + suffix + " complete")
+        
+        self.disconnect(NTCP)                                                   # Close the TCP connection
         
     def tipInFrame(self,tipPos,scanFrame):
         tipX,tipY     = tipPos

@@ -406,7 +406,7 @@ class scanbot():
                 _,driftCorrection,_ = scanModule.FrameDataGrab(14, 1)
                 
                 if(np.sum(initialDC) == 0): initialDC = driftCorrection
-                ox,oy = utilities.getFrameOffset(initialDC,driftCorrection,dxy)
+                ox,oy = utilities.getFrameOffset(initialDC,driftCorrection,dxy,theta=-scanFrame[4]) # Frame offset for drift correction. passing negative scan angle because nanonis is backwards
                 print("DC: ox,oy: " + str([ox,oy]))
                 
                 scanFrame[0] -= ox
@@ -480,6 +480,7 @@ class scanbot():
         self.interface.sendReply("zdep " + suffix + " complete")
         
         self.disconnect(NTCP)                                                   # Close the TCP connection
+        global_.running.clear()                                                 # Free up the running flag
         
     def tipInFrame(self,tipPos,scanFrame):
         tipX,tipY     = tipPos

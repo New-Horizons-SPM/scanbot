@@ -33,13 +33,16 @@ def pklDict(scanData,filePath,x,y,w,h,angle,pixels,lines,comments=""):
 def getFrameOffset(im1,im2,dxy=[1,1],theta=0):
     """
     Returns the offset of im2 relative to im1. im1 and im2 must be the same
-    size and scale. Keep dxy=[1,1] to return offset in units of pixels
+    size and scale. Keep dxy=[1,1] to return offset in units of pixels.
+    When using with nanonis to detect drift, take the current scan frame 
+    position and subtract ox,oy from it. i.e.: center_x -= ox; center_y -= oy
 
     Parameters
     ----------
     im1 : image to compare against
     im2 : image to get the offset of
     dxy : pixel size in x and y: [dx,dy]
+    theta : angle in degrees
 
     Returns
     -------
@@ -60,9 +63,29 @@ def getFrameOffset(im1,im2,dxy=[1,1],theta=0):
     ox *= dxy[0]
     oy *= -dxy[1]
     
+    theta *= math.pi/180                                                        # Convert to radians
     R = np.array([[math.cos(theta)**2,math.sin(theta)**2],                      # Rotation matrix to account for angle of scan frame
                   [math.sin(theta)**2,math.cos(theta)**2]])
     
     ox,oy = np.matmul(R,np.array([ox,oy]).T)                                    # Account for angle of scan frame
     
     return np.array([ox,oy])
+
+###############################################################################
+# Make gif
+###############################################################################
+def makeGif(data):
+    """
+    To Do: pass in list of images and turn them into a gif
+
+    Parameters
+    ----------
+    data : TYPE
+        DESCRIPTION.
+
+    Returns
+    -------
+    None.
+
+    """
+    pass

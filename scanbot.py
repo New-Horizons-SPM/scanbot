@@ -297,6 +297,45 @@ class scanbot():
         self.disconnect(NTCP)                                                   # Close the TCP connection
     
     def zdep(self,zi,zf,nz,iset,bset,dciset,bias,dcbias,ft,bt,dct,px,dcpx,lx,dclx,suffix,makeGIF,message=""):
+        """
+        This function performs a set of constant height scans at different tip 
+        heights. 
+        Drift correction can be performed between each scan.
+        The tip must be within the scan frame to start.
+        
+        Process:
+            1. Setpoint:
+                1. The tip's position within the scan frame is recorded and is
+                   used as the location to obtain the initial setpoint.
+                2. The z-controller is turned on
+                3. The z-controller setpoint is set to -iset
+                4. The bias is ramped to -bset
+                5. 100 z positions are averaged to obtain reference zref
+                6. The z-controller is turned off
+                7. The bias is ramped to -bias
+                8. A tip lift is performed before each scan. i.e. the 
+                   z-controller is set to zref + dz, where dz is the tip lift 
+                   for whichever scan we are up to in the set.
+                   
+            2. Drift correction (Turned on when -dcbias is non-zero)
+                1. An initial scan is acquired as a reference with V=dcbias and
+                   Iset=cdiset before the first scan.
+                2. Drift correction scans are acquired between each successive 
+                   scan.
+                3. The scan frame window and tip setpoint location are updated 
+                   according to the offset between the latest drift correction
+                   scan and the initial drift correction scan to avoid creep
+                4. The piezo z drift compensation is updated according to the 
+                   difference in zref between scans
+            
+            3. End of run:
+                1. The z-controller is tuned on
+                2. The z-controller setpoint is set to -iset
+                3. Stopping the scan at any point will end the process in this 
+                   way
+                
+                   
+        """
         NTCP,connection_error = self.connect()                                  # Connect to nanonis via TCP
         if(connection_error): return connection_error                           # Return error message if there was a problem connecting        
         
@@ -501,7 +540,39 @@ class scanbot():
         self.disconnect(NTCP)                                                   # Close the TCP connection
         global_.running.clear()                                                 # Free up the running flag
     
-    def registration(self,zi,iset,bset,bias,ft,bt,px,lx,lz,dz,scanDir,suffix,message=""):
+    def registration(self,zset,iset,bset,bias,ft,bt,px,lx,lz,dz,scanDir,suffix,message=""):
+        """
+        This function was written to perform nc-AFM registration but may be 
+        used for any instance where a tip lift is required during the scan.
+        The tip must be within the scan window to start.
+        
+        Each input parameter is described in scanbot_interface.py/registration
+        
+        Process:
+            1. Setpoint:
+                1. Z-Controller is turned on
+                2. Setpoint current -iset is set
+                3. Bias is ramped to -bset
+                4. 100 z positions are averaged at the initial tip location to 
+                   obtain zref
+                5. The z-controller is turned off
+                6. The bias is ramped to -bias
+                7. The z piezo is set to zref + zset
+            2. Scanning:
+                1. The scan is started in a direction set by -dir
+                2. The scan frame is polled at an interval = -ft + -bt to check
+                   if -lz lines have been acquired.
+                3. Once -lz lines have been acquired, the scan is paused and 
+                   a tip lift -dz is performed. i.e. the zcontroller is set to
+                   position zref + zi + dz
+                4. The scan is resumed
+            3. End of scan:
+                1. The z-controller is tuned on
+                2. The z-controller setpoint is set to -iset
+                3. Stopping the scan at any point will end the process in this 
+                   way
+
+        """
         NTCP,connection_error = self.connect()                                  # Connect to nanonis via TCP
         if(connection_error): return connection_error                           # Return error message if there was a problem connecting        
         
@@ -524,7 +595,7 @@ class scanbot():
             if(abs(iset) > 1e-9):                                               # Limit to 1 nA to avoid accidental setpoints
                 self.interface.sendReply('Maximum setpoint using -iset is 1 nA. If you want iset > 1 nA, put the setting into nanonis and run zdep without the -iset param.')
                 self.disconnect(NTCP)
-                global_.running.clear()                                             # Free up the running flag
+                global_.running.clear()                                         # Free up the running flag
                 return
         else:
             iset = currentISet
@@ -601,7 +672,9 @@ class scanbot():
         time.sleep(0.25)
         zController.OnOffSet(on=0)                                              # Turn off the controller
         time.sleep(0.25)
-        zController.ZPosSet(zpos=zref + zi)                                     # Go to the setpoint
+        self.rampBias(NTCP, bias=bias)
+        time.sleep(0.5)
+        zController.ZPosSet(zpos=zref + zset)                                   # Go to the setpoint
         time.sleep(0.25)
         
         scanModule.Action('start',scan_direction=scanDir)
@@ -626,7 +699,7 @@ class scanbot():
             if(lines > lz):
                 scanModule.Action('pause',scan_direction=scanDir)
                 time.sleep(1)
-                zController.ZPosSet(zpos=zref+zi+dz)                            # Apply dz offset
+                zController.ZPosSet(zpos=zref+zset+dz)                          # Apply dz offset
                 time.sleep(1)
                 scanModule.Action('resume',scan_direction=scanDir)
                 break
@@ -651,16 +724,6 @@ class scanbot():
         
         self.disconnect(NTCP)                                                   # Close the TCP connection
         global_.running.clear()                                                 # Free up the running flag
-        
-    def tipInFrame(self,tipPos,scanFrame):
-        x,y,w,h,angle = scanFrame
-        angle = angle*math.pi/180
-        tipX,tipY = utilities.rotate([x,y],tipPos,angle)
-        bottomLeft = np.array([x-w/2,y-h/2])
-        topRight = np.array([x+w/2,y+h/2])
-        if(tipX < bottomLeft[0] or tipX > topRight[0]): return False
-        if(tipY < bottomLeft[1] or tipY > topRight[1]): return False
-        return True
 ###############################################################################
 # Config
 ###############################################################################
@@ -719,6 +782,16 @@ class scanbot():
 ###############################################################################
 # Utilities
 ###############################################################################
+    def tipInFrame(self,tipPos,scanFrame):
+        x,y,w,h,angle = scanFrame
+        angle = angle*math.pi/180
+        tipX,tipY = utilities.rotate([x,y],tipPos,angle)
+        bottomLeft = np.array([x-w/2,y-h/2])
+        topRight = np.array([x+w/2,y+h/2])
+        if(tipX < bottomLeft[0] or tipX > topRight[0]): return False
+        if(tipY < bottomLeft[1] or tipY > topRight[1]): return False
+        return True
+    
     def rampBias(self,NTCP,bias,dbdt=1,db=50e-3,zhold=True):                    # Ramp the tip bias from current value to final value at a rate of db/dt
         if(bias == 0): return
         biasModule = Bias(NTCP)                                                 # Nanonis Bias module

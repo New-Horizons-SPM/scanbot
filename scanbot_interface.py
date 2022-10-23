@@ -297,7 +297,7 @@ class scanbot_interface(object):
         return self.threadTask(func)
     
     def registration(self,user_args,_help=False):
-        arg_dict = {'-zi'       : ['-10e-12',  lambda x: float(x), "(float) Initial tip lift from setpoint (m)"],
+        arg_dict = {'-zset'     : ['0',        lambda x: float(x), "(float) Initial tip lift from setpoint (m)"],
                     '-iset'     : ['-default', lambda x: float(x), "(float) Setpoint current (A). Limited to 1 nA. zi and zf are relative to this setpoint"],
                     '-bset'     : ['-default', lambda x: float(x), "(float) Bias at which the setpoint is measured (V)"],
                     '-bias'     : ['-default', lambda x: float(x), "(float) Scan bias during constant height (V)"],

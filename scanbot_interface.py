@@ -186,6 +186,7 @@ class scanbot_interface(object):
                          'survey'           : self.survey,
                          'move_area'        : self.moveArea,
                          'zdep'             : self.zdep,
+                         'afm_registration' : self.registration,
                         # Misc
                          'quit'             : self._quit
                          
@@ -271,6 +272,7 @@ class scanbot_interface(object):
                     '-zf'       : ['10e-12',   lambda x: float(x), "(float) Final tip lift from setpoint (m)"],
                     '-nz'       : ['5',        lambda x: int(x),   "(int) Number of scans between zi and zf"],
                     '-iset'     : ['-default', lambda x: float(x), "(float) Setpoint current (A). Limited to 1 nA. zi and zf are relative to this setpoint"],
+                    '-bset'     : ['-default', lambda x: float(x), "(float) Setpoint bias (V)"],
                     '-dciset'   : ['-default', lambda x: float(x), "(float) Setpoint current for drift correction (A)"],
                     '-bias'     : ['-default', lambda x: float(x), "(float) Scan bias during constant height (V)"],
                     '-dcbias'   : ['-default', lambda x: float(x), "(float) Scan bias during drift correction. 0 = dc off(V)"],
@@ -293,7 +295,30 @@ class scanbot_interface(object):
         
         func = lambda : self.scanbot.zdep(*args,message=self.bot_message.copy())
         return self.threadTask(func)
+    
+    def registration(self,user_args,_help=False):
+        arg_dict = {'-zi'       : ['-10e-12',  lambda x: float(x), "(float) Initial tip lift from setpoint (m)"],
+                    '-iset'     : ['-default', lambda x: float(x), "(float) Setpoint current (A). Limited to 1 nA. zi and zf are relative to this setpoint"],
+                    '-bset'     : ['-default', lambda x: float(x), "(float) Bias at which the setpoint is measured (V)"],
+                    '-bias'     : ['-default', lambda x: float(x), "(float) Scan bias during constant height (V)"],
+                    '-ft'       : ['-default', lambda x: float(x), "(float) Forward scan time per line during constant height (s)"],
+                    '-bt'       : ['-default', lambda x: float(x), "(float) Backward scan time per line during constant height (s)"],
+                    '-px'       : ['-default', lambda x: int(x),   "(int) Number of pixels for constant height image"],
+                    '-lx'       : ['0',        lambda x: int(x),   "(int) Number of lines for constant height image. 0=same as -px"],
+                    '-lz'       : ['0',        lambda x: int(x),   "(int) Line number to perform tip lift -dz. lz is measured from the TOP of the scan frame, regardless of whether scan direction is up or down. i.e. lz=0 is at the top of the frame"],
+                    '-dz'       : ['0',        lambda x: float(x), "(float) Tip lift (m) at line number -lz"],
+                    '-dir'      : ['down',     lambda x: str(x),   "(str) Scan dirction. Can be either 'up' or 'down'"],
+                    '-s'        : ['sb-rego',  lambda x: str(x),   "(str) Suffix at the end of autosaved sxm files"]}
         
+        if(_help): return arg_dict
+        
+        error,user_arg_dict = self.userArgs(arg_dict,user_args)
+        if(error): return error + "\nRun ```help afm_registration``` if you're unsure."
+        
+        args = self.unpackArgs(user_arg_dict)
+        
+        func = lambda : self.scanbot.registration(*args,message=self.bot_message.copy())
+        return self.threadTask(func)
 ###############################################################################
 # Config Commands
 ###############################################################################

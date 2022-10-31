@@ -236,7 +236,8 @@ class scanbot_interface(object):
                     '-px'   : ['-default', lambda x: int(x),   "(int) Number of pixels"],
                     '-st'   : ['10',       lambda x: float(x), "(float) Drift compensation time (s)"],
                     '-stitch':['1',        lambda x: float(x), "(int) Return the stitched survey after completion. 1: Yes, else No"],
-                    '-macro': ['OFF',      lambda x: str(x),   "(str) Simulate key stroke after each image. 'OFF' to tuurn off"]}   # Do this at some point - to push images into logbook
+                    '-macro': ['OFF',      lambda x: str(x),   "(str) Simulate key stroke after each image. 'OFF' to tuurn off"],   # Do this at some point - to push images into logbook
+                    '-autotip': ['0',      lambda x: str(x),   "(int) Automatic tip shaping. 0=off, 1=on. Properties for the auto tip shaper should be set with auto_tip_shaper command"]}
         
         if(_help): return arg_dict
         

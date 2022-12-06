@@ -8,8 +8,6 @@ Created on Fri August 8 22:06:37 2022
 from scanbot import scanbot
 
 import zulip
-import firebase_admin
-from firebase_admin import credentials, storage
 
 import os
 import sys
@@ -141,6 +139,8 @@ class scanbot_interface(object):
         
     def firebaseInit(self):
         try:
+            import firebase_admin
+            from firebase_admin import credentials, storage
             print("Initialising firebase app")
             cred = credentials.Certificate(self.firebaseCert)                   # Your firebase credentials
             firebase_admin.initialize_app(cred, {
@@ -369,6 +369,7 @@ class scanbot_interface(object):
         
         if(uploadMethod == 'path'):
             Path(self.path).mkdir(parents=True, exist_ok=True)
+            if(not self.path.endswith('/')): self.path += '/'
             
         self.uploadMethod = uploadMethod
         self.reactToMessage('all_good')

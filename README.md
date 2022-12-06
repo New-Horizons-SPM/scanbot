@@ -50,3 +50,5 @@ For a full list of commands, run the ```help``` command. For help with a specifi
   - nc-AFM registration
 * Piezo control
   - Move area macroscopically
+
+[![DOI](https://zenodo.org/badge/487719232.svg)](https://zenodo.org/badge/latestdoi/487719232)

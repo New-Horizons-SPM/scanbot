@@ -8,8 +8,6 @@ Created on Fri August 8 22:06:37 2022
 from scanbot import scanbot
 
 import zulip
-import firebase_admin
-from firebase_admin import credentials, storage
 
 import os
 import sys
@@ -141,6 +139,8 @@ class scanbot_interface(object):
         
     def firebaseInit(self):
         try:
+            import firebase_admin
+            from firebase_admin import credentials, storage
             print("Initialising firebase app")
             cred = credentials.Certificate(self.firebaseCert)                   # Your firebase credentials
             firebase_admin.initialize_app(cred, {
@@ -236,7 +236,8 @@ class scanbot_interface(object):
                     '-px'   : ['-default', lambda x: int(x),   "(int) Number of pixels"],
                     '-st'   : ['10',       lambda x: float(x), "(float) Drift compensation time (s)"],
                     '-stitch':['1',        lambda x: float(x), "(int) Return the stitched survey after completion. 1: Yes, else No"],
-                    '-macro': ['OFF',      lambda x: str(x),   "(str) Simulate key stroke after each image. 'OFF' to tuurn off"]}   # Do this at some point - to push images into logbook
+                    '-macro': ['OFF',      lambda x: str(x),   "(str) Simulate key stroke after each image. 'OFF' to tuurn off"],   # Do this at some point - to push images into logbook
+                    '-autotip': ['0',      lambda x: str(x),   "(int) Automatic tip shaping. 0=off, 1=on. Properties for the auto tip shaper should be set with auto_tip_shaper command"]}
         
         if(_help): return arg_dict
         
@@ -368,6 +369,7 @@ class scanbot_interface(object):
         
         if(uploadMethod == 'path'):
             Path(self.path).mkdir(parents=True, exist_ok=True)
+            if(not self.path.endswith('/')): self.path += '/'
             
         self.uploadMethod = uploadMethod
         self.reactToMessage('all_good')

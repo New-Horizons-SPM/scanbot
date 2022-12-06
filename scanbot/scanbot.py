@@ -76,7 +76,7 @@ class scanbot():
         
         self.disconnect(NTCP)                                                   # Close the TCP connection
     
-    def survey(self,bias,n,startAt,suffix,xy,dx,px,sleepTime,stitch,macro,ox=0,oy=0,message="",enhance=False):
+    def survey(self,bias,n,startAt,suffix,xy,dx,px,sleepTime,stitch,macro,autotip,ox=0,oy=0,message="",enhance=False):
         NTCP,connection_error = self.connect()                                  # Connect to nanonis via TCP
         if(connection_error): return connection_error                           # Return error message if there was a problem connecting   
         
@@ -138,6 +138,13 @@ class scanbot():
             if(not filePath): time.sleep(0.2); continue                         # If user stops the scan, filePath will be blank, then go to the next scan
             
             _,scanData,_ = scan.FrameDataGrab(14, 1)                            # Grab the data within the scan frame. Channel 14 is . 1 is forward data direction
+            
+            if(autotip):                                                        # **Currently Testing**
+                classification = utilities.classify(scanData)                   # Obtain image classification
+                if(not classification['nan']):
+                    if(classification['tipChanges'] > 0):                       # Arbitrary condition required to perform tip shape
+                        self.interface.sendReply(str(classification),message=message)
+            
             pngFilename,scanDataPlaneFit = self.makePNG(scanData, filePath,returnData=True,dpi=150) # Generate a png from the scan data
             self.interface.sendPNG(pngFilename,notify=True,message=message)     # Send a png over zulip
             

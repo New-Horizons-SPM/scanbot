@@ -190,7 +190,8 @@ class scanbot():
             for x in range(nx):
                 if(self.checkEventFlags()): break                               # Check event flags
                 
-                self.survey(bias,n,startAt,suffix,xy,dx,px,sleepTime,stitch,hook,autotip,reverse=reverse,clearRunning=False,message=message)
+                s = suffix + "_y" + str(y) + "_x" + str(x)
+                self.survey(bias,n,startAt,s,xy,dx,px,sleepTime,stitch,hook,autotip,reverse=reverse,clearRunning=False,message=message)
                 reverse = not reverse
                 
                 if(self.checkEventFlags()): break                               # Check event flags

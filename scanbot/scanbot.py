@@ -190,11 +190,7 @@ class scanbot():
             for x in range(nx):
                 if(self.checkEventFlags()): break                               # Check event flags
                 
-                self.interface.sendReply("Survey at course coordinate: " + str([x,y]),message=message)
-                
-                print("Survey at course coordinate: " + str([x,y]))
                 self.survey(bias,n,startAt,suffix,xy,dx,px,sleepTime,stitch,hook,autotip,reverse=reverse,clearRunning=False,message=message)
-                print("survey complete")
                 reverse = not reverse
                 
                 if(self.checkEventFlags()): break                               # Check event flags
@@ -206,9 +202,13 @@ class scanbot():
                 
                 direction = xdirections[xdirection]
                 self.interface.sendReply("Moving " + str(xStep) + " steps in " + direction,message=message)
-                print("Moving " + str(xStep) + " steps in " + direction)
-                self.moveArea(up=zStep,upV=zV,upF=zF,direction=direction,steps=xStep,dirV=xyV,dirF=xyF,zon=True)
-                print("Move complete")
+                
+                success = self.moveArea(up=zStep,upV=zV,upF=zF,direction=direction,steps=xStep,dirV=xyV,dirF=xyF,zon=True)
+                if(not success):
+                    self.interface.sendReply("Error moving area... stopping")
+                    global_.running.clear()
+                    break
+                
                 time.sleep(sleepTime)
             
             xdirection = not xdirection                                         # Change x direction to snake the grid
@@ -218,11 +218,11 @@ class scanbot():
             if(self.checkEventFlags()): break                                   # Check event flags
             
             self.interface.sendReply("Moving " + str(yStep) + " steps in +Y",message=message)
-            print("Moving " + str(xStep) + " steps in Y+")
             self.moveArea(up=zStep,upV=zV,upF=zF,direction="Y+",steps=yStep,dirV=xyV,dirF=xyF,zon=True)
-            print("Move complete")
             
             time.sleep(sleepTime)
+            
+        global_.running.clear()
             
     def moveArea(self,up,upV,upF,direction,steps,dirV,dirF,zon,message=""):
         NTCP,connection_error = self.connect()                                  # Connect to nanonis via TCP
@@ -232,62 +232,62 @@ class scanbot():
         if(up < 10):
             self.disconnect(NTCP)
             self.interface.sendReply("-up must be > 10",message=message)
-            return
+            return False
         
         if(upV > 300):
             self.disconnect(NTCP)
             self.interface.sendReply("-upV 300 V max",message=message)
-            return
+            return False
         
         if(upF > 2.5e3):
             self.disconnect(NTCP)
             self.interface.sendReply("-upF 2.5 kHz max",message=message)
-            return
+            return False
         
         if(dirV > 200):
             self.disconnect(NTCP)
             self.interface.sendReply("-dirV 200 V max",message=message)
-            return
+            return False
         
         if(dirF > 2.5e3):
             self.disconnect(NTCP)
             self.interface.sendReply("-dirF 2.5 kHz max",message=message)
-            return
+            return False
         
         if(upV < 1):
             self.disconnect(NTCP)                                               # Close the TCP connection
             self.interface.sendReply("-upV must be between 1 V and 200 V",message=message)
-            return
+            return False
             
         if(upF < 500):
             self.disconnect(NTCP)                                               # Close the TCP connection
             self.interface.sendReply("-upF must be between 500 Hz and 2.5 kHz",message=message)
-            return
+            return False
         
         if(dirV < 1):
             self.disconnect(NTCP)                                               # Close the TCP connection
             self.interface.sendReply("-upV must be between 1 V and 200 V",message=message)
-            return
+            return False
             
         if(dirF < 500):
             self.disconnect(NTCP)                                               # Close the TCP connection
             self.interface.sendReply("-upF must be between 500 Hz and 2.5 kHz",message=message)
-            return
+            return False
         
         if(not direction in ["X+","X-","Y+","Y-"]):
             self.disconnect(NTCP)                                               # Close the TCP connection
             self.interface.sendReply("-dir can only be X+, X-, Y+, Y-",message=message)
-            return
+            return False
         
         if(steps < 0):
             self.disconnect(NTCP)
             self.interface.sendReply("-steps must be > 0",message=message)
-            return
+            return False
         
         if(up < 0):
             self.disconnect(NTCP)
             self.interface.sendReply("-up must be > 0",message=message)
-            return
+            return False
         
         motor         = Motor(NTCP)                                             # Nanonis Motor module
         zController   = ZController(NTCP)                                       # Nanonis ZController module
@@ -323,7 +323,7 @@ class scanbot():
                 self.interface.sendReply("Safe retract was triggered because the current exceeded "
                                          + str(self.safetyParams[0]*1e9) + " nA"
                                          + " while moving areas",message=message)
-                return
+                return False
                 
             time.sleep(0.25)
         
@@ -338,7 +338,7 @@ class scanbot():
             self.interface.sendReply("Safe retract was triggered because the current exceeded "
                                      + str(self.safetyParams[0]*1e9) + " nA"
                                      + " while moving areas",message=message)
-            return
+            return False
         
         self.interface.reactToMessage("double_down")
         motor.FreqAmpSet(upF,upV)
@@ -356,6 +356,8 @@ class scanbot():
         self.interface.reactToMessage("sparkler")
         
         self.disconnect(NTCP)                                                   # Close the TCP connection
+        
+        return True
     
     def zdep(self,zi,zf,nz,iset,bset,dciset,bias,dcbias,ft,bt,dct,px,dcpx,lx,dclx,suffix,makeGIF,message=""):
         """

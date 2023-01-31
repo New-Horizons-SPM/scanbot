@@ -184,7 +184,7 @@ class scanbot():
         
         reverse = False
         xdirection  = False
-        xdirections = ["-X","+X"]
+        xdirections = ["X-","X+"]
         for y in range(ny):
             if(self.checkEventFlags()): break                                   # Check event flags
             for x in range(nx):
@@ -218,8 +218,8 @@ class scanbot():
             if(self.checkEventFlags()): break                                   # Check event flags
             
             self.interface.sendReply("Moving " + str(yStep) + " steps in +Y",message=message)
-            print("Moving " + str(xStep) + " steps in +Y")
-            self.moveArea(up=zStep,upV=zV,upF=zF,direction="+Y",steps=yStep,dirV=xyV,dirF=xyF,zon=True)
+            print("Moving " + str(xStep) + " steps in Y+")
+            self.moveArea(up=zStep,upV=zV,upF=zF,direction="Y+",steps=yStep,dirV=xyV,dirF=xyF,zon=True)
             print("Move complete")
             
             time.sleep(sleepTime)

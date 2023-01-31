@@ -76,7 +76,7 @@ class scanbot():
         
         self.disconnect(NTCP)                                                   # Close the TCP connection
             
-    def survey(self,bias,n,startAt,suffix,xy,dx,px,sleepTime,stitch,hook,autotip,ox=0,oy=0,message="",enhance=False):
+    def survey(self,bias,n,startAt,suffix,xy,dx,px,sleepTime,stitch,hook,autotip,ox=0,oy=0,message="",enhance=False,reverse=False,clearRunning=True):
         NTCP,connection_error = self.connect()                                  # Connect to nanonis via TCP
         if(connection_error): return connection_error                           # Return error message if there was a problem connecting   
         
@@ -87,6 +87,9 @@ class scanbot():
         x = np.linspace(-1, 1,n) * (n-1)*dx/2
         y = x
         
+        if(reverse and (n%2)): x = np.array(list(reversed(x)))
+        if(reverse):           y = np.array(list(reversed(y)))
+            
         if(xy == "-default"): xy = scan.FrameGet()[2]
         if(dx == "-default"): dx = xy
         
@@ -169,7 +172,7 @@ class scanbot():
         
         scan.PropsSet(series_name=basename)                                     # Put back the original basename
         self.disconnect(NTCP)                                                   # Close the TCP connection
-        global_.running.clear()                                                 # Free up the running flag
+        if(clearRunning): global_.running.clear()                               # Free up the running flag
         
         self.interface.sendReply('survey \'' + suffix + '\' done',message=message) # Send a notification that the survey has completed
         
@@ -179,18 +182,27 @@ class scanbot():
         if(nx == 1): xStep = 0
         if(ny == 1): yStep = 0
         
+        reverse = False
         xdirection  = False
         xdirections = ["-X","+X"]
         for y in range(ny):
+            if(self.checkEventFlags()): break                                   # Check event flags
             for x in range(nx):
-                self.interface.sendReply("Survey at course coordinate: " + str([x,y]),message=message)
-                print("Survey at course coordinate: " + str([x,y]))
-                self.survey(bias,n,startAt,suffix,xy,dx,px,sleepTime,stitch,hook,autotip,message=message)
-                print("survey complete")
+                if(self.checkEventFlags()): break                               # Check event flags
                 
+                self.interface.sendReply("Survey at course coordinate: " + str([x,y]),message=message)
+                
+                print("Survey at course coordinate: " + str([x,y]))
+                self.survey(bias,n,startAt,suffix,xy,dx,px,sleepTime,stitch,hook,autotip,reverse=reverse,clearRunning=False,message=message)
+                print("survey complete")
+                reverse = not reverse
+                
+                if(self.checkEventFlags()): break                               # Check event flags
                 time.sleep(2)
                 
                 if(x == nx-1): continue                                         # Skip the move area after last survey in this row since we'll be moving in y next
+                
+                if(self.checkEventFlags()): break                               # Check event flags
                 
                 direction = xdirections[xdirection]
                 self.interface.sendReply("Moving " + str(xStep) + " steps in " + direction,message=message)
@@ -202,6 +214,9 @@ class scanbot():
             xdirection = not xdirection                                         # Change x direction to snake the grid
             
             if(y == ny-1): continue                                             # Skip the move area after the last column since we're done.
+            
+            if(self.checkEventFlags()): break                                   # Check event flags
+            
             self.interface.sendReply("Moving " + str(yStep) + " steps in +Y",message=message)
             print("Moving " + str(xStep) + " steps in +Y")
             self.moveArea(up=zStep,upV=zV,upF=zF,direction="+Y",steps=yStep,dirV=xyV,dirF=xyF,zon=True)

@@ -75,8 +75,8 @@ class scanbot():
             self.interface.reactToMessage("cross_mark")
         
         self.disconnect(NTCP)                                                   # Close the TCP connection
-    
-    def survey(self,bias,n,startAt,suffix,xy,dx,px,sleepTime,stitch,macro,autotip,ox=0,oy=0,message="",enhance=False):
+            
+    def survey(self,bias,n,startAt,suffix,xy,dx,px,sleepTime,stitch,hook,autotip,ox=0,oy=0,message="",enhance=False):
         NTCP,connection_error = self.connect()                                  # Connect to nanonis via TCP
         if(connection_error): return connection_error                           # Return error message if there was a problem connecting   
         
@@ -86,6 +86,9 @@ class scanbot():
         
         x = np.linspace(-1, 1,n) * (n-1)*dx/2
         y = x
+        
+        if(xy == "-default"): xy = scan.FrameGet()[2]
+        if(dx == "-default"): dx = xy
         
         frames = []
         for j in y:
@@ -148,7 +151,7 @@ class scanbot():
             pngFilename,scanDataPlaneFit = self.makePNG(scanData, filePath,returnData=True,dpi=150) # Generate a png from the scan data
             self.interface.sendPNG(pngFilename,notify=True,message=message)     # Send a png over zulip
             
-            if(macro != 'OFF'): pass                                            # Implement macro here
+            if(hook): pass                                                      # call a custom python script
             
             if(stitch):
                 row = (idx)//n
@@ -170,69 +173,105 @@ class scanbot():
         
         self.interface.sendReply('survey \'' + suffix + '\' done',message=message) # Send a notification that the survey has completed
         
-    def moveArea(self,up,upV,upF,direction,steps,dirV,dirF,zon):
+    def survey2(self,bias,n,startAt,suffix,xy,dx,px,sleepTime,stitch,hook,autotip, # Survey params
+                     nx,ny,xStep,yStep,zStep,xyV,zV,xyF,zF,message=""):          # Move area params
+        
+        if(nx == 1): xStep = 0
+        if(ny == 1): yStep = 0
+        
+        xdirection  = False
+        xdirections = ["-X","+X"]
+        for y in range(ny):
+            for x in range(nx):
+                self.interface.sendReply("Survey at course coordinate: " + str([x,y]),message=message)
+                print("Survey at course coordinate: " + str([x,y]))
+                self.survey(bias,n,startAt,suffix,xy,dx,px,sleepTime,stitch,hook,autotip,message=message)
+                print("survey complete")
+                
+                time.sleep(2)
+                
+                if(x == nx-1): continue                                         # Skip the move area after last survey in this row since we'll be moving in y next
+                
+                direction = xdirections[xdirection]
+                self.interface.sendReply("Moving " + str(xStep) + " steps in " + direction,message=message)
+                print("Moving " + str(xStep) + " steps in " + direction)
+                self.moveArea(up=zStep,upV=zV,upF=zF,direction=direction,steps=xStep,dirV=xyV,dirF=xyF,zon=True)
+                print("Move complete")
+                time.sleep(sleepTime)
+            
+            xdirection = not xdirection                                         # Change x direction to snake the grid
+            
+            if(y == ny-1): continue                                             # Skip the move area after the last column since we're done.
+            self.interface.sendReply("Moving " + str(yStep) + " steps in +Y",message=message)
+            print("Moving " + str(xStep) + " steps in +Y")
+            self.moveArea(up=zStep,upV=zV,upF=zF,direction="+Y",steps=yStep,dirV=xyV,dirF=xyF,zon=True)
+            print("Move complete")
+            
+            time.sleep(sleepTime)
+            
+    def moveArea(self,up,upV,upF,direction,steps,dirV,dirF,zon,message=""):
         NTCP,connection_error = self.connect()                                  # Connect to nanonis via TCP
         if(connection_error): return connection_error                           # Return error message if there was a problem connecting        
         
         # Safety checks
         if(up < 10):
             self.disconnect(NTCP)
-            self.interface.sendReply("-up must be > 10")
+            self.interface.sendReply("-up must be > 10",message=message)
             return
         
         if(upV > 300):
             self.disconnect(NTCP)
-            self.interface.sendReply("-upV 300 V max")
+            self.interface.sendReply("-upV 300 V max",message=message)
             return
         
         if(upF > 2.5e3):
             self.disconnect(NTCP)
-            self.interface.sendReply("-upF 2.5 kHz max")
+            self.interface.sendReply("-upF 2.5 kHz max",message=message)
             return
         
         if(dirV > 200):
             self.disconnect(NTCP)
-            self.interface.sendReply("-dirV 200 V max")
+            self.interface.sendReply("-dirV 200 V max",message=message)
             return
         
         if(dirF > 2.5e3):
             self.disconnect(NTCP)
-            self.interface.sendReply("-dirF 2.5 kHz max")
+            self.interface.sendReply("-dirF 2.5 kHz max",message=message)
             return
         
         if(upV < 1):
             self.disconnect(NTCP)                                               # Close the TCP connection
-            self.interface.sendReply("-upV must be between 1 V and 200 V")
+            self.interface.sendReply("-upV must be between 1 V and 200 V",message=message)
             return
             
         if(upF < 500):
             self.disconnect(NTCP)                                               # Close the TCP connection
-            self.interface.sendReply("-upF must be between 500 Hz and 2.5 kHz")
+            self.interface.sendReply("-upF must be between 500 Hz and 2.5 kHz",message=message)
             return
         
         if(dirV < 1):
             self.disconnect(NTCP)                                               # Close the TCP connection
-            self.interface.sendReply("-upV must be between 1 V and 200 V")
+            self.interface.sendReply("-upV must be between 1 V and 200 V",message=message)
             return
             
         if(dirF < 500):
             self.disconnect(NTCP)                                               # Close the TCP connection
-            self.interface.sendReply("-upF must be between 500 Hz and 2.5 kHz")
+            self.interface.sendReply("-upF must be between 500 Hz and 2.5 kHz",message=message)
             return
         
         if(not direction in ["X+","X-","Y+","Y-"]):
             self.disconnect(NTCP)                                               # Close the TCP connection
-            self.interface.sendReply("-dir can only be X+, X-, Y+, Y-")
+            self.interface.sendReply("-dir can only be X+, X-, Y+, Y-",message=message)
             return
         
         if(steps < 0):
             self.disconnect(NTCP)
-            self.interface.sendReply("-steps must be > 0")
+            self.interface.sendReply("-steps must be > 0",message=message)
             return
         
         if(up < 0):
             self.disconnect(NTCP)
-            self.interface.sendReply("-up must be > 0")
+            self.interface.sendReply("-up must be > 0",message=message)
             return
         
         motor         = Motor(NTCP)                                             # Nanonis Motor module
@@ -262,13 +301,13 @@ class scanbot():
         for s in range(steps):
             motor.StartMove(direction,stepsAtATime,wait_until_finished=True)    # Move safe number of steps at a time
             print("Moving motor: " + direction + " " + str(stepsAtATime) + "steps")
-            isSafe = self.safeCurrentCheck(NTCP)                                # Safe retract if current overload
+            isSafe = self.safeCurrentCheck(NTCP,message=message)                # Safe retract if current overload
             if(not isSafe):
                 self.disconnect(NTCP)                                           # Close the TCP connection
-                self.interface.sendReply("Could not complete move_area...")
+                self.interface.sendReply("Could not complete move_area...",message=message)
                 self.interface.sendReply("Safe retract was triggered because the current exceeded "
                                          + str(self.safetyParams[0]*1e9) + " nA"
-                                         + " while moving areas")
+                                         + " while moving areas",message=message)
                 return
                 
             time.sleep(0.25)
@@ -277,13 +316,13 @@ class scanbot():
         print("Moving motor: " + direction + " " + str(leftOver) + "steps")
         time.sleep(0.5)
         
-        isSafe = self.safeCurrentCheck(NTCP)                                    # Safe retract if current overload
+        isSafe = self.safeCurrentCheck(NTCP,message=message)                    # Safe retract if current overload
         if(not isSafe):
             self.disconnect(NTCP)                                               # Close the TCP connection
-            self.interface.sendReply("Could not complete move_area...")
+            self.interface.sendReply("Could not complete move_area...",message=message)
             self.interface.sendReply("Safe retract was triggered because the current exceeded "
                                      + str(self.safetyParams[0]*1e9) + " nA"
-                                     + " while moving areas")
+                                     + " while moving areas",message=message)
             return
         
         self.interface.reactToMessage("double_down")
@@ -876,7 +915,7 @@ class scanbot():
             scan.Action(scan_action='resume')
             self.disconnect(NTCP)
             
-    def safeCurrentCheck(self,NTCP):
+    def safeCurrentCheck(self,NTCP,message=""):
         motor         = Motor(NTCP)                                             # Nanonis Motor module
         zController   = ZController(NTCP)                                       # Nanonis Z-Controller module
         currentModule = Current(NTCP)                                           # Nanonis Current module
@@ -892,7 +931,7 @@ class scanbot():
         
         self.interface.sendReply("---\nWarning: Safe retract has been triggered.\n"
                                  + "Current: " + str(current*1e9) + " nA\n"
-                                 + "Threshold: " + str(threshold*1e9) + " nA\n")
+                                 + "Threshold: " + str(threshold*1e9) + " nA\n",message=message)
         
         zController.Withdraw(wait_until_finished=False)                         # Retract the tip
         
@@ -900,8 +939,8 @@ class scanbot():
             print("Stopping other processes...")
             self.interface.stop(args=[])
         except Exception as e:
-            self.interface.sendReply("---\nWarning: error stopping processes during safe retract...")
-            self.interface.sendReply(str(e) + "\n---")
+            self.interface.sendReply("---\nWarning: error stopping processes during safe retract...",message=message)
+            self.interface.sendReply(str(e) + "\n---",message=message)
         
         safeFreq    = self.safetyParams[1]                                      # Motor frequency for safe retract from safety parameters
         safeVoltage = self.safetyParams[2]                                      # Motor voltage for safe retract from safety parameters
@@ -917,14 +956,14 @@ class scanbot():
                                      + "Current still above threshold after "
                                      + str((count+1)*50) + " Z+ motor steps.\n" 
                                      + "Current: " + str(current*1e9) + " nA\n"
-                                     + "Threshold: " + str(threshold*1e9) + " nA\n")
+                                     + "Threshold: " + str(threshold*1e9) + " nA\n",message=message)
                 
             motor.StartMove(direction="Z+", steps=50,wait_until_finished=True)  # Move another 50 steps up
             current = abs(currentModule.Get())                                  # Get the tip current after moving
             count += 1
             print("Retracting another 50 steps... current: " + str(current*1e9) + " nA")
         
-        self.interface.sendReply("Warning: Safe retract complete... current: " + str(current*1e9) + " nA\n---\n")
+        self.interface.sendReply("Warning: Safe retract complete... current: " + str(current*1e9) + " nA\n---\n",message=message)
         return False
     
 ###############################################################################

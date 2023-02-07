@@ -182,8 +182,17 @@ class scanbot():
         if(nx == 1): xStep = 0
         if(ny == 1): yStep = 0
         
+        ydirection  = "Y+"
+        if(yStep < 0):
+            yStep *= -1
+            ydirection = "Y-"
+        
+        xdirection = True
+        if(xStep < 0):
+            xStep *= -1
+            xdirection = False
+            
         reverse = False
-        xdirection  = False
         xdirections = ["X-","X+"]
         for y in range(ny):
             if(self.checkEventFlags()): break                                   # Check event flags
@@ -218,8 +227,8 @@ class scanbot():
             
             if(self.checkEventFlags()): break                                   # Check event flags
             
-            self.interface.sendReply("Moving " + str(yStep) + " steps in +Y",message=message)
-            self.moveArea(up=zStep,upV=zV,upF=zF,direction="Y+",steps=yStep,dirV=xyV,dirF=xyF,zon=True)
+            self.interface.sendReply("Moving " + str(yStep) + " steps in " + ydirection,message=message)
+            self.moveArea(up=zStep,upV=zV,upF=zF,direction=ydirection,steps=yStep,dirV=xyV,dirF=xyF,zon=True)
             
             time.sleep(sleepTime)
             
@@ -955,7 +964,7 @@ class scanbot():
         
         try:                                                                    # Stop anything running. try/except is probably overkill but just in case
             print("Stopping other processes...")
-            self.interface.stop(args=[])
+            self.interface.stop(user_args=[])
         except Exception as e:
             self.interface.sendReply("---\nWarning: error stopping processes during safe retract...",message=message)
             self.interface.sendReply(str(e) + "\n---",message=message)

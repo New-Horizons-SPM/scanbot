@@ -265,8 +265,8 @@ class scanbot_interface(object):
                     
                     '-nx'    : ['2',       lambda x: int(x),   "(int) Size of the nx x ny grid of surveys. This sets up nx x ny surveys each taken after moving -x/yStep motor steps"],
                     '-ny'    : ['2',       lambda x: int(x),   "(int) Size of the nx x ny grid of surveys. This sets up nx x ny surveys each taken after moving -x/yStep motor steps"],
-                    '-xStep' : ['20',      lambda x: int(x),   "(int) Number of motor steps between surveys in the x direction"],
-                    '-yStep' : ['20',      lambda x: int(x),   "(int) Number of motor steps between surveys in the y direction"],
+                    '-xStep' : ['20',      lambda x: int(x),   "(int) Number of motor steps between surveys in the X direction. Negative value snakes course grid in opposite direction"],
+                    '-yStep' : ['20',      lambda x: int(x),   "(int) Number of motor steps between surveys in the Y+ direction. Negative value reverses to Y- direction"],
                     '-zStep' : ['500',     lambda x: int(x),   "(int) Number of motor steps to move in +Z (upwards) before moving the tip in x/y"],
                     '-xyV'   : ['120',     lambda x: float(x), "(float) Piezo voltage when moving motor steps in xy direction"],
                     '-zV'    : ['180',     lambda x: float(x), "(float) Piezo voltage when moving motor steps in z direction"],

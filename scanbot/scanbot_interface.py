@@ -140,7 +140,7 @@ class scanbot_interface(object):
     def firebaseInit(self):
         try:
             import firebase_admin
-            from firebase_admin import credentials, storage
+            from firebase_admin import credentials
             print("Initialising firebase app")
             cred = credentials.Certificate(self.firebaseCert)                   # Your firebase credentials
             firebase_admin.initialize_app(cred, {
@@ -184,6 +184,7 @@ class scanbot_interface(object):
                          'stop'             : self.stop,
                          'plot'             : self.plot,
                          'survey'           : self.survey,
+                         'survey2'          : self.survey2,
                          'move_area'        : self.moveArea,
                          'zdep'             : self.zdep,
                          'afm_registration' : self.registration,
@@ -231,12 +232,12 @@ class scanbot_interface(object):
                     '-n'    : ['5',        lambda x: int(x),   "(int) Size of the nxn grid of scans"],
                     '-i'    : ['1',        lambda x: int(x),   "(int) Start the grid from this index"],
                     '-s'    : ['scanbot',  lambda x: str(x),   "(str) Suffix at the end of autosaved sxm files"],
-                    '-xy'   : ['100e-9',   lambda x: float(x), "(float) Length and width of the scan frame (m)"],
-                    '-dx'   : ['150e-9',   lambda x: float(x), "(float) Scan grid spacing (m)"],
+                    '-xy'   : ['-default', lambda x: float(x), "(float) Length and width of the scan frame (m)"],
+                    '-dx'   : ['-default', lambda x: float(x), "(float) Scan grid spacing (m). Default is -xy"],
                     '-px'   : ['-default', lambda x: int(x),   "(int) Number of pixels"],
                     '-st'   : ['10',       lambda x: float(x), "(float) Drift compensation time (s)"],
                     '-stitch':['1',        lambda x: float(x), "(int) Return the stitched survey after completion. 1: Yes, else No"],
-                    '-macro': ['OFF',      lambda x: str(x),   "(str) Simulate key stroke after each image. 'OFF' to tuurn off"],   # Do this at some point - to push images into logbook
+                    '-hook' : ['',         lambda x: str(x),   "(str) Name of a custom python script to call after each image."],
                     '-autotip': ['0',      lambda x: str(x),   "(int) Automatic tip shaping. 0=off, 1=on. Properties for the auto tip shaper should be set with auto_tip_shaper command"]}
         
         if(_help): return arg_dict
@@ -249,6 +250,40 @@ class scanbot_interface(object):
         func = lambda : self.scanbot.survey(*args,message=self.bot_message.copy())
         return self.threadTask(func)
     
+    def survey2(self,user_args,_help=False):
+        arg_dict = {'-bias' : ['-default', lambda x: float(x), "(float) Scan bias"],
+                    '-n'    : ['5',        lambda x: int(x),   "(int) Size of the nxn grid of scans within each survey"],
+                    '-i'    : ['1',        lambda x: int(x),   "(int) Start the grid from this index"],
+                    '-s'    : ['scanbot',  lambda x: str(x),   "(str) Suffix at the end of autosaved sxm files"],
+                    '-xy'   : ['-default', lambda x: float(x), "(float) Length and width of the scan frame (m)"],
+                    '-dx'   : ['-default', lambda x: float(x), "(float) Scan grid spacing (m)"],
+                    '-px'   : ['-default', lambda x: int(x),   "(int) Number of pixels"],
+                    '-st'   : ['10',       lambda x: float(x), "(float) Drift compensation time (s)"],
+                    '-stitch':['1',        lambda x: float(x), "(int) Return the stitched survey after completion. 1: Yes, else No"],
+                    '-hook' : ['',         lambda x: str(x),   "(str) Name of a custom python script to call after each image."],
+                    '-autotip': ['0',      lambda x: str(x),   "(int) Automatic tip shaping. 0=off, 1=on. Properties for the auto tip shaper should be set with auto_tip_shaper command"],
+                    
+                    '-nx'    : ['2',       lambda x: int(x),   "(int) Size of the nx x ny grid of surveys. This sets up nx x ny surveys each taken after moving -x/yStep motor steps"],
+                    '-ny'    : ['2',       lambda x: int(x),   "(int) Size of the nx x ny grid of surveys. This sets up nx x ny surveys each taken after moving -x/yStep motor steps"],
+                    '-xStep' : ['20',      lambda x: int(x),   "(int) Number of motor steps between surveys in the X direction. Negative value snakes course grid in opposite direction"],
+                    '-yStep' : ['20',      lambda x: int(x),   "(int) Number of motor steps between surveys in the Y+ direction. Negative value reverses to Y- direction"],
+                    '-zStep' : ['500',     lambda x: int(x),   "(int) Number of motor steps to move in +Z (upwards) before moving the tip in x/y"],
+                    '-xyV'   : ['120',     lambda x: float(x), "(float) Piezo voltage when moving motor steps in xy direction"],
+                    '-zV'    : ['180',     lambda x: float(x), "(float) Piezo voltage when moving motor steps in z direction"],
+                    '-xyF'   : ['1100',    lambda x: float(x), "(float) Piezo frequency when moving motor steps in xy direction"],
+                    '-zF'    : ['1100',    lambda x: float(x), "(float) Piezo frequency when moving motor steps in z direction"],
+                    }
+        
+        if(_help): return arg_dict
+        
+        error,user_arg_dict = self.userArgs(arg_dict,user_args)
+        if(error): return error + "\nRun ```help survey2``` if you're unsure."
+        
+        args = self.unpackArgs(user_arg_dict)
+        
+        func = lambda : self.scanbot.survey2(*args,message=self.bot_message.copy())
+        return self.threadTask(func)
+        
     def moveArea(self,user_args,_help=False):
         arg_dict = {'-up'    : ['20',   lambda x: int(x),   "(int) Steps to go up before moving across. min 10"],
                     '-upV'   : ['270',  lambda x: float(x), "(float) Controller amplitude during up motor steps"],
@@ -266,7 +301,7 @@ class scanbot_interface(object):
         
         args = self.unpackArgs(user_arg_dict)
         
-        self.scanbot.moveArea(*args)
+        self.scanbot.moveArea(*args,message=self.bot_message.copy())
     
     def zdep(self,user_args,_help=False):
         arg_dict = {'-zi'       : ['-10e-12',  lambda x: float(x), "(float) Initial tip lift from setpoint (m)"],
@@ -536,6 +571,7 @@ class scanbot_interface(object):
             os.remove(path)
             
         if(self.uploadMethod == 'firebase'):
+            from firebase_admin import storage
             bucket = storage.bucket()
             blob   = bucket.blob(self.path + pngFilename)
             blob.upload_from_filename(str(path))

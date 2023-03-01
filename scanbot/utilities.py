@@ -104,6 +104,231 @@ def makeGif(GIF):
     """
     pass
 ###############################################################################
+# Tip tracking
+###############################################################################
+def getAveragedFrame(cap,n=1):
+    """
+    Read frames from cv2.VideoCapture
+
+    Parameters
+    ----------
+    cap : cv2.VideoCapture object
+    n   : number of frames to average
+
+    Returns
+    -------
+    ret : Still capturing
+    avgFrame : Averaged frames
+
+    """
+    ret, avgFrame = cap.read()
+    if(not ret): return ret, avgFrame
+    avgFrame = np.array(avgFrame).astype(np.float32)
+    for i in range(n-1):
+        ret, frame = cap.read()                                                 # Capture frame-by-frame
+        if(not ret): return ret, frame
+        avgFrame += np.array(frame).astype(np.float32)
+    
+    avgFrame = avgFrame/n
+    return ret,avgFrame
+
+def extract(frame,roi,win=0):
+    """
+    Extracts a region of interest (roi) from the frame.
+
+    Parameters
+    ----------
+    frame : picture
+    roi   : [x,y,w,h] where x,y is the top left corner. y=0 is at the top
+    win   : Number of pixels to capture around the roi. (i.e. capture a region 
+            centrered around the roi that is 'win' pixels larger than roi)
+
+    Returns
+    -------
+    ROI : Captured region of interest
+
+    """
+    ROI = np.array(frame[roi[1]-win:win+roi[1] + roi[3],roi[0]-win:win+roi[0] + roi[2]]) # Extract the roi from the frame
+    ROI = np.sum(ROI,axis=2).astype(float)                                      # Convert RGB to 1 channel by summing along the 3rd dimenstion
+    return ROI
+
+def enhanceEdges(im,trim=0):
+    """
+    Enhance the edges of an image by taking the grad
+
+    Parameters
+    ----------
+    im : TYPE
+        DESCRIPTION.
+    trim : TYPE, optional
+        DESCRIPTION. The default is 0.
+
+    Returns
+    -------
+    edges : TYPE
+        DESCRIPTION.
+
+    """
+    grad  = np.gradient(im)
+    edges = np.sqrt(grad[0]**2 + grad[1]**2)
+    if(trim > 0): edges = edges[trim:-trim,trim:-trim]
+    return edges
+    
+def trackROI(im1,im2,dxy=[1,1]):
+    """
+    Returns the offset of im2 relative to im1. im1 and im2 must be the same
+    size and scale. Keep dxy=[1,1] to return offset in units of pixels.
+    When using with nanonis to detect drift, take the current scan frame 
+    position and subtract ox,oy from it. i.e.: center_x -= ox; center_y -= oy
+
+    Parameters
+    ----------
+    im1 : image to compare against
+    im2 : image to get the offset of
+    dxy : pixel size in x and y: [dx,dy]
+
+    Returns
+    -------
+    [ox,oy] : offset in x and y
+
+    """
+    im1_edges = enhanceEdges(im1)
+    im2_edges = enhanceEdges(im2)
+    
+    xcor = sp.correlate2d(im1_edges,im2_edges, boundary='symm', mode='same')
+    y,x  = np.unravel_index(xcor.argmax(), xcor.shape)
+
+    ni = np.array(xcor.shape)
+    oy,ox = np.array([y,x]).astype(int) - (ni/2).astype(int)
+    
+    ox *= -dxy[0]
+    oy *= -dxy[1]
+    
+    return np.array([ox,oy])
+
+def update(roi,ROI,win,frame,oxy=[0,0],xy=[0,0]):
+    """
+    Checks whether the region of interest around the tip has moved close enough
+    to the edge of the window it's tracked within. If it has moved close enough
+    to the edge, the roi coordinates are updated by oxy, then the sub image,
+    ROI is recaptured from the frame, as is the window around the sub image. 
+    This recentres WIN around roi so the tip can continue being tracked.
+
+    Parameters
+    ----------
+    roi : coordinates of the region of interest
+    ROI : 2D sub matrix/image extracted from frame using the coordinates roi
+    win : window size around roi
+    frame : whole frame
+    oxy : offset of the tracked ROI within the window. (i.e. coordinate of the 
+          moving tip within a static window around the ROI). This value will 
+          reset to 0,0 when the ROI reaches close to the edge if the window and 
+          the ROI/roi is updated
+    xy  : Running x,y coordinate of the tip with respect to its original pos
+
+    Returns
+    -------
+    ROI : Original ROI unless the tip moves close enough to the edge of the 
+          window around roi. In which case, the coordinates roi are updated and
+          ROI and WIN are recaptured
+    WIN : Window around the ROI. Is updated when ROI is updated
+    roi : Coordinates of the ROI
+    xy  : Running x,y coordinate of the tip with respect to its original pos
+
+    """
+    x,y = oxy
+    
+    if(abs(x) > win/4):
+        roi[0] += x
+        xy[0]  += x
+        ROI = extract(frame,roi)
+        
+    if(abs(y) > win/4):
+        roi[1] += y
+        xy[1]  += y
+        ROI = extract(frame,roi)
+        
+    WIN = extract(frame,roi,win)
+        
+    return ROI,WIN,roi,xy
+
+def drawRec(frame,rec,xy=[0,0],win=0):
+    """
+    Draw a rectangle at a location in the frame
+
+    Parameters
+    ----------
+    frame : cv2 frame to draw a rectangle on
+    rec   : coordinates of the rectangle [x,y,w,h] where x,y is the coordinate 
+            of the top left corner of the rectangle with respect to the origin
+            xy
+    xy    : origin [x,y]
+    win   : Number of pixels by which to increase the size of the rectangle.
+
+    Returns
+    -------
+    frame_rec : 
+
+    """
+    r = rec.copy()
+    r[0] -= win;
+    r[1] -= win
+    r[2] += 2*win
+    r[3] += 2*win
+    
+    x,y = xy
+    r[0] += x
+    r[1] += y
+    
+    startPoint = (r[0],r[1])
+    endPoint   = (r[0] + r[2],r[1] + r[3])
+    frame_rec = cv2.rectangle(frame, startPoint, endPoint, color=(255,0,0), thickness=2)
+    
+    return frame_rec
+
+def trimStart(cap,frames):
+    frameCount = 0
+    while(cap.isOpened()):                                                      # Read until video is completed
+        ret,frame = cap.read()                                                  # Capture frame-by-frame
+        if(not ret): break
+        frameCount += 1
+        if(frameCount >= frames): break
+
+def getVideo(cameraPort):
+    cap = cv2.VideoCapture(1,cv2.CAP_DSHOW)                                         # Camera feed. Camera port: usually 0 for desktop and 1 for laptops with a camera. cv2.CAP_DSHOW is magic
+    # cap = cv2.VideoCapture('C:/Users/jced0001/Development/Temp/trackTip/D6_to_Au.mp4') # Load in the mp4
+    return cap
+
+getROI_initial = []
+getROI_final = []
+def getROI(cap):
+    global getROI_initial
+    global getROI_final
+    
+    windowName = "SelectROI"
+    cv2.namedWindow(windowName)
+    cv2.setMouseCallback(windowName, drawRectangle)
+    
+    _,frame = getAveragedFrame(cap,n=1)
+    while True:
+        if(len(getROI_final)): break
+        cv2.imshow(windowName,frame.astype(np.uint8))
+        if cv2.waitKey(25) & 0xFF == ord('q'): break                            # Press Q on keyboard to  exit
+    
+    cv2.destroyAllWindows() 
+    
+    roi = []
+    if(len(getROI_final)): roi = [*getROI_initial,*(getROI_final - getROI_initial)]
+    return roi
+
+def drawRectangle(event, x, y, flags, param):
+    global getROI_initial, getROI_final
+    if event == cv2.EVENT_LBUTTONDOWN:
+       getROI_initial = np.array([x,y])
+    elif event == cv2.EVENT_LBUTTONUP:
+       getROI_final = np.array([x,y])
+       
+###############################################################################
 # Classifying STM Images
 ###############################################################################
 def classify(data,tipChanges=True,sharpness=False,closeDouble=False,longDouble=False):
@@ -325,34 +550,34 @@ def tipQuality(scanData,dxy,pos,xy=[0,0]):
     error: 0 means all good.
            1 means couldn't find a contour at the tip location
     """
+    pass
+    # lowpass = ndimage.gaussian_filter(scanData, 2)
+    # gxy  = np.gradient(lowpass,*dxy)                                            # Not sure if it should be dx,dy or dy,dx here
+    # grad = np.sqrt(gxy[0]**2 + gxy[1]**2)
+    # grad = normalise(grad,255).astype(np.uint8)
+    # mask = grad > 127
     
-    lowpass = ndimage.gaussian_filter(scanData, 2)
-    gxy  = np.gradient(lowpass,*dxy)                                            # Not sure if it should be dx,dy or dy,dx here
-    grad = np.sqrt(gxy[0]**2 + gxy[1]**2)
-    grad = normalise(grad,255).astype(np.uint8)
-    mask = grad > 127
-    
-    ret,thresh = cv2.threshold(edgeEnhanced,240,255,0)                          # Set threshold values for finding contours. high threshold since we've saturated the edges
-    contours,hierarchy = cv2.findContours(thresh, 1, 2)                         # Pull out all contours
-    
-    
+    # ret,thresh = cv2.threshold(edgeEnhanced,240,255,0)                          # Set threshold values for finding contours. high threshold since we've saturated the edges
+    # contours,hierarchy = cv2.findContours(thresh, 1, 2)                         # Pull out all contours
     
     
     
-    contours = pickle.load(open('contours.pk','rb'))
-    dxy = np.array([1.953125e-10, 1.953125e-10])
-    pixelArea = dxy[0]*dxy[1]
     
-    goop = []
-    minIslandArea = 40
-    minGoopArea = 2                                                                 # Min goop area is 2 nm2
-    for idx,c in enumerate(contours):
-        area = cv2.contourArea(c)*pixelArea
-        if(area*1e18 > minGoopArea and area*1e18 < minIslandArea):                  # Only highlight islands larger than 25 nm2
-            mask = np.zeros_like(rawim)
-            cv2.drawContours(mask, contours, idx, 255, -1)                          # Draw filled contour in mask
-            mask = mask> 0
-            P = cv2.arcLength(curve=c, closed=True)*dxy[0]
-            C = 4*np.pi*area/(P**2)
-            if(C > 0.8):
-                cv2.drawContours(rawim, contours, idx, 255)
+    
+    # contours = pickle.load(open('contours.pk','rb'))
+    # dxy = np.array([1.953125e-10, 1.953125e-10])
+    # pixelArea = dxy[0]*dxy[1]
+    
+    # goop = []
+    # minIslandArea = 40
+    # minGoopArea = 2                                                                 # Min goop area is 2 nm2
+    # for idx,c in enumerate(contours):
+    #     area = cv2.contourArea(c)*pixelArea
+    #     if(area*1e18 > minGoopArea and area*1e18 < minIslandArea):                  # Only highlight islands larger than 25 nm2
+    #         mask = np.zeros_like(rawim)
+    #         cv2.drawContours(mask, contours, idx, 255, -1)                          # Draw filled contour in mask
+    #         mask = mask> 0
+    #         P = cv2.arcLength(curve=c, closed=True)*dxy[0]
+    #         C = 4*np.pi*area/(P**2)
+    #         if(C > 0.8):
+    #             cv2.drawContours(rawim, contours, idx, 255)

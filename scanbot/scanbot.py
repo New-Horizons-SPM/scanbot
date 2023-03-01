@@ -78,7 +78,9 @@ class scanbot():
             
     def survey(self,bias,n,startAt,suffix,xy,dx,px,sleepTime,stitch,hook,autotip,ox=0,oy=0,message="",enhance=False,reverse=False,clearRunning=True):
         NTCP,connection_error = self.connect()                                  # Connect to nanonis via TCP
-        if(connection_error): return connection_error                           # Return error message if there was a problem connecting   
+        if(connection_error):
+            global_.running.clear()                                             # Free up the running flag
+            return connection_error                                             # Return error message if there was a problem connecting        
         
         scan  = Scan(NTCP)
         piezo = Piezo(NTCP)
@@ -154,7 +156,13 @@ class scanbot():
             pngFilename,scanDataPlaneFit = self.makePNG(scanData, filePath,returnData=True,dpi=150) # Generate a png from the scan data
             self.interface.sendPNG(pngFilename,notify=True,message=message)     # Send a png over zulip
             
-            if(hook): pass                                                      # call a custom python script
+            if(hook):                                                           # call a custom python script
+                try:
+                    import hk_survey
+                    hk_survey()
+                except Exception as e:
+                    self.interface.sendReply("Warning: Call to survey hook hk_survey.py failed:")
+                    self.interface.sendReply(str(e))
             
             if(stitch):
                 row = (idx)//n
@@ -369,6 +377,72 @@ class scanbot():
         
         return True
     
+    def moveTip(self,lightOnOff,cameraPort,win=20,message=""):
+        import cv2
+        NTCP,connection_error = self.connect()                                  # Connect to nanonis via TCP
+        if(connection_error):
+            global_.running.clear()                                             # Free up the running flag
+            return connection_error                                             # Return error message if there was a problem connecting
+        
+        if(lightOnOff):                                                         # If we want to turn the light on
+            try:
+                from hk_light import turn_on
+                turn_on()                                                       # Call the hook to do so. Hook should return null if successful, otherwise it should throw an Exception
+            except Exception as e:
+                self.interface.sendReply("Error calling hook hk_lighton.py")
+                self.disconnect(NTCP)
+                global_.running.clear()                                         # Free up the running flag
+                return str(e)
+        
+        cap = utilities.getVideo(cameraPort)
+        
+        # Remove later
+        utilities.trimStart(cap,frames=2000)                                    # Trim off the start of the video
+        
+        ret,frame = utilities.getAveragedFrame(cap,n=1)                         # Read the first frame of the video
+        
+        roi = utilities.getROI(cap)
+        
+        ROI = utilities.extract(frame,roi)
+        WIN = utilities.extract(frame,roi,win)
+    
+        xy   = np.array([0,0])
+        while(cap.isOpened()):
+            if(self.checkEventFlags()): break                                   # Check event flags
+            ret, frame = utilities.getAveragedFrame(cap,n=11)
+            if(not ret): break
+        
+            oxy = utilities.trackROI(im1=ROI, im2=WIN)
+            
+            currentPos = xy + oxy
+            print(currentPos,oxy,roi[1])
+            
+            ROI,WIN,roi,xy = utilities.update(roi,ROI,win,frame,oxy,xy)
+            
+            rec = utilities.drawRec(frame.astype(np.uint8), roi, xy=oxy)
+            rec = utilities.drawRec(rec,   roi, win=win)
+            # rec = cv2.circle(rec, currentPos + tipPos, radius=3, color=(0, 0, 255), thickness=-1)
+            
+            cv2.imshow('Frame',rec)
+            
+            if cv2.waitKey(25) & 0xFF == ord('q'): break                                # Press Q on keyboard to  exit
+        
+        cap.release()
+        cv2.destroyAllWindows()
+        
+        if(lightOnOff):                                                         # If we want to turn the light off
+            try:
+                from hk_light import turn_off
+                turn_off()                                                      # Call the hook to do so. Hook should return null if successful, otherwise it should throw an Exception
+            except Exception as e:
+                self.interface.sendReply("Error calling hook hk_lighton.py")
+                self.disconnect(NTCP)
+                global_.running.clear()                                         # Free up the running flag
+                return str(e)
+            
+        self.disconnect(NTCP)                                                   # Close the TCP connection
+        global_.running.clear()                                                 # Free up the running flag
+        
     def zdep(self,zi,zf,nz,iset,bset,dciset,bias,dcbias,ft,bt,dct,px,dcpx,lx,dclx,suffix,makeGIF,message=""):
         """
         This function performs a set of constant height scans at different tip 
@@ -410,7 +484,9 @@ class scanbot():
                    
         """
         NTCP,connection_error = self.connect()                                  # Connect to nanonis via TCP
-        if(connection_error): return connection_error                           # Return error message if there was a problem connecting        
+        if(connection_error):
+            global_.running.clear()                                             # Free up the running flag
+            return connection_error                                             # Return error message if there was a problem connecting        
         
         scanModule = Scan(NTCP)
         biasModule = Bias(NTCP)
@@ -647,7 +723,9 @@ class scanbot():
 
         """
         NTCP,connection_error = self.connect()                                  # Connect to nanonis via TCP
-        if(connection_error): return connection_error                           # Return error message if there was a problem connecting        
+        if(connection_error):
+            global_.running.clear()                                             # Free up the running flag
+            return connection_error                                             # Return error message if there was a problem connecting        
         
         scanModule = Scan(NTCP)
         biasModule = Bias(NTCP)

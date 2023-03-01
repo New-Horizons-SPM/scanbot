@@ -27,8 +27,9 @@ class scanbot_interface(object):
 ###############################################################################
 # Constructor
 ###############################################################################
-    def __init__(self):
+    def __init__(self,run_mode=""):
         print("Initialising app...")
+        self.run_mode = run_mode
         self.scanbot = scanbot(self)
         self.loadConfig()
         self.initGlobals()
@@ -186,6 +187,7 @@ class scanbot_interface(object):
                          'survey'           : self.survey,
                          'survey2'          : self.survey2,
                          'move_area'        : self.moveArea,
+                         'move_tip'         : self.moveTip,
                          'zdep'             : self.zdep,
                          'afm_registration' : self.registration,
                         # Misc
@@ -260,7 +262,7 @@ class scanbot_interface(object):
                     '-px'   : ['-default', lambda x: int(x),   "(int) Number of pixels"],
                     '-st'   : ['10',       lambda x: float(x), "(float) Drift compensation time (s)"],
                     '-stitch':['1',        lambda x: float(x), "(int) Return the stitched survey after completion. 1: Yes, else No"],
-                    '-hook' : ['',         lambda x: str(x),   "(str) Name of a custom python script to call after each image."],
+                    '-hook' : ['0',        lambda x: int(x),   "(int) Flag to call a custom python script after each image. Script must be ~/scanbot/scanbot/hk_survey.py. 0=Don't call, 1=Call"],
                     '-autotip': ['0',      lambda x: str(x),   "(int) Automatic tip shaping. 0=off, 1=on. Properties for the auto tip shaper should be set with auto_tip_shaper command"],
                     
                     '-nx'    : ['2',       lambda x: int(x),   "(int) Size of the nx x ny grid of surveys. This sets up nx x ny surveys each taken after moving -x/yStep motor steps"],
@@ -303,6 +305,20 @@ class scanbot_interface(object):
         
         self.scanbot.moveArea(*args,message=self.bot_message.copy())
     
+    def moveTip(self,user_args,_help=False):
+        arg_dict = {'-light'      : ['0', lambda x: int(x),   "(int) Flag to turn the light on before moving and off after moving. This uses hk_light.turn_on() and hk_light.turn_off() functions. 0=Don't, 1=Do"],
+                    '-cameraPort' : ['0', lambda x: int(x),   "(int) cv2 camera port - usually 0 for desktops or 1 for laptops with an inbuilt camera."]}
+        
+        if(_help): return arg_dict
+        
+        error,user_arg_dict = self.userArgs(arg_dict,user_args)
+        if(error): return error + "\nRun ```help move_tip``` if you're unsure."
+        
+        args = self.unpackArgs(user_arg_dict)
+        
+        func = lambda : self.scanbot.moveTip(*args,message=self.bot_message.copy())
+        return self.threadTask(func)
+        
     def zdep(self,user_args,_help=False):
         arg_dict = {'-zi'       : ['-10e-12',  lambda x: float(x), "(float) Initial tip lift from setpoint (m)"],
                     '-zf'       : ['10e-12',   lambda x: float(x), "(float) Final tip lift from setpoint (m)"],
@@ -698,7 +714,7 @@ if('-z' in sys.argv):
 if('-c' in sys.argv):
     print("Console mode: type 'exit' to end scanbot")
     go = True
-    handler_class = scanbot_interface()
+    handler_class = scanbot_interface(run_mode='c')
     while(go):
         message = input("User: ")
         if(message == 'exit'):

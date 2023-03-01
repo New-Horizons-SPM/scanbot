@@ -320,9 +320,8 @@ class scanbot():
         print("withdrew")
         time.sleep(0.25)
         
-        demo = False
         motor.FreqAmpSet(upF,upV)                                               # Set the motor controller params appropriate for Z piezos
-        motor.StartMove("Z+",up,wait_until_finished=demo)                       # Retract the tip +Z direction
+        motor.StartMove("Z+",up,wait_until_finished=True)                       # Retract the tip +Z direction
         print("Moving motor: Z+" + " " + str(up) + "steps")
         time.sleep(0.5)
         
@@ -333,7 +332,7 @@ class scanbot():
         isSafe = True
         motor.FreqAmpSet(dirF,dirV)                                             # Set the motor controller params appropriate for XY piezos
         for s in range(steps):
-            motor.StartMove(direction,stepsAtATime,wait_until_finished=demo)    # Move safe number of steps at a time
+            motor.StartMove(direction,stepsAtATime,wait_until_finished=True)    # Move safe number of steps at a time
             print("Moving motor: " + direction + " " + str(stepsAtATime) + "steps")
             isSafe = self.safeCurrentCheck(NTCP,message=message)                # Safe retract if current overload
             if(not isSafe):
@@ -346,7 +345,7 @@ class scanbot():
                 
             time.sleep(0.25)
         
-        motor.StartMove(direction,leftOver,wait_until_finished=demo)
+        motor.StartMove(direction,leftOver,wait_until_finished=True)
         print("Moving motor: " + direction + " " + str(leftOver) + "steps")
         time.sleep(0.5)
         
@@ -491,11 +490,11 @@ class scanbot():
                 continue
             if(currentPos[0] < target[0]):
                 print("Move tip right")
-                success = self.moveArea(up=10, upV=zV, upF=zF, direction="X+", steps=100, dirV=xyV, dirF=xyF, zon=False, approach=False)
+                success = self.moveArea(up=10, upV=zV, upF=zF, direction="X+", steps=500, dirV=xyV, dirF=xyF, zon=False, approach=False)
                 continue
             if(currentPos[0] > target[0]):
                 print("Move tip left")
-                success = self.moveArea(up=10, upV=zV, upF=zF, direction="X-", steps=100, dirV=xyV, dirF=xyF, zon=False, approach=False)
+                success = self.moveArea(up=10, upV=zV, upF=zF, direction="X-", steps=500, dirV=xyV, dirF=xyF, zon=False, approach=False)
                 continue
             
             print("Target Hit!")

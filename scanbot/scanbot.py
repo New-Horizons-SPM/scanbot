@@ -242,7 +242,7 @@ class scanbot():
             
         global_.running.clear()
             
-    def moveArea(self,up,upV,upF,direction,steps,dirV,dirF,zon,message=""):
+    def moveArea(self,up,upV,upF,direction,steps,dirV,dirF,zon,approach=True,message=""):
         NTCP,connection_error = self.connect()                                  # Connect to nanonis via TCP
         if(connection_error): return connection_error                           # Return error message if there was a problem connecting        
         
@@ -320,8 +320,9 @@ class scanbot():
         print("withdrew")
         time.sleep(0.25)
         
+        demo = False
         motor.FreqAmpSet(upF,upV)                                               # Set the motor controller params appropriate for Z piezos
-        motor.StartMove("Z+",up,wait_until_finished=True)                       # Retract the tip +Z direction
+        motor.StartMove("Z+",up,wait_until_finished=demo)                       # Retract the tip +Z direction
         print("Moving motor: Z+" + " " + str(up) + "steps")
         time.sleep(0.5)
         
@@ -332,7 +333,7 @@ class scanbot():
         isSafe = True
         motor.FreqAmpSet(dirF,dirV)                                             # Set the motor controller params appropriate for XY piezos
         for s in range(steps):
-            motor.StartMove(direction,stepsAtATime,wait_until_finished=True)    # Move safe number of steps at a time
+            motor.StartMove(direction,stepsAtATime,wait_until_finished=demo)    # Move safe number of steps at a time
             print("Moving motor: " + direction + " " + str(stepsAtATime) + "steps")
             isSafe = self.safeCurrentCheck(NTCP,message=message)                # Safe retract if current overload
             if(not isSafe):
@@ -345,7 +346,7 @@ class scanbot():
                 
             time.sleep(0.25)
         
-        motor.StartMove(direction,leftOver,wait_until_finished=True)
+        motor.StartMove(direction,leftOver,wait_until_finished=demo)
         print("Moving motor: " + direction + " " + str(leftOver) + "steps")
         time.sleep(0.5)
         
@@ -358,26 +359,28 @@ class scanbot():
                                      + " while moving areas",message=message)
             return False
         
-        self.interface.reactToMessage("double_down")
-        motor.FreqAmpSet(upF,upV)
-        autoApproach.Open()
-        autoApproach.OnOffSet(on_off=True)
+        if(approach):
+            self.interface.reactToMessage("double_down")
+            motor.FreqAmpSet(upF,upV)
         
-        while(autoApproach.OnOffGet()):
-            print("Still approaching...")
+            autoApproach.Open()
+            autoApproach.OnOffSet(on_off=True)
+            
+            while(autoApproach.OnOffGet()):
+                print("Still approaching...")
+                time.sleep(1)
+        
             time.sleep(1)
+            if(zon): zController.OnOffSet(True)
         
-        time.sleep(1)
-        if(zon): zController.OnOffSet(True)
-        
-        time.sleep(3)
-        self.interface.reactToMessage("sparkler")
+            time.sleep(3)
+            self.interface.reactToMessage("sparkler")
         
         self.disconnect(NTCP)                                                   # Close the TCP connection
         
         return True
     
-    def moveTip(self,lightOnOff,cameraPort,demo=0,roi=[],win=20):
+    def moveTip(self,lightOnOff,cameraPort,trackOnly,demo=0,roi=[],win=20,target=[]):
         """
         In development
 
@@ -428,13 +431,33 @@ class scanbot():
                 return
                 
             self.interface.sendReply("Select a marker for the tip location. Press 'q' to cancel")
-            tipPos = utilities.getTipPos(cap)
+            tipPos = utilities.markPoint(cap)
+        
+        if(len(tipPos) and not len(target) and not trackOnly):
+            ret,frame = utilities.getAveragedFrame(cap,n=1)                     # Read the first frame of the video
+            
+            self.interface.sendReply("Select target location for the tip. Press 'q' to cancel and enter track-only mode")
+            target = utilities.markPoint(cap)
+            
+            if(len(target)): target = target - tipPos
+            
+            if(target[1] > 0):
+                self.interface.sendReply("Error, cannot move tip lower than current position. Track-Only mode activated")
+                target = []
+        
+        if(not len(target)): trackOnly = True
         
         ROI = utilities.extract(frame,roi)
         WIN = utilities.extract(frame,roi,win)
-    
-        xy   = np.array([0,0])
+        
+        xy = np.array([0,0])
+        success = True
         while(cap.isOpened()):
+            if(not success):
+                self.interface.sendReply("Error moving area... tip crashed... stopping")
+                global_.running.clear()
+                break
+            
             if(self.checkEventFlags()): break                                   # Check event flags
             ret, frame = utilities.getAveragedFrame(cap,n=11)
             if(not ret): break
@@ -442,18 +465,41 @@ class scanbot():
             oxy = utilities.trackROI(im1=ROI, im2=WIN)
             
             currentPos = xy + oxy
-            print(currentPos,oxy,roi[1])
+            # print(currentPos,oxy,roi[1])
             
             ROI,WIN,roi,xy = utilities.update(roi,ROI,win,frame,oxy,xy)
             
             rec = utilities.drawRec(frame.astype(np.uint8), roi, xy=oxy)
             rec = utilities.drawRec(rec, roi, win=win)
-            if(len(tipPos)):
-                rec = cv2.circle(rec, currentPos + tipPos, radius=3, color=(0, 0, 255), thickness=-1)
+            
+            if(len(tipPos)): rec = cv2.circle(rec, currentPos + tipPos, radius=3, color=(0, 0, 255), thickness=-1)
+            if(len(target)): rec = cv2.circle(rec, target + tipPos, radius=3, color=(0, 255, 0), thickness=-1)
             
             cv2.imshow('Frame',rec)
             
             if cv2.waitKey(25) & 0xFF == ord('q'): break                        # Press Q on keyboard to  exit
+            
+            if(trackOnly): continue
+        
+            zV = 195
+            zF = 1100
+            xyV = 130
+            xyF = 1100
+            if(currentPos[1] > target[1]):                                      # First priority is to always keep the tip above this line
+                print("Move tip up")
+                success = self.moveArea(up=1000, upV=zV, upF=zF, direction="X+", steps=0, dirV=xyV, dirF=xyF, zon=False, approach=False)
+                continue
+            if(currentPos[0] < target[0]):
+                print("Move tip right")
+                success = self.moveArea(up=10, upV=zV, upF=zF, direction="X+", steps=100, dirV=xyV, dirF=xyF, zon=False, approach=False)
+                continue
+            if(currentPos[0] > target[0]):
+                print("Move tip left")
+                success = self.moveArea(up=10, upV=zV, upF=zF, direction="X-", steps=100, dirV=xyV, dirF=xyF, zon=False, approach=False)
+                continue
+            
+            print("Target Hit!")
+            break                                                               # Target reached!
         
         cap.release()
         cv2.destroyAllWindows()

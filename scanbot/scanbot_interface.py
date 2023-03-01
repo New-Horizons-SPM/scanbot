@@ -308,6 +308,7 @@ class scanbot_interface(object):
     def moveTip(self,user_args,_help=False):
         arg_dict = {'-light'      : ['0', lambda x: int(x),   "(int) Flag to turn the light on before moving and off after moving. This uses hk_light.turn_on() and hk_light.turn_off() functions. 0=Don't, 1=Do"],
                     '-cameraPort' : ['0', lambda x: int(x),   "(int) cv2 camera port - usually 0 for desktops or 1 for laptops with an inbuilt camera."],
+                    '-trackOnly'  : ['0', lambda x: int(x),   "(int) Flag to not disable motor and simply track the tip. 0=motor active. 1=tracking only mode"],
                     '-demo'       : ['0', lambda x: int(x),   "(int) Load in an mp4 recording of the tip moving instead of using live feed"]}
         
         if(_help): return arg_dict

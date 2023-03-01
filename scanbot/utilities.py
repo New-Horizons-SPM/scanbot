@@ -331,9 +331,9 @@ def drawRectangle(event, x, y, flags, param):
     elif event == cv2.EVENT_LBUTTONUP:
        getROI_final = np.array([x,y])
 
-getTipPos_pos = []
-def getTipPos(cap):
-    global getTipPos_pos
+markPoint_pos = []
+def markPoint(cap):
+    global markPoint_pos
     
     windowName = "SelectTipPos"
     cv2.namedWindow(windowName)
@@ -341,22 +341,22 @@ def getTipPos(cap):
     
     _,frame = getAveragedFrame(cap,n=1)
     while True:
-        if(len(getTipPos_pos)): break
+        if(len(markPoint_pos)): break
         cv2.imshow(windowName,frame.astype(np.uint8))
         if cv2.waitKey(25) & 0xFF == ord('q'): break                            # Press Q on keyboard to  exit
     
     cv2.destroyAllWindows() 
     
-    tipPos = np.array([0,0])
-    if(len(getTipPos_pos)): tipPos = getTipPos_pos.copy()
+    pos = np.array([0,0])
+    if(len(markPoint_pos)): pos = markPoint_pos.copy()
     
-    getTipPos_pos = []
-    return tipPos
+    markPoint_pos = []
+    return pos
        
 def drawCircle(event, x, y, flags, param):
-    global getTipPos_pos
+    global markPoint_pos
     if event == cv2.EVENT_LBUTTONUP:
-       getTipPos_pos = np.array([x,y])
+       markPoint_pos = np.array([x,y])
 ###############################################################################
 # Classifying STM Images
 ###############################################################################

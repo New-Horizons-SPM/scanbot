@@ -377,7 +377,24 @@ class scanbot():
         
         return True
     
-    def moveTip(self,lightOnOff,cameraPort,demo=0,roi=[],win=20,message=""):
+    def moveTip(self,lightOnOff,cameraPort,demo=0,roi=[],win=20):
+        """
+        In development
+
+        Parameters
+        ----------
+        lightOnOff : Flag to call hook hk_light. If set, a python script 
+                     (~/scanbot/scanbot/hk_light.py) is called to turn the 
+                     light on and off before/after moving the tip
+        cameraPort : usually if you have a desktop windows machine with one 
+                     camera plugged in, set this to 0. laptops with built-in 
+                     cameras will probably be 1
+        demo       : demo mode (temporary)
+        roi        : region of interest to track - might be used later. for now
+                     it's manually selected with a mouse
+        win        : Window around the ROI to look at.
+
+        """
         import cv2
         NTCP,connection_error = self.connect()                                  # Connect to nanonis via TCP
         if(connection_error):

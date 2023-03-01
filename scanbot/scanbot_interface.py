@@ -312,12 +312,14 @@ class scanbot_interface(object):
         
         if(_help): return arg_dict
         
+        if(self.run_mode != 'c'): return "This function is only available in console mode."
+        
         error,user_arg_dict = self.userArgs(arg_dict,user_args)
         if(error): return error + "\nRun ```help move_tip``` if you're unsure."
         
         args = self.unpackArgs(user_arg_dict)
         
-        func = lambda : self.scanbot.moveTip(*args,message=self.bot_message.copy())
+        func = lambda : self.scanbot.moveTip(*args)
         return self.threadTask(func)
         
     def zdep(self,user_args,_help=False):

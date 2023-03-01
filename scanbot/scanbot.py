@@ -377,7 +377,7 @@ class scanbot():
         
         return True
     
-    def moveTip(self,lightOnOff,cameraPort,win=20,message=""):
+    def moveTip(self,lightOnOff,cameraPort,demo=0,roi=[],win=20,message=""):
         import cv2
         NTCP,connection_error = self.connect()                                  # Connect to nanonis via TCP
         if(connection_error):
@@ -394,14 +394,24 @@ class scanbot():
                 global_.running.clear()                                         # Free up the running flag
                 return str(e)
         
-        cap = utilities.getVideo(cameraPort)
+        cap = utilities.getVideo(cameraPort,demo)
         
-        # Remove later
-        utilities.trimStart(cap,frames=2000)                                    # Trim off the start of the video
+        if(demo):
+            utilities.trimStart(cap,frames=2000)                                # Trim off the start of the video
         
-        ret,frame = utilities.getAveragedFrame(cap,n=1)                         # Read the first frame of the video
-        
-        roi = utilities.getROI(cap)
+        if(not len(roi)):                                                       # Don't do this if we're passing in an ROI already
+            ret,frame = utilities.getAveragedFrame(cap,n=1)                     # Read the first frame of the video
+            
+            self.interface.sendReply("Select tracking ROI. Press 'q' to cancel")
+            roi = utilities.getROI(cap)
+            if(not len(roi)):
+                self.interface.sendReply("Cancelling move tip")
+                self.disconnect(NTCP)
+                global_.running.clear()                                         # Free up the running flag
+                return
+                
+            self.interface.sendReply("Select a marker for the tip location. Press 'q' to cancel")
+            tipPos = utilities.getTipPos(cap)
         
         ROI = utilities.extract(frame,roi)
         WIN = utilities.extract(frame,roi,win)
@@ -420,12 +430,13 @@ class scanbot():
             ROI,WIN,roi,xy = utilities.update(roi,ROI,win,frame,oxy,xy)
             
             rec = utilities.drawRec(frame.astype(np.uint8), roi, xy=oxy)
-            rec = utilities.drawRec(rec,   roi, win=win)
-            # rec = cv2.circle(rec, currentPos + tipPos, radius=3, color=(0, 0, 255), thickness=-1)
+            rec = utilities.drawRec(rec, roi, win=win)
+            if(len(tipPos)):
+                rec = cv2.circle(rec, currentPos + tipPos, radius=3, color=(0, 0, 255), thickness=-1)
             
             cv2.imshow('Frame',rec)
             
-            if cv2.waitKey(25) & 0xFF == ord('q'): break                                # Press Q on keyboard to  exit
+            if cv2.waitKey(25) & 0xFF == ord('q'): break                        # Press Q on keyboard to  exit
         
         cap.release()
         cv2.destroyAllWindows()

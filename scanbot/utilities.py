@@ -294,10 +294,9 @@ def trimStart(cap,frames):
         frameCount += 1
         if(frameCount >= frames): break
 
-def getVideo(cameraPort):
-    cap = cv2.VideoCapture(1,cv2.CAP_DSHOW)                                         # Camera feed. Camera port: usually 0 for desktop and 1 for laptops with a camera. cv2.CAP_DSHOW is magic
-    # cap = cv2.VideoCapture('C:/Users/jced0001/Development/Temp/trackTip/D6_to_Au.mp4') # Load in the mp4
-    return cap
+def getVideo(cameraPort,demo=0):
+    if(demo): return cv2.VideoCapture('C:/Users/jced0001/Development/Temp/trackTip/D6_to_Au.mp4') # Load in the mp4
+    return cv2.VideoCapture(cameraPort,cv2.CAP_DSHOW)                           # Camera feed. Camera port: usually 0 for desktop and 1 for laptops with a camera. cv2.CAP_DSHOW is magic
 
 getROI_initial = []
 getROI_final = []
@@ -305,6 +304,7 @@ def getROI(cap):
     global getROI_initial
     global getROI_final
     
+    print("Getting ROI")
     windowName = "SelectROI"
     cv2.namedWindow(windowName)
     cv2.setMouseCallback(windowName, drawRectangle)
@@ -319,6 +319,9 @@ def getROI(cap):
     
     roi = []
     if(len(getROI_final)): roi = [*getROI_initial,*(getROI_final - getROI_initial)]
+    
+    getROI_initial = []
+    getROI_final = []
     return roi
 
 def drawRectangle(event, x, y, flags, param):
@@ -327,7 +330,33 @@ def drawRectangle(event, x, y, flags, param):
        getROI_initial = np.array([x,y])
     elif event == cv2.EVENT_LBUTTONUP:
        getROI_final = np.array([x,y])
+
+getTipPos_pos = []
+def getTipPos(cap):
+    global getTipPos_pos
+    
+    windowName = "SelectTipPos"
+    cv2.namedWindow(windowName)
+    cv2.setMouseCallback(windowName, drawCircle)
+    
+    _,frame = getAveragedFrame(cap,n=1)
+    while True:
+        if(len(getTipPos_pos)): break
+        cv2.imshow(windowName,frame.astype(np.uint8))
+        if cv2.waitKey(25) & 0xFF == ord('q'): break                            # Press Q on keyboard to  exit
+    
+    cv2.destroyAllWindows() 
+    
+    tipPos = np.array([0,0])
+    if(len(getTipPos_pos)): tipPos = getTipPos_pos.copy()
+    
+    getTipPos_pos = []
+    return tipPos
        
+def drawCircle(event, x, y, flags, param):
+    global getTipPos_pos
+    if event == cv2.EVENT_LBUTTONUP:
+       getTipPos_pos = np.array([x,y])
 ###############################################################################
 # Classifying STM Images
 ###############################################################################

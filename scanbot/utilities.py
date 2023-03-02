@@ -295,8 +295,13 @@ def trimStart(cap,frames):
         if(frameCount >= frames): break
 
 def getVideo(cameraPort,demo=0):
-    if(demo): return cv2.VideoCapture('C:/Users/jced0001/Development/Temp/trackTip/D6_to_Au.mp4') # Load in the mp4
-    return cv2.VideoCapture(cameraPort,cv2.CAP_DSHOW)                           # Camera feed. Camera port: usually 0 for desktop and 1 for laptops with a camera. cv2.CAP_DSHOW is magic
+    if(demo):
+        cap = cv2.VideoCapture('../Documentation/move_tip.mp4')                 # Load in the mp4
+        trimStart(cap,frames=2000)                                              # Trim off the start of the video
+        return cap
+    
+    cap = cv2.VideoCapture(cameraPort,cv2.CAP_DSHOW)                            # Camera feed. Camera port: usually 0 for desktop and 1 for laptops with a camera. cv2.CAP_DSHOW is magic
+    return cap
 
 getROI_initial = []
 getROI_final = []

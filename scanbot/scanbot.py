@@ -16,6 +16,7 @@ from nanonisTCP.AutoApproach import AutoApproach
 from nanonisTCP.Current import Current
 from nanonisTCP.FolMe import FolMe
 from nanonisTCP.Marks import Marks
+from nanonisTCP.TipShaper import TipShaper
 
 import time
 from datetime import datetime as dt
@@ -379,7 +380,7 @@ class scanbot():
         
         return True
     
-    def moveTip(self,lightOnOff,cameraPort,trackOnly,demo=0,roi=[],win=20,target=[]):
+    def moveTip(self,lightOnOff,cameraPort,trackOnly,xStep,zStep,xV,zV,xF,zF,demo,roi=[],win=20,target=[]):
         """
         In development
 
@@ -414,9 +415,6 @@ class scanbot():
                 return str(e)
         
         cap = utilities.getVideo(cameraPort,demo)
-        
-        if(demo):
-            utilities.trimStart(cap,frames=2000)                                # Trim off the start of the video
         
         if(not len(roi)):                                                       # Don't do this if we're passing in an ROI already
             ret,frame = utilities.getAveragedFrame(cap,n=1)                     # Read the first frame of the video
@@ -464,7 +462,6 @@ class scanbot():
             oxy = utilities.trackROI(im1=ROI, im2=WIN)
             
             currentPos = xy + oxy
-            # print(currentPos,oxy,roi[1])
             
             ROI,WIN,roi,xy = utilities.update(roi,ROI,win,frame,oxy,xy)
             
@@ -479,22 +476,15 @@ class scanbot():
             if cv2.waitKey(25) & 0xFF == ord('q'): break                        # Press Q on keyboard to  exit
             
             if(trackOnly): continue
-        
-            zV = 195
-            zF = 1100
-            xyV = 130
-            xyF = 1100
+            
             if(currentPos[1] > target[1]):                                      # First priority is to always keep the tip above this line
-                print("Move tip up")
-                success = self.moveArea(up=1000, upV=zV, upF=zF, direction="X+", steps=0, dirV=xyV, dirF=xyF, zon=False, approach=False)
+                success = self.moveArea(up=zStep, upV=zV, upF=zF, direction="X+", steps=0, dirV=xV, dirF=xF, zon=False, approach=False)
                 continue
             if(currentPos[0] < target[0]):
-                print("Move tip right")
-                success = self.moveArea(up=10, upV=zV, upF=zF, direction="X+", steps=500, dirV=xyV, dirF=xyF, zon=False, approach=False)
+                success = self.moveArea(up=10, upV=zV, upF=zF, direction="X+", steps=xStep, dirV=xV, dirF=xF, zon=False, approach=False)
                 continue
             if(currentPos[0] > target[0]):
-                print("Move tip left")
-                success = self.moveArea(up=10, upV=zV, upF=zF, direction="X-", steps=500, dirV=xyV, dirF=xyF, zon=False, approach=False)
+                success = self.moveArea(up=10, upV=zV, upF=zF, direction="X-", steps=xStep, dirV=xV, dirF=xF, zon=False, approach=False)
                 continue
             
             print("Target Hit!")
@@ -1006,6 +996,90 @@ class scanbot():
 ###############################################################################
 # Utilities
 ###############################################################################
+    def tipShape(self):
+        NTCP,connection_error = self.connect()                                  # Connect to nanonis via TCP
+        if(connection_error): return connection_error                           # Return error message if there was a problem connecting
+        
+        tipShaper = TipShaper(NTCP)
+        
+        try:
+            tipShaper.Start(wait_until_finished=True,timeout=-1)
+        except Exception as e:
+            self.interface.sendReply(str(e))
+        
+        self.disconnect(NTCP)
+        self.interface.reactToMessage("dagger")
+        
+    def tipShapeProps(self,sod,cb,b1,z1,t1,b2,t2,z3,t3,wait,fb):
+        NTCP,connection_error = self.connect()                                  # Connect to nanonis via TCP
+        if(connection_error): return connection_error                           # Return error message if there was a problem connecting
+         
+        tipShaper  = TipShaper(NTCP)
+        
+        try:
+            default_args = tipShaper.PropsGet()                                 # Store all the current tip shaping settings in nanonis
+        except Exception as e:
+            self.interface.sendReply(str(e))
+            self.disconnect(NTCP)
+            return
+            
+        tipShaperArgs = [sod,cb,b1,z1,t1,b2,t2,z3,t3,wait,fb]                   # Order matters here
+        for i,a in enumerate(tipShaperArgs):
+            if(a=="-default"):
+                tipShaperArgs[i] = default_args[i]
+        
+        z1 = tipShaperArgs[3]
+        if(z1 < -50e-9):
+            self.interface.sendReply("Limit for z1=-50e-9 m")
+            self.disconnect(NTCP)
+            return
+        
+        z3 = tipShaperArgs[7]
+        if(z3 < -50e-9):
+            self.interface.sendReply("Limit for z3=-50e-9 m")
+            self.disconnect(NTCP)
+            return
+        
+        if(z1 > 0):
+            self.interface.sendReply("Sure you want a positive z1?")
+            
+        if(z3 < 0):
+            self.interface.sendReply("Sure you want a negative z3?")
+            
+        tipShaper.PropsSet(*tipShaperArgs)                                      # update the tip shaping params in nanonis
+        
+        self.disconnect(NTCP)
+        self.interface.reactToMessage("+1")
+        
+    def tipShapePropsGet(self):
+        NTCP,connection_error = self.connect()                                  # Connect to nanonis via TCP
+        if(connection_error): return connection_error                           # Return error message if there was a problem connecting
+         
+        tipShaper = TipShaper(NTCP)
+        
+        try:
+            args = tipShaper.PropsGet()                                         # Grab all the current tip shaping settings in nanonis
+        except Exception as e:
+            self.interface.sendReply(str(e))
+            self.disconnect(NTCP)
+            return
+        
+        self.disconnect(NTCP)
+        
+        getStr  = "Switch off delay (sod): " + str(args[0])  + "\n"
+        getStr += "Change bias flag  (cb): " + str(args[1])  + "\n"
+        getStr += "Change bias value (b1): " + str(args[2])  + "\n"
+        getStr += "Tip lift 1 height (z1): " + str(args[3])  + "\n"
+        getStr += "Tip lift 1 time   (t1): " + str(args[4])  + "\n"
+        getStr += "Tip lift bias     (b2): " + str(args[5])  + "\n"
+        getStr += "Tip lift 2 time   (t2): " + str(args[6])  + "\n"
+        getStr += "Tip lift 3 height (z3): " + str(args[7])  + "\n"
+        getStr += "Tip lift 3 time   (t3): " + str(args[8])  + "\n"
+        getStr += "Final wait time (wait): " + str(args[9])  + "\n"
+        getStr += "Restore feeback   (fb): " + str(args[10]) + "\n"
+        
+        return getStr
+    
     def tipInFrame(self,tipPos,scanFrame):
         x,y,w,h,angle = scanFrame
         angle = angle*math.pi/180

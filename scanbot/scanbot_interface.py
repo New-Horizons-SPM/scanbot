@@ -186,10 +186,13 @@ class scanbot_interface(object):
                          'plot'             : self.plot,
                          'survey'           : self.survey,
                          'survey2'          : self.survey2,
-                         'move_area'        : self.moveArea,
-                         'move_tip'         : self.moveTip,
                          'zdep'             : self.zdep,
                          'afm_registration' : self.registration,
+                        # Tip Actions
+                         'move_area'        : self.moveArea,
+                         'move_tip'         : self.moveTip,
+                         'tip_shape_props'  : self.tipShapeProps,
+                         'tip_shape'        : self.tipShape,
                         # Misc
                          'quit'             : self._quit
                          
@@ -306,10 +309,16 @@ class scanbot_interface(object):
         self.scanbot.moveArea(*args,message=self.bot_message.copy())
     
     def moveTip(self,user_args,_help=False):
-        arg_dict = {'-light'      : ['0', lambda x: int(x),   "(int) Flag to turn the light on before moving and off after moving. This uses hk_light.turn_on() and hk_light.turn_off() functions. 0=Don't, 1=Do"],
-                    '-cameraPort' : ['0', lambda x: int(x),   "(int) cv2 camera port - usually 0 for desktops or 1 for laptops with an inbuilt camera."],
-                    '-trackOnly'  : ['0', lambda x: int(x),   "(int) Flag to not disable motor and simply track the tip. 0=motor active. 1=tracking only mode"],
-                    '-demo'       : ['0', lambda x: int(x),   "(int) Load in an mp4 recording of the tip moving instead of using live feed"]}
+        arg_dict = {'-light'      : ['0',   lambda x: int(x),   "(int) Flag to turn the light on before moving and off after moving. This uses hk_light.turn_on() and hk_light.turn_off() functions. 0=Don't, 1=Do"],
+                    '-cameraPort' : ['0',   lambda x: int(x),   "(int) cv2 camera port - usually 0 for desktops or 1 for laptops with an inbuilt camera."],
+                    '-trackOnly'  : ['0',   lambda x: int(x),   "(int) Flag to not disable motor and simply track the tip. 0=motor active. 1=tracking only mode"],
+                    '-xStep'      : ['100', lambda x: int(x),   "(int) Number of motor steps in the X direction before updating tip position. More=Faster but might lose the tip"],
+                    '-zStep'      : ['250', lambda x: int(x),   "(int) Number of motor steps to move in +Z (upwards) before updating tip position. More=Faster but might lose the tip"],
+                    '-xV'         : ['130', lambda x: float(x), "(float) Piezo voltage when moving motor steps in x direction"],
+                    '-zV'         : ['180', lambda x: float(x), "(float) Piezo voltage when moving motor steps in z direction"],
+                    '-xF'         : ['1100',lambda x: float(x), "(float) Piezo frequency when moving motor steps in x direction"],
+                    '-zF'         : ['1100',lambda x: float(x), "(float) Piezo frequency when moving motor steps in z direction"],
+                    '-demo'       : ['0',   lambda x: int(x),   "(int) Load in an mp4 recording of the tip moving instead of using live feed"]}
         
         if(_help): return arg_dict
         
@@ -322,6 +331,42 @@ class scanbot_interface(object):
         
         func = lambda : self.scanbot.moveTip(*args)
         return self.threadTask(func)
+    
+    def tipShape(self,user_args,_help=False):
+        arg_dict = {}
+        
+        if(_help): return arg_dict
+        
+        error,user_arg_dict = self.userArgs(arg_dict,user_args)
+        if(error): return error + "\nRun ```help tip_shape``` if you're unsure."
+        
+        # args = self.unpackArgs(user_arg_dict)
+        
+        self.scanbot.tipShape()
+        
+    def tipShapeProps(self,user_args,_help=False):
+        arg_dict = {'-sod'    : ['-default',lambda x: float(x), "(float) Switch off delay: the time (s) during which the Z position is averaged before switching the Z controller off"],
+                    '-cb'     : ['-default',lambda x: int(x),   "(int) Change bias flag (0=Nanonis,1=Change Bias,2=Don't Change"],
+                    '-b1'     : ['-default',lambda x: float(x), "(float) The value applied to the Bias signal if cb is true"],
+                    '-z1'     : ['-default',lambda x: float(x), "(float) First tip lift (m) (i.e. -2e-9)"],
+                    '-t1'     : ['-default',lambda x: float(x), "(float) Defines the time to ramp Z from current Z position to z1"],
+                    '-b2'     : ['-default',lambda x: float(x), "(float) Bias voltage applied just after the first Z ramping"],
+                    '-t2'     : ['-default',lambda x: float(x), "(float) Time to wait after applying the Bias Lift value b2"],
+                    '-z3'     : ['-default',lambda x: float(x), "(float) Height the tip is going to ramp for the second time (m) i.e. +5nm"],
+                    '-t3'     : ['-default',lambda x: float(x), "(float) Time to ramp Z in the second ramping [s]."],
+                    '-wait'   : ['-default',lambda x: float(x), "(float) Time to wait after restoring the initial Bias voltage"],
+                    '-fb'     : ['-default',lambda x: int(x),   "(int) Restore the initial Z-Controller status. 0: off. 1: on"]}
+        
+        if(_help): return arg_dict
+        
+        if(not len(user_args)): return self.scanbot.tipShapePropsGet()
+        
+        error,user_arg_dict = self.userArgs(arg_dict,user_args)
+        if(error): return error + "\nRun ```help tip_shape_props``` if you're unsure."
+        
+        args = self.unpackArgs(user_arg_dict)
+        
+        self.scanbot.tipShapeProps(*args)
         
     def zdep(self,user_args,_help=False):
         arg_dict = {'-zi'       : ['-10e-12',  lambda x: float(x), "(float) Initial tip lift from setpoint (m)"],

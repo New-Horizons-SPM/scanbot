@@ -437,7 +437,44 @@ def findTipChanges(scanData):
 ###############################################################################
 # Analyse STM Images
 ###############################################################################
-def analyse(scanData,lxy,curvatureThreshold=4,minIslandArea=30,minGoopArea=2):
+def getCleanCoordinate(scanData,lxy):
+    """
+    Returns a coordinate w.r.t the centre of the scan frame that is free from
+    adsorbates.
+
+    Parameters
+    ----------
+    scanData : 
+    lxy      : 
+
+    Returns
+    -------
+    pos        : location of clean area. [] if area is not clean
+
+    """
+    cleanArea = getCleanArea(scanData, lxy)
+    
+    # choose the best coordinate for tip shaping
+    
+    return np.array([0.0,0.0])
+
+def getCleanArea(scanData,lxy):
+    """
+    Determine how flat a region is.
+
+    Parameters
+    ----------
+    scanData : Raw scan data
+    lxy      : Side length in x and y directions [w,h]
+
+    Returns
+    -------
+    Map of flat area
+
+    """
+    return scanData
+    
+def findIslands(scanData,lxy,curvatureThreshold=4,minIslandArea=30,minGoopArea=2):
     """
     Utility that decomposes a scan into islands and substrate
 

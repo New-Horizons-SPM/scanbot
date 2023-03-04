@@ -1027,8 +1027,22 @@ class scanbot():
         while(attempt < n):
             scanModule.FrameSet(*xy, w=wh, h=wh)
             scanModule.Action(scan_action="start",scan_direction="up")          # Start an upward scan
-            _, _, filePath = scanModule.WaitEndOfScan()                         # Wait until the scan finishes
+            
+            isClean  = True
+            timedOut = True
+            while(timedOut and isClean):                                        # Periodically check if the current scan is of a clean region
+                timedOut, _, filePath = scanModule.WaitEndOfScan(timeout=3000)  # Wait until the scan finishes or 3 sec, whichever occurs first
+                _,cleanImage,_ = scanModule.FrameDataGrab(14, 1)                # Image of the 'clean' surface
+                isClean = utilities.isClean(cleanImage,lxy=wh)                  # Check if the scan so far is of a clean area
+            
+            if(not isClean):
+                scanModule.Action(scan_action='stop')
+                xy = xy + np.array([2*wh,0])                                    # Move the scan frame
+                self.interface.sendReply("Bad area, moving scan frame")
+                continue                                                        # Don't count the attempt if the area sucks
+                
             if(not filePath): break                                             # If the scan was stopped before finishing, stop program
+            
             _,cleanImage,_ = scanModule.FrameDataGrab(14, 1)                    # Image of the clean surface
             
             tipCheckPos = utilities.getCleanCoordinate(cleanImage, lxy=wh)      # Do some processing to find a clean location to assess tip quality
@@ -1069,6 +1083,11 @@ class scanbot():
         scanModule.PropsSet(series_name=basename)                               # Put back the original basename
         
         self.tipShapeProps(*tipShapeProps)
+        
+        if(attempt == n):
+            self.interface.sendReply("Tip shaping failed after " + str(n) + " attempts")
+        else:
+            self.interface.sendReply("Tip shaping successful after " + str(attempt) + "attempts")
         
         self.disconnect(NTCP)                                                   # Close the TCP connection
         global_.running.clear()                                                 # Free up the running flag

@@ -473,7 +473,29 @@ def getCleanArea(scanData,lxy):
 
     """
     return scanData
+
+def isClean(scanData,lxy,threshold=0):
+    """
+    Assess whether imaged surface is clean/flat. Function also works for 
+    incomplete images
+
+    Parameters
+    ----------
+    scanData    : Raw scan data
+    lxy         : Length/width of scan frame
+    threshold   : threshold for cleanliness
+        
+    Returns
+    -------
+    isClean     : True:  Area is clean to within threshold.
+                  False: Area is not clean to within threshold.
+
+    """
     
+    isClean = True
+    
+    return isClean
+
 def findIslands(scanData,lxy,curvatureThreshold=4,minIslandArea=30,minGoopArea=2):
     """
     Utility that decomposes a scan into islands and substrate

@@ -1050,6 +1050,7 @@ class scanbot():
                 _,cleanImage,_ = scanModule.FrameDataGrab(14, 1)                # Image of the 'clean' surface
                 isClean = utilities.isClean(cleanImage,lxy=wh,threshold=1e-9,sensitivity=1) # Check if the scan so far is of a clean area
             
+            cleanImage = np.flipud(cleanImage)                                  # Flip because the scan direction is up
             if(not isClean):
                 scanModule.Action(scan_action='stop')
                 xy = xy + np.array([2*wh,0])                                    # Move the scan frame
@@ -1058,7 +1059,7 @@ class scanbot():
                 
             if(not filePath): break                                             # If the scan was stopped before finishing, stop program
             
-            _,cleanImage,_ = scanModule.FrameDataGrab(14, 1)                    # Image of the clean surface
+            # _,cleanImage,_ = scanModule.FrameDataGrab(14, 1)                    # Image of the clean surface
             
             tipCheckPos = utilities.getCleanCoordinate(cleanImage, lxy=wh)      # Do some processing to find a clean location to assess tip quality
             if(not len(tipCheckPos)):                                           # If no coordinate is returned because the area is bad...

@@ -455,10 +455,40 @@ def assessTip(scanData,lxy,xy):
     size     : size of the imprint area (nm2)
 
     """
-    symScore = 5
-    size = 5
+    lowpass  = ndimage.gaussian_filter(scanData, 20)                            # Lowpass filter the scandata
+    highpass = scanData - lowpass                                               # Subtract the lowpass from original to get highpass
     
-    return symScore,size
+    zMax = np.max(highpass)
+    zMin = np.min(highpass)
+    threshold = (255*((5e-11 - zMin)/(zMax - zMin))).astype(np.uint8)
+    
+    highpass -= np.min(highpass)
+    norm = 255*(highpass/np.max(highpass))
+    norm = norm.astype(np.uint8)
+    ret,thresh = cv2.threshold(norm,threshold,255,0)                            # Set threshold values for finding contours. high threshold since we've saturated the edges
+    contours,hierarchy = cv2.findContours(thresh, 1, 2)                         # Pull out all contours
+    contours = sorted(contours, key=cv2.contourArea)                            # Sort all the contours by ascending area. This will help when we have concentric contours that we need to deal with
+    
+    dxy = lxy/scanData.shape[0]
+    xy += np.array([lxy,lxy])/2
+    xy /= dxy
+    xy  = xy.astype(np.int)
+    
+    size = 0
+    symScore = 1
+    tipImprint = np.zeros_like(scanData) + zMin
+    for idx,c in enumerate(contours):
+        mask = np.zeros_like(scanData)
+        cv2.drawContours(mask, contours, idx, 255, -1)                            # Draw filled contour in mask
+        mask = np.flipud(mask)
+        if(mask[xy[1],xy[0]] > 0):
+            mask = np.flipud(mask) > 0
+            tipImprint[mask] = highpass[mask]
+            size = cv2.contourArea(c)*dxy*dxy*1e18
+            break
+            
+    im = tipImprint
+    return symScore,size,im
     
 def getCleanCoordinate(scanData,lxy):
     """

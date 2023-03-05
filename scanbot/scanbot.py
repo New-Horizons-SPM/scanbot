@@ -991,7 +991,7 @@ class scanbot():
 ###############################################################################
 # Auto STM
 ###############################################################################
-    def autoTipShape(self,n,wh=30e-9,message=""):
+    def autoTipShape(self,n,wh,symTarget,sizeTarget,sleepTime,message=""):
         NTCP,connection_error = self.connect()                                  # Connect to nanonis via TCP
         if(connection_error):
             global_.running.clear()                                             # Free up the running flag
@@ -1001,7 +1001,14 @@ class scanbot():
         folme       = FolMe(NTCP)
         tipShaper   = TipShaper(NTCP)
         
-        tipShapeProps       = tipShaper.PropsGet()                              # Use the default tip shaping properties to begin with
+        try:
+            tipShapeProps = tipShaper.PropsGet()                                # Use the default tip shaping properties to begin with
+        except Exception as e:                                                  # If this fails, the tip shaper module isn't open. Nanonis does not support opening the tip shaper module using TCP interface
+            global_.running.clear()                                             # Free up the running flag
+            self.disconnect(NTCP)                                               # Close the TCP connection
+            self.interface.sendReply(str(e))                                    # Inform the user
+            return
+            
         tipShapeProps[10]   = 1                                                 # Make sure feedback on after tip shape
         
         tipCheckerProps     = tipShaper.PropsGet()                              # These will be the tip shaper properties used to perform a light tip-shaping action which is scanned over to assess tip quality
@@ -1022,18 +1029,26 @@ class scanbot():
         tempBasename = basename + '_' + suffix + '_'                            # Create a temp basename for this run
         scanModule.PropsSet(series_name=tempBasename)                           # Set the basename in nanonis
         
-        attempt = 0
+        attempt = 0                                                             # Keep track of number of attempts to tip shape
+        tipQA   = False                                                         # Temp flag
         xy = np.array([0,0])
         while(attempt < n):
             scanModule.FrameSet(*xy, w=wh, h=wh)
+            
             scanModule.Action(scan_action="start",scan_direction="up")          # Start an upward scan
+            for numSeconds in range(sleepTime):                                 # Sleep at one second intervals so we can still stop the routine without lag if we need to
+                time.sleep(1)
+                if(self.checkEventFlags()): break                               # Check event flags
+            if(self.checkEventFlags()): break                                   # Check event flags
+                
+            scanModule.Action(scan_action="start",scan_direction="up")          # Restart an upward scan, hopefully image is less drifty now
             
             isClean  = True
             timedOut = True
             while(timedOut and isClean):                                        # Periodically check if the current scan is of a clean region
                 timedOut, _, filePath = scanModule.WaitEndOfScan(timeout=3000)  # Wait until the scan finishes or 3 sec, whichever occurs first
                 _,cleanImage,_ = scanModule.FrameDataGrab(14, 1)                # Image of the 'clean' surface
-                isClean = utilities.isClean(cleanImage,lxy=wh)                  # Check if the scan so far is of a clean area
+                isClean = utilities.isClean(cleanImage,lxy=wh,threshold=1e-9,sensitivity=1) # Check if the scan so far is of a clean area
             
             if(not isClean):
                 scanModule.Action(scan_action='stop')
@@ -1050,7 +1065,7 @@ class scanbot():
                 xy = xy + np.array([2*wh,0])                                    # Move the scan frame
                 continue                                                        # Don't count the attempt if the area sucks
             
-            tipCheckPos += xy
+            tipCheckPos += xy                                                   # Convert frame-relative coordinate to absolute coordinate
             folme.XYPosSet(*tipCheckPos,Wait_end_of_move=True)                  # Move the tip to a clean place
             
             self.tipShapeProps(*tipCheckerProps)                                # Set the tip shaping properties up for the very light action
@@ -1061,14 +1076,22 @@ class scanbot():
             if(self.checkEventFlags()): break                                   # Check event flags
             
             scanModule.Action(scan_action="start",scan_direction="up")          # Start an upward scan
+            _, _, filePath = scanModule.WaitEndOfScan()                         # Wait until the scan finishes
             if(not filePath): break                                             # If the scan was stopped before finishing, stop program
-            _,TipImage,_ = scanModule.FrameDataGrab(14, 1)                      # Image of the tip's crater after very light tip shape action
+            _,tipImprint,_ = scanModule.FrameDataGrab(14, 1)                    # Image of the tip's crater after very light tip shape action
             
-            # Do some processing to assess tip quality from contour
-            # if(tip == good): break                                            # Stop the routine if a good tip has been achieved
+            # Probably do something here to periodically check scan area (as
+            # above) in case the tip blew up and left the area a mess.
+            
+            tipCheckPos -= xy                                                   # Convert absolute coodinate to frame-relative coordinate
+            symmetry,size = utilities.assessTip(tipImprint,wh,tipCheckPos)      # Assess the quality of the tip based on the imprint it leaves on the surface
+            if(symmetry > symTarget):
+                if(size < sizeTarget):
+                    tipQA = True                                                # Tip quality is good if it meets the target scores
+                    break                                                       # Stop the routine if a good tip has been achieved
             
             edgeOfFrame = xy - np.array([wh,0])/2
-            folme.XYPosSet(*edgeOfFrame,Wait_end_of_move=True)                  # Go to the left edge of the scan frame
+            folme.XYPosSet(*edgeOfFrame,Wait_end_of_move=True)                  # Move the tip to the left edge of the scan frame
             
             self.tipShapeProps(*tipShapeProps)                                  # Set the tip shaping properties up to change the tip
             time.sleep(1)
@@ -1082,12 +1105,11 @@ class scanbot():
             
         scanModule.PropsSet(series_name=basename)                               # Put back the original basename
         
-        self.tipShapeProps(*tipShapeProps)
+        self.tipShapeProps(*tipShapeProps)                                      # Put back the original tip shaping properties
         
-        if(attempt == n):
-            self.interface.sendReply("Tip shaping failed after " + str(n) + " attempts")
-        else:
-            self.interface.sendReply("Tip shaping successful after " + str(attempt) + "attempts")
+        message = "Tip shaping failed"
+        if(tipQA): message = "Tip shaping successful"
+        self.interface.sendReply(message + " after " + str(attempt+1) + " attempts")
         
         self.disconnect(NTCP)                                                   # Close the TCP connection
         global_.running.clear()                                                 # Free up the running flag

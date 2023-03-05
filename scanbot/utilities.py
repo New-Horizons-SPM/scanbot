@@ -437,6 +437,29 @@ def findTipChanges(scanData):
 ###############################################################################
 # Analyse STM Images
 ###############################################################################
+def assessTip(scanData,lxy,xy):
+    """
+    Assess the quality of the tip based on the imprint it left on the surface
+    after a very light tip shaping action.
+
+    Parameters
+    ----------
+    scanData : raw scan data
+    lxy      : lenght and width of the scan frame (m)
+    xy       : position the tip shape occurred relative to the centre of the 
+               scan frame
+
+    Returns
+    -------
+    symScore : score out of 10 for symmetry
+    size     : size of the imprint area (nm2)
+
+    """
+    symScore = 5
+    size = 5
+    
+    return symScore,size
+    
 def getCleanCoordinate(scanData,lxy):
     """
     Returns a coordinate w.r.t the centre of the scan frame that is free from
@@ -474,27 +497,47 @@ def getCleanArea(scanData,lxy):
     """
     return scanData
 
-def isClean(scanData,lxy,threshold=0):
+def isClean(scanData,lxy,threshold=1e-9,sensitivity=1):
     """
     Assess whether imaged surface is clean/flat. Function also works for 
-    incomplete images
+    incomplete images.
 
     Parameters
     ----------
     scanData    : Raw scan data
-    lxy         : Length/width of scan frame
-    threshold   : threshold for cleanliness
-        
+    lxy         : Length/width of scan frame in units of nm
+    threshold   : Threshold for cleanliness in units of nm
+    sensitivity : Scales the threshold area for which a surface is considered 
+                  unclean. Larger = less tolerant.
+                  
     Returns
     -------
     isClean     : True:  Area is clean to within threshold.
                   False: Area is not clean to within threshold.
 
     """
+    validScan = scanData[np.logical_not(np.isnan(scanData))]
     
-    isClean = True
+    axy = (lxy/scanData.shape[0])**2                                            # Area per pixel
+    thresholdArea  = (1e9*lxy/10)*(threshold)**2                                # Threshold for the amount of 'unclean' area
+    thresholdArea /= sensitivity
     
-    return isClean
+    lowpass  = ndimage.gaussian_filter(validScan, 20)                           # Lowpass filter the scandata
+    highpass = validScan - lowpass                                              # Subtract the lowpass from original to get highpass
+    
+    unCleanMask         = abs(highpass) > 1*threshold                           # Mask for surface area that's unClean
+    unScannableMask     = abs(highpass) > 2*threshold                           # Mask for surface area that's unScannable
+    bailImmediatelyMask = abs(highpass) > 3*threshold                           # Mask for surface area that's extreme
+    
+    unCleanArea         = np.sum(unCleanMask)*axy
+    unScannableArea     = np.sum(unScannableMask)*axy
+    bailImmediatelyArea = np.sum(bailImmediatelyMask)*axy
+    
+    if(unCleanArea         > thresholdArea/1): return False
+    if(unScannableArea     > thresholdArea/2): return False
+    if(bailImmediatelyArea > thresholdArea/5): return False
+    
+    return True
 
 def findIslands(scanData,lxy,curvatureThreshold=4,minIslandArea=30,minGoopArea=2):
     """

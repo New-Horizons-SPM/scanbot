@@ -487,8 +487,7 @@ def assessTip(scanData,lxy,xy):
             size = cv2.contourArea(c)*dxy*dxy*1e18
             break
             
-    im = tipImprint
-    return symScore,size,im
+    return symScore,size
     
 def getCleanCoordinate(scanData,lxy):
     """

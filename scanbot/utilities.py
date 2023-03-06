@@ -487,6 +487,7 @@ def assessTip(scanData,lxy,xy):
             size = cv2.contourArea(c)*dxy*dxy*1e18
             perimeter = cv2.arcLength(c,True)*dxy*1e9
             symScore = (4*np.pi*size)/(perimeter**2)
+            # cv2.drawContours(cnt, contours, idx, 255, 0)                          # Draw filled contour in mask
             break
     
     return symScore,size
@@ -506,27 +507,8 @@ def getCleanCoordinate(scanData,lxy):
     pos        : location of clean area. [] if area is not clean
 
     """
-    cleanArea = getCleanArea(scanData, lxy)
-    
-    # choose the best coordinate for tip shaping
     
     return np.array([0.0,0.0])
-
-def getCleanArea(scanData,lxy):
-    """
-    Determine how flat a region is.
-
-    Parameters
-    ----------
-    scanData : Raw scan data
-    lxy      : Side length in x and y directions [w,h]
-
-    Returns
-    -------
-    Map of flat area
-
-    """
-    return scanData
 
 def isClean(scanData,lxy,threshold=1e-9,sensitivity=1):
     """

@@ -807,7 +807,7 @@ class scanbot():
         
         return True
     
-    def moveTip(self,lightOnOff,cameraPort,trackOnly,xStep,zStep,xV,zV,xF,zF,demo,roi=[],win=20,target=[]):
+    def moveTip(self,lightOnOff,cameraPort,trackOnly,xStep,zStep,xV,zV,xF,zF,demo,roi=[],win=15,target=[]):
         """
         In development
 
@@ -905,12 +905,15 @@ class scanbot():
             if(trackOnly): continue
             
             if(currentPos[1] > target[1]):                                      # First priority is to always keep the tip above this line
+                if(demo): continue
                 success = self.moveArea(up=zStep, upV=zV, upF=zF, direction="X+", steps=0, dirV=xV, dirF=xF, zon=False, approach=False)
                 continue
             if(currentPos[0] < target[0]):
+                if(demo): continue
                 success = self.moveArea(up=10, upV=zV, upF=zF, direction="X+", steps=xStep, dirV=xV, dirF=xF, zon=False, approach=False)
                 continue
             if(currentPos[0] > target[0]):
+                if(demo): continue
                 success = self.moveArea(up=10, upV=zV, upF=zF, direction="X-", steps=xStep, dirV=xV, dirF=xF, zon=False, approach=False)
                 continue
             
@@ -991,7 +994,7 @@ class scanbot():
 ###############################################################################
 # Auto STM
 ###############################################################################
-    def autoTipShape(self,n,wh,symTarget,sizeTarget,sleepTime,message=""):
+    def autoTipShape(self,n,wh,symTarget,sizeTarget,zQA,ztip,sleepTime,message=""):
         NTCP,connection_error = self.connect()                                  # Connect to nanonis via TCP
         if(connection_error):
             global_.running.clear()                                             # Free up the running flag
@@ -1008,17 +1011,25 @@ class scanbot():
             self.disconnect(NTCP)                                               # Close the TCP connection
             self.interface.sendReply(str(e))                                    # Inform the user
             return
-            
+        
+        if(zQA > 0 or ztip > 0):
+            global_.running.clear()                                             # Free up the running flag
+            self.disconnect(NTCP)                                               # Close the TCP connection
+            self.interface.sendReply("Tip lifts -zQA and -ztip must be < 0")
+            return
+        
         tipShapeProps[10]   = 1                                                 # Make sure feedback on after tip shape
+        tipShapeProps[3]   = ztip                                               # Amount to dip the tip into the surface
+        tipShapeProps[7]    = -3*ztip                                           # Amount to withdraw the tip from the surface
         
         tipCheckerProps     = tipShaper.PropsGet()                              # These will be the tip shaper properties used to perform a light tip-shaping action which is scanned over to assess tip quality
         tipCheckerProps[1]  = 1                                                 # Turn on the change bias checkbox
         tipCheckerProps[2]  = 0.1                                               # Bias to change to before tip shaping
-        tipCheckerProps[3]  = -0.8e-9                                           # Set initial tip lift
+        tipCheckerProps[3]  = zQA                                               # Set initial tip lift
         tipCheckerProps[4]  = 0.1                                               # Duration of tip lift
         tipCheckerProps[5]  = 0                                                 # Bias applied while tip is in surface
         tipCheckerProps[6]  = 0.1                                               # Amount of time tip is in surface
-        tipCheckerProps[7]  = 2e-9                                              # Tip lift 2
+        tipCheckerProps[7]  = -3*zQA                                            # Tip lift 2
         tipCheckerProps[8]  = 0.1                                               # Duration of tip lift 2
         tipCheckerProps[9]  = 0.1                                               # Time to wait before putting bias back
         tipCheckerProps[10] = 1                                                 # Turn feedback on after tip shape
@@ -1058,8 +1069,6 @@ class scanbot():
                 continue                                                        # Don't count the attempt if the area sucks
                 
             if(not filePath): break                                             # If the scan was stopped before finishing, stop program
-            
-            # _,cleanImage,_ = scanModule.FrameDataGrab(14, 1)                    # Image of the clean surface
             
             tipCheckPos = utilities.getCleanCoordinate(cleanImage, lxy=wh)      # Do some processing to find a clean location to assess tip quality
             if(not len(tipCheckPos)):                                           # If no coordinate is returned because the area is bad...

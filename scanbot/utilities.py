@@ -474,19 +474,21 @@ def assessTip(scanData,lxy,xy):
     xy /= dxy
     xy  = xy.astype(np.int)
     
-    size = 0
+    size = -1
     symScore = 1
     tipImprint = np.zeros_like(scanData) + zMin
     for idx,c in enumerate(contours):
         mask = np.zeros_like(scanData)
-        cv2.drawContours(mask, contours, idx, 255, -1)                            # Draw filled contour in mask
+        cv2.drawContours(mask, contours, idx, 255, -1)                          # Draw filled contour in mask
         mask = np.flipud(mask)
         if(mask[xy[1],xy[0]] > 0):
             mask = np.flipud(mask) > 0
             tipImprint[mask] = highpass[mask]
             size = cv2.contourArea(c)*dxy*dxy*1e18
+            perimeter = cv2.arcLength(c,True)*dxy*1e9
+            symScore = (4*np.pi*size)/(perimeter**2)
             break
-            
+    
     return symScore,size
     
 def getCleanCoordinate(scanData,lxy):

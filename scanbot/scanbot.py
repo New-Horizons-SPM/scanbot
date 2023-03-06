@@ -1086,8 +1086,11 @@ class scanbot():
             
             tipCheckPos -= xy                                                   # Convert absolute coodinate to frame-relative coordinate
             symmetry,size = utilities.assessTip(tipImprint,wh,tipCheckPos)      # Assess the quality of the tip based on the imprint it leaves on the surface
+            
+            # if(size < 0): contour not found, do something about that.
+            
             if(symmetry > symTarget):
-                if(size < sizeTarget):
+                if(size < sizeTarget and size > 0):
                     tipQA = True                                                # Tip quality is good if it meets the target scores
                     break                                                       # Stop the routine if a good tip has been achieved
             

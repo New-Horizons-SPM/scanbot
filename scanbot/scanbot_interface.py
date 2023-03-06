@@ -409,8 +409,8 @@ class scanbot_interface(object):
 # Auto STM
 ###############################################################################
     def autoTipShape(self,user_args,_help=False):
-        arg_dict = {'-n'    : ['5',     lambda x: int(x),   "(int) Max number of tip shapes to perform"],
-                    '-wh'   : ['20e-9', lambda x: float(x), "(float) Size of the square scan frame when imaging the clean surface"],
+        arg_dict = {'-n'    : ['10',    lambda x: int(x),   "(int) Max number of tip shapes to perform"],
+                    '-wh'   : ['10e-9', lambda x: float(x), "(float) Size of the square scan frame when imaging the clean surface"],
                     '-sym'  : ['0.7',   lambda x: float(x), "(float) Minimum circularity requirement. 0=don't care, 1=perfectly circle"],
                     '-size' : ['1.2',   lambda x: float(x), "(float) Max size of the desired tip imprint in units of nm2"],
                     '-st'   : ['10',    lambda x: int(x),   "(int) Drift compensation time (s)"]}

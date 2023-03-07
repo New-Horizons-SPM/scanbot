@@ -168,59 +168,40 @@ class scanbot_interface(object):
         
     def initCommandDict(self):
         self.commands = {
-                        # Configuration commands
-                         'help'             : self._help,
-                         'set_ip'           : self.setIP,
-                         'get_ip'           : lambda args: self.IP,
-                         'set_portlist'     : self.setPortList,
-                         'get_portlist'     : lambda args: self.portList,
-                         'set_upload_method': self.setUploadMethod,
-                         'get_upload_method': lambda args: self.uploadMethod,
-                         'add_user'         : self.addUser,
-                         'get_users'        : lambda args: str(self.whitelist),
-                         'set_path'         : self.setPath,
-                         'get_path'         : lambda args: self.path,
-                         'plot_channel'     : self.plotChannel,
-                        # Scanbot commands
-                         'stop'             : self.stop,
-                         'plot'             : self.plot,
-                         'survey'           : self.survey,
-                         'survey2'          : self.survey2,
-                         'zdep'             : self.zdep,
-                         'afm_registration' : self.registration,
+                        # Configuration
+                         'help'             : self._help,                       # Return the entire list of commands or help for a specific command.
+                         'set_ip'           : self.setIP,                       # Configure the IP adress - the one for the PC controlling Nanonis. 127.0.0.1 for local machine
+                         'get_ip'           : lambda args: self.IP,             # Return the IP scanbot is configured to talk to
+                         'set_portlist'     : self.setPortList,                 # Configure which ports scanbot can use when talking to Nanonis
+                         'get_portlist'     : lambda args: self.portList,       # Return the list of ports scanbot is configured to use
+                         'set_upload_method': self.setUploadMethod,             # Set which upload method to use when uploading pngs
+                         'get_upload_method': lambda args: self.uploadMethod,   # View the upload method
+                         'add_user'         : self.addUser,                     # Add a user to the whitelist (by email - zulip only)
+                         'get_users'        : lambda args: str(self.whitelist), # Get the list of users allowed to talk to scanbot (zulip only)
+                         'set_path'         : self.setPath,                     # Changes the directory pngs are saved in. Creates the directory if it doesn't exist.
+                         'get_path'         : lambda args: self.path,           # Path to save scan pngs (saves the channel of focus which can be set using plot_channel)
+                         'plot_channel'     : self.plotChannel,                 # Read/select the current channel of focus
+                        # Data Acquisition
+                         'plot'             : self.plot,                        # Generate plot of the current scan frame. Select channel using plot_channel
+                         'survey'           : self.survey,                      # Take a survey within the current scan area.
+                         'survey2'          : self.survey2,                     # Take several surveys at different macroscopic locations by moving the tip between each survey.
+                         'zdep'             : self.zdep,                        # z-dependant scanning. Useful for nc-AFM or other constant height imaging
+                         'afm_registration' : self.registration,                # Take a constant height scan and perform a tip-lift at a given line.
                         # Tip Actions
-                         'move_area'        : self.moveArea,
-                         'move_tip'         : self.moveTip,
-                         'tip_shape_props'  : self.tipShapeProps,
-                         'tip_shape'        : self.tipShape,
+                         'move_area'        : self.moveArea,                    # Quickly move the tip to a new area (blindly)
+                         'move_tip'         : self.moveTip,                     # Move the tip to a target location using the camera feed to track the motion of the STM head
+                         'tip_shape_props'  : self.tipShapeProps,               # Read/write tip shaper properties.
+                         'tip_shape'        : self.tipShape,                    # Execute a tip shape
+                        # AutoSTM
+                         'auto_tip_shape'   : self.autoTipShape,                # Routine that automatically prepares a nice tip. Assumes the substrate is a clean metal. Ag111 works best.
                         # Misc
-                         'quit'             : self._quit
-                         
+                         'stop'             : self.stop,                        # Interrupt whatever scanbot is doing. Also stops the current scan.
+                         'quit'             : self._quit                        # Quits scanbot
         }
         
 ###############################################################################
-# Scanbot Commands
+# Data Acquisition
 ###############################################################################
-    def stop(self,user_args,_help=False):
-        arg_dict = {'-s' : ['1', lambda x: int(x), "(int) Stop scan in progress. 1=Yes"]}
-        
-        if(_help): return arg_dict
-        
-        error,user_arg_dict = self.userArgs(arg_dict,user_args)
-        if(error): return error + "\nRun ```help plot``` if you're unsure."
-        
-        args = self.unpackArgs(user_arg_dict)
-        
-        if(global_.running.is_set()):
-            global_.running.clear()
-            global_.pause.clear()
-            
-            if(args[0] == 1): self.scanbot.stop()
-            
-            global_.tasks.join()
-        else:
-            if(args[0] == 1): self.scanbot.stop()
-        
     def plot(self,user_args,_help=False):
         arg_dict = {'-c' : ['-1', lambda x: int(x), "(int) Channel to plot. -1 plots the default channel which can be set using plot_channel"]}
         
@@ -289,6 +270,62 @@ class scanbot_interface(object):
         func = lambda : self.scanbot.survey2(*args,message=self.bot_message.copy())
         return self.threadTask(func)
         
+    def zdep(self,user_args,_help=False):
+        arg_dict = {'-zi'       : ['-10e-12',  lambda x: float(x), "(float) Initial tip lift from setpoint (m)"],
+                    '-zf'       : ['10e-12',   lambda x: float(x), "(float) Final tip lift from setpoint (m)"],
+                    '-nz'       : ['5',        lambda x: int(x),   "(int) Number of scans between zi and zf"],
+                    '-iset'     : ['-default', lambda x: float(x), "(float) Setpoint current (A). Limited to 1 nA. zi and zf are relative to this setpoint"],
+                    '-bset'     : ['-default', lambda x: float(x), "(float) Setpoint bias (V)"],
+                    '-dciset'   : ['-default', lambda x: float(x), "(float) Setpoint current for drift correction (A)"],
+                    '-bias'     : ['-default', lambda x: float(x), "(float) Scan bias during constant height (V)"],
+                    '-dcbias'   : ['-default', lambda x: float(x), "(float) Scan bias during drift correction. 0 = dc off(V)"],
+                    '-ft'       : ['-default', lambda x: float(x), "(float) Forward scan time per line during constant height (s)"],
+                    '-bt'       : ['-default', lambda x: float(x), "(float) Backward scan time per line during constant height (s)"],
+                    '-dct'      : ['-default', lambda x: float(x), "(float) Forward and backward time per line during drift correction (s)"],
+                    '-px'       : ['-default', lambda x: int(x),   "(int) Number of pixels for constant height image"],
+                    '-dcpx'     : ['-default', lambda x: int(x),   "(int) Number of pixels for drift correction image"],
+                    '-lx'       : ['0',        lambda x: int(x),   "(int) Number of lines for constant height image. 0=same as -px"],
+                    '-dclx'     : ['0',        lambda x: int(x),   "(int) Number of lines for drift correction image. 0=same as -dcpx"],
+                    '-s'        : ['sb-zdep',  lambda x: str(x),   "(str) Suffix at the end of autosaved sxm files"],
+                    '-gif'      : ['1',        lambda x: int(x),   "(int) Turn scans into a gif after completion. 0=No,1=Yes"]}
+        
+        if(_help): return arg_dict
+        
+        error,user_arg_dict = self.userArgs(arg_dict,user_args)
+        if(error): return error + "\nRun ```help zdep``` if you're unsure."
+        
+        args = self.unpackArgs(user_arg_dict)
+        
+        func = lambda : self.scanbot.zdep(*args,message=self.bot_message.copy())
+        return self.threadTask(func)
+    
+    def registration(self,user_args,_help=False):
+        arg_dict = {'-zset'     : ['0',        lambda x: float(x), "(float) Initial tip lift from setpoint (m)"],
+                    '-iset'     : ['-default', lambda x: float(x), "(float) Setpoint current (A). Limited to 1 nA. zi and zf are relative to this setpoint"],
+                    '-bset'     : ['-default', lambda x: float(x), "(float) Bias at which the setpoint is measured (V)"],
+                    '-bias'     : ['-default', lambda x: float(x), "(float) Scan bias during constant height (V)"],
+                    '-ft'       : ['-default', lambda x: float(x), "(float) Forward scan time per line during constant height (s)"],
+                    '-bt'       : ['-default', lambda x: float(x), "(float) Backward scan time per line during constant height (s)"],
+                    '-px'       : ['-default', lambda x: int(x),   "(int) Number of pixels for constant height image"],
+                    '-lx'       : ['0',        lambda x: int(x),   "(int) Number of lines for constant height image. 0=same as -px"],
+                    '-lz'       : ['0',        lambda x: int(x),   "(int) Line number to perform tip lift -dz. lz is measured from the TOP of the scan frame, regardless of whether scan direction is up or down. i.e. lz=0 is at the top of the frame"],
+                    '-dz'       : ['0',        lambda x: float(x), "(float) Tip lift (m) at line number -lz"],
+                    '-dir'      : ['down',     lambda x: str(x),   "(str) Scan dirction. Can be either 'up' or 'down'"],
+                    '-s'        : ['sb-rego',  lambda x: str(x),   "(str) Suffix at the end of autosaved sxm files"]}
+        
+        if(_help): return arg_dict
+        
+        error,user_arg_dict = self.userArgs(arg_dict,user_args)
+        if(error): return error + "\nRun ```help afm_registration``` if you're unsure."
+        
+        args = self.unpackArgs(user_arg_dict)
+        
+        func = lambda : self.scanbot.registration(*args,message=self.bot_message.copy())
+        return self.threadTask(func)
+    
+###############################################################################
+# Tip Actions
+###############################################################################
     def moveArea(self,user_args,_help=False):
         arg_dict = {'-up'    : ['20',   lambda x: int(x),   "(int) Steps to go up before moving across. min 10"],
                     '-upV'   : ['270',  lambda x: float(x), "(float) Controller amplitude during up motor steps"],
@@ -367,61 +404,31 @@ class scanbot_interface(object):
         args = self.unpackArgs(user_arg_dict)
         
         self.scanbot.tipShapeProps(*args)
-        
-    def zdep(self,user_args,_help=False):
-        arg_dict = {'-zi'       : ['-10e-12',  lambda x: float(x), "(float) Initial tip lift from setpoint (m)"],
-                    '-zf'       : ['10e-12',   lambda x: float(x), "(float) Final tip lift from setpoint (m)"],
-                    '-nz'       : ['5',        lambda x: int(x),   "(int) Number of scans between zi and zf"],
-                    '-iset'     : ['-default', lambda x: float(x), "(float) Setpoint current (A). Limited to 1 nA. zi and zf are relative to this setpoint"],
-                    '-bset'     : ['-default', lambda x: float(x), "(float) Setpoint bias (V)"],
-                    '-dciset'   : ['-default', lambda x: float(x), "(float) Setpoint current for drift correction (A)"],
-                    '-bias'     : ['-default', lambda x: float(x), "(float) Scan bias during constant height (V)"],
-                    '-dcbias'   : ['-default', lambda x: float(x), "(float) Scan bias during drift correction. 0 = dc off(V)"],
-                    '-ft'       : ['-default', lambda x: float(x), "(float) Forward scan time per line during constant height (s)"],
-                    '-bt'       : ['-default', lambda x: float(x), "(float) Backward scan time per line during constant height (s)"],
-                    '-dct'      : ['-default', lambda x: float(x), "(float) Forward and backward time per line during drift correction (s)"],
-                    '-px'       : ['-default', lambda x: int(x),   "(int) Number of pixels for constant height image"],
-                    '-dcpx'     : ['-default', lambda x: int(x),   "(int) Number of pixels for drift correction image"],
-                    '-lx'       : ['0',        lambda x: int(x),   "(int) Number of lines for constant height image. 0=same as -px"],
-                    '-dclx'     : ['0',        lambda x: int(x),   "(int) Number of lines for drift correction image. 0=same as -dcpx"],
-                    '-s'        : ['sb-zdep',  lambda x: str(x),   "(str) Suffix at the end of autosaved sxm files"],
-                    '-gif'      : ['1',        lambda x: int(x),   "(int) Turn scans into a gif after completion. 0=No,1=Yes"]}
-        
-        if(_help): return arg_dict
-        
-        error,user_arg_dict = self.userArgs(arg_dict,user_args)
-        if(error): return error + "\nRun ```help zdep``` if you're unsure."
-        
-        args = self.unpackArgs(user_arg_dict)
-        
-        func = lambda : self.scanbot.zdep(*args,message=self.bot_message.copy())
-        return self.threadTask(func)
-    
-    def registration(self,user_args,_help=False):
-        arg_dict = {'-zset'     : ['0',        lambda x: float(x), "(float) Initial tip lift from setpoint (m)"],
-                    '-iset'     : ['-default', lambda x: float(x), "(float) Setpoint current (A). Limited to 1 nA. zi and zf are relative to this setpoint"],
-                    '-bset'     : ['-default', lambda x: float(x), "(float) Bias at which the setpoint is measured (V)"],
-                    '-bias'     : ['-default', lambda x: float(x), "(float) Scan bias during constant height (V)"],
-                    '-ft'       : ['-default', lambda x: float(x), "(float) Forward scan time per line during constant height (s)"],
-                    '-bt'       : ['-default', lambda x: float(x), "(float) Backward scan time per line during constant height (s)"],
-                    '-px'       : ['-default', lambda x: int(x),   "(int) Number of pixels for constant height image"],
-                    '-lx'       : ['0',        lambda x: int(x),   "(int) Number of lines for constant height image. 0=same as -px"],
-                    '-lz'       : ['0',        lambda x: int(x),   "(int) Line number to perform tip lift -dz. lz is measured from the TOP of the scan frame, regardless of whether scan direction is up or down. i.e. lz=0 is at the top of the frame"],
-                    '-dz'       : ['0',        lambda x: float(x), "(float) Tip lift (m) at line number -lz"],
-                    '-dir'      : ['down',     lambda x: str(x),   "(str) Scan dirction. Can be either 'up' or 'down'"],
-                    '-s'        : ['sb-rego',  lambda x: str(x),   "(str) Suffix at the end of autosaved sxm files"]}
-        
-        if(_help): return arg_dict
-        
-        error,user_arg_dict = self.userArgs(arg_dict,user_args)
-        if(error): return error + "\nRun ```help afm_registration``` if you're unsure."
-        
-        args = self.unpackArgs(user_arg_dict)
-        
-        func = lambda : self.scanbot.registration(*args,message=self.bot_message.copy())
-        return self.threadTask(func)
+
 ###############################################################################
-# Config Commands
+# Auto STM
+###############################################################################
+    def autoTipShape(self,user_args,_help=False):
+        arg_dict = {'-n'    : ['10',        lambda x: int(x),   "(int) Max number of tip shapes to perform"],
+                    '-wh'   : ['10e-9',     lambda x: float(x), "(float) Size of the square scan frame when imaging the clean surface"],
+                    '-sym'  : ['0.7',       lambda x: float(x), "(float) Minimum circularity requirement. 0=don't care, 1=perfectly circle"],
+                    '-size' : ['1.2',       lambda x: float(x), "(float) Max size of the desired tip imprint in units of nm2"],
+                    '-zQA'  : ['-0.9e-9',   lambda x: float(x), "(float) z-lift when performing a light tip shape to asses quality of tip (m)"],
+                    '-ztip' : ['-1.5e-9',   lambda x: float(x), "(float) z-lift when performing a tip shape to alter the tip (m)"],
+                    '-st'   : ['10',        lambda x: int(x),   "(int) Drift compensation time (s)"]}
+        
+        if(_help): return arg_dict
+        
+        error,user_arg_dict = self.userArgs(arg_dict,user_args)
+        if(error): return error + "\nRun ```help auto_tip_shape``` if you're unsure."
+        
+        args = self.unpackArgs(user_arg_dict)
+        
+        func = lambda : self.scanbot.autoTipShape(*args,message=self.bot_message.copy())
+        return self.threadTask(func)
+        
+###############################################################################
+# Configuration
 ###############################################################################
     def setPortList(self,portList,_help=False):
         arg_dict = {'' : ['6501 6502 6503 6504', 0, "(int array) List of ports delimited by a space"]}
@@ -655,6 +662,26 @@ class scanbot_interface(object):
 ###############################################################################
 # Misc
 ###############################################################################
+    def stop(self,user_args,_help=False):
+        arg_dict = {'-s' : ['1', lambda x: int(x), "(int) Stop scan in progress. 1=Yes"]}
+        
+        if(_help): return arg_dict
+        
+        error,user_arg_dict = self.userArgs(arg_dict,user_args)
+        if(error): return error + "\nRun ```help plot``` if you're unsure."
+        
+        args = self.unpackArgs(user_arg_dict)
+        
+        if(global_.running.is_set()):
+            global_.running.clear()
+            global_.pause.clear()
+            
+            if(args[0] == 1): self.scanbot.stop()
+            
+            global_.tasks.join()
+        else:
+            if(args[0] == 1): self.scanbot.stop()
+            
     def threadTask(self,func,override=False):
         if(override): self.stop(args=[])
         if global_.running.is_set(): return "Error: something already running"

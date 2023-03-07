@@ -42,17 +42,8 @@ class scanbot():
         self.safetyParams = [5e-9,2100,270]                                     # [0]: safe current threshold. [1]: safe retract motor frequency. [2]: safe retract motor voltage
 
 ###############################################################################
-# Actions
+# Data Acquisition
 ###############################################################################
-    def stop(self):
-        NTCP,connection_error = self.connect()                                  # Connect to nanonis via TCP
-        if(connection_error): return connection_error                           # Return error message if there was a problem connecting        
-        
-        scan = Scan(NTCP)                                                       # Nanonis scan module
-        scan.Action('stop')                                                     # Stop the current scan
-        
-        self.disconnect(NTCP)                                                   # Close the NTCP connection
-        
     def plot(self,channel=-1):
         NTCP,connection_error = self.connect()                                  # Connect to nanonis via TCP
         if(connection_error): return connection_error                           # Return error message if there was a problem connecting        
@@ -243,269 +234,6 @@ class scanbot():
             
         global_.running.clear()
             
-    def moveArea(self,up,upV,upF,direction,steps,dirV,dirF,zon,approach=True,message=""):
-        NTCP,connection_error = self.connect()                                  # Connect to nanonis via TCP
-        if(connection_error): return connection_error                           # Return error message if there was a problem connecting        
-        
-        # Safety checks
-        if(up < 10):
-            self.disconnect(NTCP)
-            self.interface.sendReply("-up must be > 10",message=message)
-            return False
-        
-        if(upV > 300):
-            self.disconnect(NTCP)
-            self.interface.sendReply("-upV 300 V max",message=message)
-            return False
-        
-        if(upF > 2.5e3):
-            self.disconnect(NTCP)
-            self.interface.sendReply("-upF 2.5 kHz max",message=message)
-            return False
-        
-        if(dirV > 200):
-            self.disconnect(NTCP)
-            self.interface.sendReply("-dirV 200 V max",message=message)
-            return False
-        
-        if(dirF > 2.5e3):
-            self.disconnect(NTCP)
-            self.interface.sendReply("-dirF 2.5 kHz max",message=message)
-            return False
-        
-        if(upV < 1):
-            self.disconnect(NTCP)                                               # Close the TCP connection
-            self.interface.sendReply("-upV must be between 1 V and 200 V",message=message)
-            return False
-            
-        if(upF < 500):
-            self.disconnect(NTCP)                                               # Close the TCP connection
-            self.interface.sendReply("-upF must be between 500 Hz and 2.5 kHz",message=message)
-            return False
-        
-        if(dirV < 1):
-            self.disconnect(NTCP)                                               # Close the TCP connection
-            self.interface.sendReply("-upV must be between 1 V and 200 V",message=message)
-            return False
-            
-        if(dirF < 500):
-            self.disconnect(NTCP)                                               # Close the TCP connection
-            self.interface.sendReply("-upF must be between 500 Hz and 2.5 kHz",message=message)
-            return False
-        
-        if(not direction in ["X+","X-","Y+","Y-"]):
-            self.disconnect(NTCP)                                               # Close the TCP connection
-            self.interface.sendReply("-dir can only be X+, X-, Y+, Y-",message=message)
-            return False
-        
-        if(steps < 0):
-            self.disconnect(NTCP)
-            self.interface.sendReply("-steps must be > 0",message=message)
-            return False
-        
-        if(up < 0):
-            self.disconnect(NTCP)
-            self.interface.sendReply("-up must be > 0",message=message)
-            return False
-        
-        motor         = Motor(NTCP)                                             # Nanonis Motor module
-        zController   = ZController(NTCP)                                       # Nanonis ZController module
-        autoApproach  = AutoApproach(NTCP)                                      # Nanonis AutoApproach module
-        
-        self.interface.reactToMessage("working_on_it")
-        
-        self.stop()
-        
-        print("withdrawing")
-        zController.Withdraw(wait_until_finished=True,timeout=3)                # Withdwar the tip
-        print("withdrew")
-        time.sleep(0.25)
-        
-        motor.FreqAmpSet(upF,upV)                                               # Set the motor controller params appropriate for Z piezos
-        motor.StartMove("Z+",up,wait_until_finished=True)                       # Retract the tip +Z direction
-        print("Moving motor: Z+" + " " + str(up) + "steps")
-        time.sleep(0.5)
-        
-        stepsAtATime = 10                                                       # Moving the motor across 10 steps at a time to be safe
-        leftOver     = steps%stepsAtATime                                       # Continue moving motor a few steps if stes is not divisible by 10
-        steps        = int(steps/stepsAtATime)                                  # Sets of 10 steps
-        
-        isSafe = True
-        motor.FreqAmpSet(dirF,dirV)                                             # Set the motor controller params appropriate for XY piezos
-        for s in range(steps):
-            motor.StartMove(direction,stepsAtATime,wait_until_finished=True)    # Move safe number of steps at a time
-            print("Moving motor: " + direction + " " + str(stepsAtATime) + "steps")
-            isSafe = self.safeCurrentCheck(NTCP,message=message)                # Safe retract if current overload
-            if(not isSafe):
-                self.disconnect(NTCP)                                           # Close the TCP connection
-                self.interface.sendReply("Could not complete move_area...",message=message)
-                self.interface.sendReply("Safe retract was triggered because the current exceeded "
-                                         + str(self.safetyParams[0]*1e9) + " nA"
-                                         + " while moving areas",message=message)
-                return False
-                
-            time.sleep(0.25)
-        
-        motor.StartMove(direction,leftOver,wait_until_finished=True)
-        print("Moving motor: " + direction + " " + str(leftOver) + "steps")
-        time.sleep(0.5)
-        
-        isSafe = self.safeCurrentCheck(NTCP,message=message)                    # Safe retract if current overload
-        if(not isSafe):
-            self.disconnect(NTCP)                                               # Close the TCP connection
-            self.interface.sendReply("Could not complete move_area...",message=message)
-            self.interface.sendReply("Safe retract was triggered because the current exceeded "
-                                     + str(self.safetyParams[0]*1e9) + " nA"
-                                     + " while moving areas",message=message)
-            return False
-        
-        if(approach):
-            self.interface.reactToMessage("double_down")
-            motor.FreqAmpSet(upF,upV)
-        
-            autoApproach.Open()
-            autoApproach.OnOffSet(on_off=True)
-            
-            while(autoApproach.OnOffGet()):
-                print("Still approaching...")
-                time.sleep(1)
-        
-            time.sleep(1)
-            if(zon): zController.OnOffSet(True)
-        
-            time.sleep(3)
-            self.interface.reactToMessage("sparkler")
-        
-        self.disconnect(NTCP)                                                   # Close the TCP connection
-        
-        return True
-    
-    def moveTip(self,lightOnOff,cameraPort,trackOnly,xStep,zStep,xV,zV,xF,zF,demo,roi=[],win=20,target=[]):
-        """
-        In development
-
-        Parameters
-        ----------
-        lightOnOff : Flag to call hook hk_light. If set, a python script 
-                     (~/scanbot/scanbot/hk_light.py) is called to turn the 
-                     light on and off before/after moving the tip
-        cameraPort : usually if you have a desktop windows machine with one 
-                     camera plugged in, set this to 0. laptops with built-in 
-                     cameras will probably be 1
-        demo       : demo mode (temporary)
-        roi        : region of interest to track - might be used later. for now
-                     it's manually selected with a mouse
-        win        : Window around the ROI to look at.
-
-        """
-        import cv2
-        NTCP,connection_error = self.connect()                                  # Connect to nanonis via TCP
-        if(connection_error):
-            global_.running.clear()                                             # Free up the running flag
-            return connection_error                                             # Return error message if there was a problem connecting
-        
-        if(lightOnOff):                                                         # If we want to turn the light on
-            try:
-                from hk_light import turn_on
-                turn_on()                                                       # Call the hook to do so. Hook should return null if successful, otherwise it should throw an Exception
-            except Exception as e:
-                self.interface.sendReply("Error calling hook hk_lighton.py")
-                self.disconnect(NTCP)
-                global_.running.clear()                                         # Free up the running flag
-                return str(e)
-        
-        cap = utilities.getVideo(cameraPort,demo)
-        
-        if(not len(roi)):                                                       # Don't do this if we're passing in an ROI already
-            ret,frame = utilities.getAveragedFrame(cap,n=1)                     # Read the first frame of the video
-            
-            self.interface.sendReply("Select tracking ROI. Press 'q' to cancel")
-            roi = utilities.getROI(cap)
-            if(not len(roi)):
-                self.interface.sendReply("Cancelling move tip")
-                self.disconnect(NTCP)
-                global_.running.clear()                                         # Free up the running flag
-                return
-                
-            self.interface.sendReply("Select a marker for the tip location. Press 'q' to cancel")
-            tipPos = utilities.markPoint(cap)
-        
-        if(len(tipPos) and not len(target) and not trackOnly):
-            ret,frame = utilities.getAveragedFrame(cap,n=1)                     # Read the first frame of the video
-            
-            self.interface.sendReply("Select target location for the tip. Press 'q' to cancel and enter track-only mode")
-            target = utilities.markPoint(cap)
-            
-            if(len(target)): target = target - tipPos
-            
-            if(target[1] > 0):
-                self.interface.sendReply("Error, cannot move tip lower than current position. Track-Only mode activated")
-                target = []
-        
-        if(not len(target)): trackOnly = True
-        
-        ROI = utilities.extract(frame,roi)
-        WIN = utilities.extract(frame,roi,win)
-        
-        xy = np.array([0,0])
-        success = True
-        while(cap.isOpened()):
-            if(not success):
-                self.interface.sendReply("Error moving area... tip crashed... stopping")
-                global_.running.clear()
-                break
-            
-            if(self.checkEventFlags()): break                                   # Check event flags
-            ret, frame = utilities.getAveragedFrame(cap,n=11)
-            if(not ret): break
-        
-            oxy = utilities.trackROI(im1=ROI, im2=WIN)
-            
-            currentPos = xy + oxy
-            
-            ROI,WIN,roi,xy = utilities.update(roi,ROI,win,frame,oxy,xy)
-            
-            rec = utilities.drawRec(frame.astype(np.uint8), roi, xy=oxy)
-            rec = utilities.drawRec(rec, roi, win=win)
-            
-            if(len(tipPos)): rec = cv2.circle(rec, currentPos + tipPos, radius=3, color=(0, 0, 255), thickness=-1)
-            if(len(target)): rec = cv2.circle(rec, target + tipPos, radius=3, color=(0, 255, 0), thickness=-1)
-            
-            cv2.imshow('Frame',rec)
-            
-            if cv2.waitKey(25) & 0xFF == ord('q'): break                        # Press Q on keyboard to  exit
-            
-            if(trackOnly): continue
-            
-            if(currentPos[1] > target[1]):                                      # First priority is to always keep the tip above this line
-                success = self.moveArea(up=zStep, upV=zV, upF=zF, direction="X+", steps=0, dirV=xV, dirF=xF, zon=False, approach=False)
-                continue
-            if(currentPos[0] < target[0]):
-                success = self.moveArea(up=10, upV=zV, upF=zF, direction="X+", steps=xStep, dirV=xV, dirF=xF, zon=False, approach=False)
-                continue
-            if(currentPos[0] > target[0]):
-                success = self.moveArea(up=10, upV=zV, upF=zF, direction="X-", steps=xStep, dirV=xV, dirF=xF, zon=False, approach=False)
-                continue
-            
-            print("Target Hit!")
-            break                                                               # Target reached!
-        
-        cap.release()
-        cv2.destroyAllWindows()
-        
-        if(lightOnOff):                                                         # If we want to turn the light off
-            try:
-                from hk_light import turn_off
-                turn_off()                                                      # Call the hook to do so. Hook should return null if successful, otherwise it should throw an Exception
-            except Exception as e:
-                self.interface.sendReply("Error calling hook hk_lighton.py")
-                self.disconnect(NTCP)
-                global_.running.clear()                                         # Free up the running flag
-                return str(e)
-            
-        self.disconnect(NTCP)                                                   # Close the TCP connection
-        global_.running.clear()                                                 # Free up the running flag
-        
     def zdep(self,zi,zf,nz,iset,bset,dciset,bias,dcbias,ft,bt,dct,px,dcpx,lx,dclx,suffix,makeGIF,message=""):
         """
         This function performs a set of constant height scans at different tip 
@@ -938,6 +666,467 @@ class scanbot():
         
         self.disconnect(NTCP)                                                   # Close the TCP connection
         global_.running.clear()                                                 # Free up the running flag
+        
+###############################################################################
+# Tip Actions
+###############################################################################
+    def moveArea(self,up,upV,upF,direction,steps,dirV,dirF,zon,approach=True,message=""):
+        NTCP,connection_error = self.connect()                                  # Connect to nanonis via TCP
+        if(connection_error): return connection_error                           # Return error message if there was a problem connecting        
+        
+        # Safety checks
+        if(up < 10):
+            self.disconnect(NTCP)
+            self.interface.sendReply("-up must be > 10",message=message)
+            return False
+        
+        if(upV > 300):
+            self.disconnect(NTCP)
+            self.interface.sendReply("-upV 300 V max",message=message)
+            return False
+        
+        if(upF > 2.5e3):
+            self.disconnect(NTCP)
+            self.interface.sendReply("-upF 2.5 kHz max",message=message)
+            return False
+        
+        if(dirV > 200):
+            self.disconnect(NTCP)
+            self.interface.sendReply("-dirV 200 V max",message=message)
+            return False
+        
+        if(dirF > 2.5e3):
+            self.disconnect(NTCP)
+            self.interface.sendReply("-dirF 2.5 kHz max",message=message)
+            return False
+        
+        if(upV < 1):
+            self.disconnect(NTCP)                                               # Close the TCP connection
+            self.interface.sendReply("-upV must be between 1 V and 200 V",message=message)
+            return False
+            
+        if(upF < 500):
+            self.disconnect(NTCP)                                               # Close the TCP connection
+            self.interface.sendReply("-upF must be between 500 Hz and 2.5 kHz",message=message)
+            return False
+        
+        if(dirV < 1):
+            self.disconnect(NTCP)                                               # Close the TCP connection
+            self.interface.sendReply("-upV must be between 1 V and 200 V",message=message)
+            return False
+            
+        if(dirF < 500):
+            self.disconnect(NTCP)                                               # Close the TCP connection
+            self.interface.sendReply("-upF must be between 500 Hz and 2.5 kHz",message=message)
+            return False
+        
+        if(not direction in ["X+","X-","Y+","Y-"]):
+            self.disconnect(NTCP)                                               # Close the TCP connection
+            self.interface.sendReply("-dir can only be X+, X-, Y+, Y-",message=message)
+            return False
+        
+        if(steps < 0):
+            self.disconnect(NTCP)
+            self.interface.sendReply("-steps must be > 0",message=message)
+            return False
+        
+        if(up < 0):
+            self.disconnect(NTCP)
+            self.interface.sendReply("-up must be > 0",message=message)
+            return False
+        
+        motor         = Motor(NTCP)                                             # Nanonis Motor module
+        zController   = ZController(NTCP)                                       # Nanonis ZController module
+        autoApproach  = AutoApproach(NTCP)                                      # Nanonis AutoApproach module
+        
+        self.interface.reactToMessage("working_on_it")
+        
+        self.stop()
+        
+        print("withdrawing")
+        zController.Withdraw(wait_until_finished=True,timeout=3)                # Withdwar the tip
+        print("withdrew")
+        time.sleep(0.25)
+        
+        motor.FreqAmpSet(upF,upV)                                               # Set the motor controller params appropriate for Z piezos
+        motor.StartMove("Z+",up,wait_until_finished=True)                       # Retract the tip +Z direction
+        print("Moving motor: Z+" + " " + str(up) + "steps")
+        time.sleep(0.5)
+        
+        stepsAtATime = 10                                                       # Moving the motor across 10 steps at a time to be safe
+        leftOver     = steps%stepsAtATime                                       # Continue moving motor a few steps if stes is not divisible by 10
+        steps        = int(steps/stepsAtATime)                                  # Sets of 10 steps
+        
+        isSafe = True
+        motor.FreqAmpSet(dirF,dirV)                                             # Set the motor controller params appropriate for XY piezos
+        for s in range(steps):
+            motor.StartMove(direction,stepsAtATime,wait_until_finished=True)    # Move safe number of steps at a time
+            print("Moving motor: " + direction + " " + str(stepsAtATime) + "steps")
+            isSafe = self.safeCurrentCheck(NTCP,message=message)                # Safe retract if current overload
+            if(not isSafe):
+                self.disconnect(NTCP)                                           # Close the TCP connection
+                self.interface.sendReply("Could not complete move_area...",message=message)
+                self.interface.sendReply("Safe retract was triggered because the current exceeded "
+                                         + str(self.safetyParams[0]*1e9) + " nA"
+                                         + " while moving areas",message=message)
+                return False
+                
+            time.sleep(0.25)
+        
+        motor.StartMove(direction,leftOver,wait_until_finished=True)
+        print("Moving motor: " + direction + " " + str(leftOver) + "steps")
+        time.sleep(0.5)
+        
+        isSafe = self.safeCurrentCheck(NTCP,message=message)                    # Safe retract if current overload
+        if(not isSafe):
+            self.disconnect(NTCP)                                               # Close the TCP connection
+            self.interface.sendReply("Could not complete move_area...",message=message)
+            self.interface.sendReply("Safe retract was triggered because the current exceeded "
+                                     + str(self.safetyParams[0]*1e9) + " nA"
+                                     + " while moving areas",message=message)
+            return False
+        
+        if(approach):
+            self.interface.reactToMessage("double_down")
+            motor.FreqAmpSet(upF,upV)
+        
+            autoApproach.Open()
+            autoApproach.OnOffSet(on_off=True)
+            
+            while(autoApproach.OnOffGet()):
+                print("Still approaching...")
+                time.sleep(1)
+        
+            time.sleep(1)
+            if(zon): zController.OnOffSet(True)
+        
+            time.sleep(3)
+            self.interface.reactToMessage("sparkler")
+        
+        self.disconnect(NTCP)                                                   # Close the TCP connection
+        
+        return True
+    
+    def moveTip(self,lightOnOff,cameraPort,trackOnly,xStep,zStep,xV,zV,xF,zF,demo,roi=[],win=15,target=[]):
+        """
+        In development
+
+        Parameters
+        ----------
+        lightOnOff : Flag to call hook hk_light. If set, a python script 
+                     (~/scanbot/scanbot/hk_light.py) is called to turn the 
+                     light on and off before/after moving the tip
+        cameraPort : usually if you have a desktop windows machine with one 
+                     camera plugged in, set this to 0. laptops with built-in 
+                     cameras will probably be 1
+        demo       : demo mode (temporary)
+        roi        : region of interest to track - might be used later. for now
+                     it's manually selected with a mouse
+        win        : Window around the ROI to look at.
+
+        """
+        import cv2
+        NTCP,connection_error = self.connect()                                  # Connect to nanonis via TCP
+        if(connection_error):
+            global_.running.clear()                                             # Free up the running flag
+            return connection_error                                             # Return error message if there was a problem connecting
+        
+        if(lightOnOff):                                                         # If we want to turn the light on
+            try:
+                from hk_light import turn_on
+                turn_on()                                                       # Call the hook to do so. Hook should return null if successful, otherwise it should throw an Exception
+            except Exception as e:
+                self.interface.sendReply("Error calling hook hk_lighton.py")
+                self.disconnect(NTCP)
+                global_.running.clear()                                         # Free up the running flag
+                return str(e)
+        
+        cap = utilities.getVideo(cameraPort,demo)
+        
+        if(not len(roi)):                                                       # Don't do this if we're passing in an ROI already
+            ret,frame = utilities.getAveragedFrame(cap,n=1)                     # Read the first frame of the video
+            
+            self.interface.sendReply("Select tracking ROI. Press 'q' to cancel")
+            roi = utilities.getROI(cap)
+            if(not len(roi)):
+                self.interface.sendReply("Cancelling move tip")
+                self.disconnect(NTCP)
+                global_.running.clear()                                         # Free up the running flag
+                return
+                
+            self.interface.sendReply("Select a marker for the tip location. Press 'q' to cancel")
+            tipPos = utilities.markPoint(cap)
+        
+        if(len(tipPos) and not len(target) and not trackOnly):
+            ret,frame = utilities.getAveragedFrame(cap,n=1)                     # Read the first frame of the video
+            
+            self.interface.sendReply("Select target location for the tip. Press 'q' to cancel and enter track-only mode")
+            target = utilities.markPoint(cap)
+            
+            if(len(target)): target = target - tipPos
+            
+            if(target[1] > 0):
+                self.interface.sendReply("Error, cannot move tip lower than current position. Track-Only mode activated")
+                target = []
+        
+        if(not len(target)): trackOnly = True
+        
+        ROI = utilities.extract(frame,roi)
+        WIN = utilities.extract(frame,roi,win)
+        
+        xy = np.array([0,0])
+        success = True
+        while(cap.isOpened()):
+            if(not success):
+                self.interface.sendReply("Error moving area... tip crashed... stopping")
+                global_.running.clear()
+                break
+            
+            if(self.checkEventFlags()): break                                   # Check event flags
+            ret, frame = utilities.getAveragedFrame(cap,n=11)
+            if(not ret): break
+        
+            oxy = utilities.trackROI(im1=ROI, im2=WIN)
+            
+            currentPos = xy + oxy
+            
+            ROI,WIN,roi,xy = utilities.update(roi,ROI,win,frame,oxy,xy)
+            
+            rec = utilities.drawRec(frame.astype(np.uint8), roi, xy=oxy)
+            rec = utilities.drawRec(rec, roi, win=win)
+            
+            if(len(tipPos)): rec = cv2.circle(rec, currentPos + tipPos, radius=3, color=(0, 0, 255), thickness=-1)
+            if(len(target)): rec = cv2.circle(rec, target + tipPos, radius=3, color=(0, 255, 0), thickness=-1)
+            
+            cv2.imshow('Frame',rec)
+            
+            if cv2.waitKey(25) & 0xFF == ord('q'): break                        # Press Q on keyboard to  exit
+            
+            if(trackOnly): continue
+            
+            if(currentPos[1] > target[1]):                                      # First priority is to always keep the tip above this line
+                if(demo): continue
+                success = self.moveArea(up=zStep, upV=zV, upF=zF, direction="X+", steps=0, dirV=xV, dirF=xF, zon=False, approach=False)
+                continue
+            if(currentPos[0] < target[0]):
+                if(demo): continue
+                success = self.moveArea(up=10, upV=zV, upF=zF, direction="X+", steps=xStep, dirV=xV, dirF=xF, zon=False, approach=False)
+                continue
+            if(currentPos[0] > target[0]):
+                if(demo): continue
+                success = self.moveArea(up=10, upV=zV, upF=zF, direction="X-", steps=xStep, dirV=xV, dirF=xF, zon=False, approach=False)
+                continue
+            
+            print("Target Hit!")
+            break                                                               # Target reached!
+        
+        cap.release()
+        cv2.destroyAllWindows()
+        
+        if(lightOnOff):                                                         # If we want to turn the light off
+            try:
+                from hk_light import turn_off
+                turn_off()                                                      # Call the hook to do so. Hook should return null if successful, otherwise it should throw an Exception
+            except Exception as e:
+                self.interface.sendReply("Error calling hook hk_lighton.py")
+                self.disconnect(NTCP)
+                global_.running.clear()                                         # Free up the running flag
+                return str(e)
+            
+        self.disconnect(NTCP)                                                   # Close the TCP connection
+        global_.running.clear()                                                 # Free up the running flag
+        
+    def tipShape(self):
+        NTCP,connection_error = self.connect()                                  # Connect to nanonis via TCP
+        if(connection_error): return connection_error                           # Return error message if there was a problem connecting
+        
+        tipShaper = TipShaper(NTCP)
+        
+        try:
+            tipShaper.Start(wait_until_finished=True,timeout=-1)
+        except Exception as e:
+            self.interface.sendReply(str(e))
+        
+        self.disconnect(NTCP)
+        self.interface.reactToMessage("dagger")
+        
+    def tipShapeProps(self,sod,cb,b1,z1,t1,b2,t2,z3,t3,wait,fb):
+        NTCP,connection_error = self.connect()                                  # Connect to nanonis via TCP
+        if(connection_error): return connection_error                           # Return error message if there was a problem connecting
+         
+        tipShaper  = TipShaper(NTCP)
+        
+        try:
+            default_args = tipShaper.PropsGet()                                 # Store all the current tip shaping settings in nanonis
+        except Exception as e:
+            self.interface.sendReply(str(e))
+            self.disconnect(NTCP)
+            return
+            
+        tipShaperArgs = [sod,cb,b1,z1,t1,b2,t2,z3,t3,wait,fb]                   # Order matters here
+        for i,a in enumerate(tipShaperArgs):
+            if(a=="-default"):
+                tipShaperArgs[i] = default_args[i]
+        
+        z1 = tipShaperArgs[3]
+        if(z1 < -50e-9):
+            self.interface.sendReply("Limit for z1=-50e-9 m")
+            self.disconnect(NTCP)
+            return
+        
+        z3 = tipShaperArgs[7]
+        if(z3 < -50e-9):
+            self.interface.sendReply("Limit for z3=-50e-9 m")
+            self.disconnect(NTCP)
+            return
+        
+        if(z1 > 0):
+            self.interface.sendReply("Sure you want a positive z1?")
+            
+        if(z3 < 0):
+            self.interface.sendReply("Sure you want a negative z3?")
+            
+        tipShaper.PropsSet(*tipShaperArgs)                                      # update the tip shaping params in nanonis
+        
+        self.disconnect(NTCP)
+        self.interface.reactToMessage("+1")
+        
+###############################################################################
+# Auto STM
+###############################################################################
+    def autoTipShape(self,n,wh,symTarget,sizeTarget,zQA,ztip,sleepTime,message=""):
+        NTCP,connection_error = self.connect()                                  # Connect to nanonis via TCP
+        if(connection_error):
+            global_.running.clear()                                             # Free up the running flag
+            return connection_error                                             # Return error message if there was a problem connecting        
+        
+        scanModule  = Scan(NTCP)
+        folme       = FolMe(NTCP)
+        tipShaper   = TipShaper(NTCP)
+        
+        try:
+            tipShapeProps = tipShaper.PropsGet()                                # Use the default tip shaping properties to begin with
+        except Exception as e:                                                  # If this fails, the tip shaper module isn't open. Nanonis does not support opening the tip shaper module using TCP interface
+            global_.running.clear()                                             # Free up the running flag
+            self.disconnect(NTCP)                                               # Close the TCP connection
+            self.interface.sendReply(str(e))                                    # Inform the user
+            return
+        
+        if(zQA > 0 or ztip > 0):
+            global_.running.clear()                                             # Free up the running flag
+            self.disconnect(NTCP)                                               # Close the TCP connection
+            self.interface.sendReply("Tip lifts -zQA and -ztip must be < 0")
+            return
+        
+        tipShapeProps[10]   = 1                                                 # Make sure feedback on after tip shape
+        tipShapeProps[3]   = ztip                                               # Amount to dip the tip into the surface
+        tipShapeProps[7]    = -3*ztip                                           # Amount to withdraw the tip from the surface
+        
+        tipCheckerProps     = tipShaper.PropsGet()                              # These will be the tip shaper properties used to perform a light tip-shaping action which is scanned over to assess tip quality
+        tipCheckerProps[1]  = 1                                                 # Turn on the change bias checkbox
+        tipCheckerProps[2]  = 0.1                                               # Bias to change to before tip shaping
+        tipCheckerProps[3]  = zQA                                               # Set initial tip lift
+        tipCheckerProps[4]  = 0.1                                               # Duration of tip lift
+        tipCheckerProps[5]  = 0                                                 # Bias applied while tip is in surface
+        tipCheckerProps[6]  = 0.1                                               # Amount of time tip is in surface
+        tipCheckerProps[7]  = -3*zQA                                            # Tip lift 2
+        tipCheckerProps[8]  = 0.1                                               # Duration of tip lift 2
+        tipCheckerProps[9]  = 0.1                                               # Time to wait before putting bias back
+        tipCheckerProps[10] = 1                                                 # Turn feedback on after tip shape
+        
+        suffix = "sb-auto-tip"
+        basename = self.interface.topoBasename                                  # Get the basename that's been set in config file
+        if(not basename): basename = scanModule.PropsGet()[3]                   # Get the save basename from nanonis if one isn't supplied
+        tempBasename = basename + '_' + suffix + '_'                            # Create a temp basename for this run
+        scanModule.PropsSet(series_name=tempBasename)                           # Set the basename in nanonis
+        
+        attempt = 0                                                             # Keep track of number of attempts to tip shape
+        tipQA   = False                                                         # Temp flag
+        xy = np.array([0,0])
+        while(attempt < n):
+            scanModule.FrameSet(*xy, w=wh, h=wh)
+            
+            scanModule.Action(scan_action="start",scan_direction="up")          # Start an upward scan
+            for numSeconds in range(sleepTime):                                 # Sleep at one second intervals so we can still stop the routine without lag if we need to
+                time.sleep(1)
+                if(self.checkEventFlags()): break                               # Check event flags
+            if(self.checkEventFlags()): break                                   # Check event flags
+                
+            scanModule.Action(scan_action="start",scan_direction="up")          # Restart an upward scan, hopefully image is less drifty now
+            
+            isClean  = True
+            timedOut = True
+            while(timedOut and isClean):                                        # Periodically check if the current scan is of a clean region
+                timedOut, _, filePath = scanModule.WaitEndOfScan(timeout=3000)  # Wait until the scan finishes or 3 sec, whichever occurs first
+                _,cleanImage,_ = scanModule.FrameDataGrab(14, 1)                # Image of the 'clean' surface
+                isClean = utilities.isClean(cleanImage,lxy=wh,threshold=1e-9,sensitivity=1) # Check if the scan so far is of a clean area
+            
+            cleanImage = np.flipud(cleanImage)                                  # Flip because the scan direction is up
+            if(not isClean):
+                scanModule.Action(scan_action='stop')
+                xy = xy + np.array([2*wh,0])                                    # Move the scan frame
+                self.interface.sendReply("Bad area, moving scan frame")
+                continue                                                        # Don't count the attempt if the area sucks
+                
+            if(not filePath): break                                             # If the scan was stopped before finishing, stop program
+            
+            tipCheckPos = utilities.getCleanCoordinate(cleanImage, lxy=wh)      # Do some processing to find a clean location to assess tip quality
+            if(not len(tipCheckPos)):                                           # If no coordinate is returned because the area is bad...
+                xy = xy + np.array([2*wh,0])                                    # Move the scan frame
+                continue                                                        # Don't count the attempt if the area sucks
+            
+            tipCheckPos += xy                                                   # Convert frame-relative coordinate to absolute coordinate
+            folme.XYPosSet(*tipCheckPos,Wait_end_of_move=True)                  # Move the tip to a clean place
+            
+            self.tipShapeProps(*tipCheckerProps)                                # Set the tip shaping properties up for the very light action
+            time.sleep(1)
+            if(self.checkEventFlags()): break                                   # Check event flags
+            self.tipShape()                                                     # Execute the light tip shape
+            time.sleep(1)
+            if(self.checkEventFlags()): break                                   # Check event flags
+            
+            scanModule.Action(scan_action="start",scan_direction="up")          # Start an upward scan
+            _, _, filePath = scanModule.WaitEndOfScan()                         # Wait until the scan finishes
+            if(not filePath): break                                             # If the scan was stopped before finishing, stop program
+            _,tipImprint,_ = scanModule.FrameDataGrab(14, 1)                    # Image of the tip's crater after very light tip shape action
+            
+            # Probably do something here to periodically check scan area (as
+            # above) in case the tip blew up and left the area a mess.
+            
+            tipCheckPos -= xy                                                   # Convert absolute coodinate to frame-relative coordinate
+            symmetry,size = utilities.assessTip(tipImprint,wh,tipCheckPos)      # Assess the quality of the tip based on the imprint it leaves on the surface
+            
+            # if(size < 0): contour not found, do something about that.
+            
+            if(symmetry > symTarget):
+                if(size < sizeTarget and size > 0):
+                    tipQA = True                                                # Tip quality is good if it meets the target scores
+                    break                                                       # Stop the routine if a good tip has been achieved
+            
+            edgeOfFrame = xy - np.array([wh,0])/2
+            folme.XYPosSet(*edgeOfFrame,Wait_end_of_move=True)                  # Move the tip to the left edge of the scan frame
+            
+            self.tipShapeProps(*tipShapeProps)                                  # Set the tip shaping properties up to change the tip
+            time.sleep(1)
+            if(self.checkEventFlags()): break                                   # Check event flags
+            self.tipShape()                                                     # Execute the tip shape
+            time.sleep(1)
+            if(self.checkEventFlags()): break                                   # Check event flags
+            
+            xy = xy + np.array([2*wh,0])                                        # Move the scan frame
+            attempt += 1
+            
+        scanModule.PropsSet(series_name=basename)                               # Put back the original basename
+        
+        self.tipShapeProps(*tipShapeProps)                                      # Put back the original tip shaping properties
+        
+        message = "Tip shaping failed"
+        if(tipQA): message = "Tip shaping successful"
+        self.interface.sendReply(message + " after " + str(attempt+1) + " attempts")
+        
+        self.disconnect(NTCP)                                                   # Close the TCP connection
+        global_.running.clear()                                                 # Free up the running flag
+        
 ###############################################################################
 # Config
 ###############################################################################
@@ -994,63 +1183,20 @@ class scanbot():
         self.interface.reactToMessage("+1")
     
 ###############################################################################
+# Misc
+###############################################################################
+    def stop(self):
+        NTCP,connection_error = self.connect()                                  # Connect to nanonis via TCP
+        if(connection_error): return connection_error                           # Return error message if there was a problem connecting        
+        
+        scan = Scan(NTCP)                                                       # Nanonis scan module
+        scan.Action('stop')                                                     # Stop the current scan
+        
+        self.disconnect(NTCP)                                                   # Close the NTCP connection
+        
+###############################################################################
 # Utilities
 ###############################################################################
-    def tipShape(self):
-        NTCP,connection_error = self.connect()                                  # Connect to nanonis via TCP
-        if(connection_error): return connection_error                           # Return error message if there was a problem connecting
-        
-        tipShaper = TipShaper(NTCP)
-        
-        try:
-            tipShaper.Start(wait_until_finished=True,timeout=-1)
-        except Exception as e:
-            self.interface.sendReply(str(e))
-        
-        self.disconnect(NTCP)
-        self.interface.reactToMessage("dagger")
-        
-    def tipShapeProps(self,sod,cb,b1,z1,t1,b2,t2,z3,t3,wait,fb):
-        NTCP,connection_error = self.connect()                                  # Connect to nanonis via TCP
-        if(connection_error): return connection_error                           # Return error message if there was a problem connecting
-         
-        tipShaper  = TipShaper(NTCP)
-        
-        try:
-            default_args = tipShaper.PropsGet()                                 # Store all the current tip shaping settings in nanonis
-        except Exception as e:
-            self.interface.sendReply(str(e))
-            self.disconnect(NTCP)
-            return
-            
-        tipShaperArgs = [sod,cb,b1,z1,t1,b2,t2,z3,t3,wait,fb]                   # Order matters here
-        for i,a in enumerate(tipShaperArgs):
-            if(a=="-default"):
-                tipShaperArgs[i] = default_args[i]
-        
-        z1 = tipShaperArgs[3]
-        if(z1 < -50e-9):
-            self.interface.sendReply("Limit for z1=-50e-9 m")
-            self.disconnect(NTCP)
-            return
-        
-        z3 = tipShaperArgs[7]
-        if(z3 < -50e-9):
-            self.interface.sendReply("Limit for z3=-50e-9 m")
-            self.disconnect(NTCP)
-            return
-        
-        if(z1 > 0):
-            self.interface.sendReply("Sure you want a positive z1?")
-            
-        if(z3 < 0):
-            self.interface.sendReply("Sure you want a negative z3?")
-            
-        tipShaper.PropsSet(*tipShaperArgs)                                      # update the tip shaping params in nanonis
-        
-        self.disconnect(NTCP)
-        self.interface.reactToMessage("+1")
-        
     def tipShapePropsGet(self):
         NTCP,connection_error = self.connect()                                  # Connect to nanonis via TCP
         if(connection_error): return connection_error                           # Return error message if there was a problem connecting

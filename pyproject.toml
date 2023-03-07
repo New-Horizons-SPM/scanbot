@@ -1,0 +1,23 @@
+[build-system]
+requires = ["setuptools", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "scanbot"
+version = "1.0.0"
+description = "Collection of automated STM and nc-AFM commands compatible with Nanonis V5 SPM Controller"
+authors = [{name="Julian Ceddia", email="jdceddia@gmail.com"}]
+readme = "README.md"
+requires-python = ">=3.7"
+license = {text = "MIT"}
+keywords = ["stm","automation","python","scanning tunnelling microscopy","sts","scanbot"]
+dependencies = [
+    "numpy",
+    "matplotlib",
+    "scipy",
+    "opencv-python",
+    "zulip",
+]
+
+[tool.setuptools]
+packages = ["scanbot"]

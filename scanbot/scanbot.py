@@ -78,14 +78,14 @@ class scanbot():
         piezo = Piezo(NTCP)
         range_x,range_y,_ = piezo.RangeGet()
         
+        if(xy == "-default"): xy = scan.FrameGet()[2]
+        if(dx == "-default"): dx = xy
+        
         x = np.linspace(-1, 1,n) * (n-1)*dx/2
         y = x
         
         if(reverse and (n%2)): x = np.array(list(reversed(x)))
         if(reverse):           y = np.array(list(reversed(y)))
-            
-        if(xy == "-default"): xy = scan.FrameGet()[2]
-        if(dx == "-default"): dx = xy
         
         frames = []
         for j in y:

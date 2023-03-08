@@ -1,0 +1,14 @@
+site_name: Scanbot
+repo_url: https://github.com/New-Horizons-SPM/scanbot
+site_author: Julian Ceddia
+
+nav:
+    - Home: 'index.md'
+    - Configuration: 'configuration.md'
+    - Commands: 'commands.md'
+    - Automation: 'automation.md'
+    - About: 'about.md'
+    - Contact: 'contact.md'
+    
+plugins:
+    - mkdocs-video

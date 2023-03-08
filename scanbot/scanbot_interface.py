@@ -58,7 +58,10 @@ class scanbot_interface(object):
                     'temp_calibration_curve'    : '',                           # Path to temp calibration curve (see nanonis Temperature modules)
                     'topo_basename'             : '',                           # basename for topographic images
                     'scp'                       : '0',                          # Flag to send data to the cloud
-                    'scp_path'                  : ''}                           # user@clouddatabase:path.
+                    'scp_path'                  : '',                           # user@clouddatabase:path
+                    'safe_current'              : '5e-9',                       # When the current goes above this threhold the tip is considered crashed. Used when controlling the course piezos
+                    'safe_retract_V'            : '200',                        # Voltage applied to the 'Z' piezo when retracting tip in case of crash
+                    'safe_retract_F'            : '1500'}                       # Frequency applied to the 'Z' piezo when retracting tip in case of crash
         
         try:
             with open('scanbot_config.ini','r') as f:                           # Go through the config file to see what defaults need to be overwritten
@@ -67,11 +70,11 @@ class scanbot_interface(object):
                     line = f.readline()[:-1]
                     if(line.startswith('#')): print(line); continue             # Comment
                     if(not '=' in line):
-                        print("Warning, invalid line in config file: " + line)
+                        print("WARNING: invalid line in config file: " + line)
                         continue
                     key, value = line.split('=')                                # Format for valid line is "Key=Value"
                     if(not key in initDict):                                    # Key must be one of initDict keys
-                        print("Invalid key in scanbot_config.txt: " + key)
+                        print("WARNING: Invalid key in scanbot_config.ini: " + key)
                         continue
                     initDict[key] = value                                       # Overwrite value
         except:
@@ -130,12 +133,16 @@ class scanbot_interface(object):
         
         self.topoBasename = initDict['topo_basename']
         
-        self.sendToCloud = initDict['send_to_cloud']
-        self.cloudPath = initDict['cloud_path']
+        self.sendToCloud = initDict['scp']
+        self.cloudPath = initDict['scp_path']
         if(self.sendToCloud == 1):
             if(not self.cloudPath):
                 raise Exception("Check config file... cloud path not provided")
-                
+        
+        self.scanbot.safeCurrent  = float(initDict['safe_current'])
+        self.scanbot.safeRetractV = float(initDict['safe_retract_V'])
+        self.scanbot.safeRetractF = float(initDict['safe_retract_F'])
+        
         self.loadWhitelist()
         
     def firebaseInit(self):
@@ -181,6 +188,8 @@ class scanbot_interface(object):
                          'set_path'         : self.setPath,                     # Changes the directory pngs are saved in. Creates the directory if it doesn't exist.
                          'get_path'         : lambda args: self.path,           # Path to save scan pngs (saves the channel of focus which can be set using plot_channel)
                          'plot_channel'     : self.plotChannel,                 # Read/select the current channel of focus
+                         'set_crash_safety' : self.setCrashSafety,              # Set the safety current, 'Z' piezo voltage, and 'Z' piezo retract frequency
+                         'get_crash_safety' : self.getCrashSafety,              # Return the safe retract settings
                         # Data Acquisition
                          'plot'             : self.plot,                        # Generate plot of the current scan frame. Select channel using plot_channel
                          'survey'           : self.survey,                      # Take a survey within the current scan area.
@@ -426,7 +435,8 @@ class scanbot_interface(object):
         
         func = lambda : self.scanbot.autoTipShape(*args,message=self.bot_message.copy())
         return self.threadTask(func)
-        
+    
+    
 ###############################################################################
 # Configuration
 ###############################################################################
@@ -536,6 +546,32 @@ class scanbot_interface(object):
     def getStatus(self,user_args,_help=False):
         return ("Running flag: " + global_.running.is_set() + "\n" +
                 "Pause flag:   " + global_.pause.is_set())
+    
+    def setCrashSafety(self,user_args,_help=False):
+        arg_dict = {'-c' : ['-1', lambda x: float(x), "(float) When moving the course piezos, a current above this value will be considered a crash and the tip will retract. -1 means no change"],
+                    '-V' : ['-1', lambda x: float(x), "(float) Voltage applied to the 'Z' piezo during tip retraction after a crash is detected. -1 means no change"],
+                    '-F' : ['-1', lambda x: float(x), "(float) Frequency applied to the 'Z' piezo during tip retraction after a crash is detected. -1 means no change"]}
+        
+        if(_help): return arg_dict
+        
+        error,user_arg_dict = self.userArgs(arg_dict,user_args)
+        if(error): return error + "\nRun ```help set_crash_safety``` if you're unsure."
+        
+        args = self.unpackArgs(user_arg_dict)
+        
+        if(args[0] > 0): self.scanbot.safeCurrent  = args[0]
+        if(args[1] > 0): self.scanbot.safeRetractV = args[1]
+        if(args[2] > 0): self.scanbot.safeRetractF = args[2]
+        
+        self.sendReply("----------------")
+        return(self.getCrashSafety(user_args=[]))
+    
+    def getCrashSafety(self,user_args,_help=False):
+        message  = "Safe current:           " + str(self.scanbot.safeCurrent*1e9) + " nA\n"
+        message += "Safe retract Voltage:   " + str(self.scanbot.safeRetractV) + " V\n"
+        message += "Safe retract Frequency: " + str(self.scanbot.safeRetractF) + " Hz\n"
+        return message
+        
 ###############################################################################
 # Comms
 ###############################################################################

@@ -33,14 +33,17 @@ import global_
 import utilities
 
 class scanbot():
-    channel = 14
+    channel      = 14                                                           # Default plot channel. Change this using plot_channel command
+    safeCurrent  = 5e-9                                                         # Current above this value is considered a tip crash.   Dummy value - this gets overridden by config.
+    safeRetractV = 200                                                          # Voltage applied during safe retract.                  Dummy value - this gets overridden by config.
+    safeRetractF = 1500                                                         # Frequency applied during safe retract.                Dummy value - this gets overridden by config.
 ###############################################################################
 # Constructor
 ###############################################################################
     def __init__(self,interface):
         self.interface = interface
-        self.safetyParams = [5e-9,2100,270]                                     # [0]: safe current threshold. [1]: safe retract motor frequency. [2]: safe retract motor voltage
-
+        # self.safetyParams = [5e-9,2100,270]                                     # [0]: safe current threshold. [1]: safe retract motor frequency. [2]: safe retract motor voltage
+        
 ###############################################################################
 # Data Acquisition
 ###############################################################################
@@ -767,7 +770,7 @@ class scanbot():
                 self.disconnect(NTCP)                                           # Close the TCP connection
                 self.interface.sendReply("Could not complete move_area...",message=message)
                 self.interface.sendReply("Safe retract was triggered because the current exceeded "
-                                         + str(self.safetyParams[0]*1e9) + " nA"
+                                         + str(self.safeCurrent*1e9) + " nA"
                                          + " while moving areas",message=message)
                 return False
                 
@@ -782,7 +785,7 @@ class scanbot():
             self.disconnect(NTCP)                                               # Close the TCP connection
             self.interface.sendReply("Could not complete move_area...",message=message)
             self.interface.sendReply("Safe retract was triggered because the current exceeded "
-                                     + str(self.safetyParams[0]*1e9) + " nA"
+                                     + str(self.safeCurrent*1e9) + " nA"
                                      + " while moving areas",message=message)
             return False
         
@@ -1319,7 +1322,7 @@ class scanbot():
         currentModule = Current(NTCP)                                           # Nanonis Current module
         
         current = abs(currentModule.Get())                                      # Get the tip current
-        threshold = self.safetyParams[0]                                        # Threshold current from safety params
+        threshold = self.safeCurrent                                            # Threshold current from safety params
         
         print("Safe check... Current: " + str(current)
             + ", threshold: " + str(threshold))
@@ -1340,9 +1343,7 @@ class scanbot():
             self.interface.sendReply("---\nWarning: error stopping processes during safe retract...",message=message)
             self.interface.sendReply(str(e) + "\n---",message=message)
         
-        safeFreq    = self.safetyParams[1]                                      # Motor frequency for safe retract from safety parameters
-        safeVoltage = self.safetyParams[2]                                      # Motor voltage for safe retract from safety parameters
-        motor.FreqAmpSet(safeFreq,safeVoltage)                                  # Set the motor frequency/voltage in the nanonis motor control module
+        motor.FreqAmpSet(self.safeRetractF,self.safeRetractV)                   # Set the motor frequency/voltage in the nanonis motor control module
         motor.StartMove(direction="Z+", steps=50,wait_until_finished=True)      # Move up 50 steps immediately
         print("Retracted and moved 50 motor steps up")
         

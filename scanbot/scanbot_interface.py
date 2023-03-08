@@ -57,8 +57,8 @@ class scanbot_interface(object):
                     'notify_list'               : '',                           # Comma delimited zulip users to @notify when sending data
                     'temp_calibration_curve'    : '',                           # Path to temp calibration curve (see nanonis Temperature modules)
                     'topo_basename'             : '',                           # basename for topographic images
-                    'send_to_cloud'             : '0',                          # Flag to send data to the cloud
-                    'cloud_path'                : ''}                           # user@clouddatabase:path.
+                    'scp'                       : '0',                          # Flag to send data to the cloud
+                    'scp_path'                  : ''}                           # user@clouddatabase:path.
         
         try:
             with open('scanbot_config.ini','r') as f:                           # Go through the config file to see what defaults need to be overwritten

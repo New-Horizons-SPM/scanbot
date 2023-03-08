@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="utf-8">
+        <meta http-equiv="X-UA-Compatible" content="IE=edge">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        
+        <meta name="author" content="Julian Ceddia">
+        
+        <link rel="shortcut icon" href="../img/favicon.ico">
+        <title>Configuration - Scanbot</title>
+        <link href="../css/bootstrap.min.css" rel="stylesheet">
+        <link href="../css/font-awesome.min.css" rel="stylesheet">
+        <link href="../css/base.css" rel="stylesheet">
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/10.5.0/styles/github.min.css">
+
+        <script src="../js/jquery-1.10.2.min.js" defer></script>
+        <script src="../js/bootstrap.min.js" defer></script>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/10.5.0/highlight.min.js"></script>
+        <script>hljs.initHighlightingOnLoad();</script> 
+    </head>
+
+    <body>
+        <div class="navbar fixed-top navbar-expand-lg navbar-dark bg-primary">
+            <div class="container">
+                <a class="navbar-brand" href="..">Scanbot</a>
+                <!-- Expander button -->
+                <button type="button" class="navbar-toggler" data-toggle="collapse" data-target="#navbar-collapse">
+                    <span class="navbar-toggler-icon"></span>
+                </button>
+
+                <!-- Expanded navigation -->
+                <div id="navbar-collapse" class="navbar-collapse collapse">
+                        <!-- Main navigation -->
+                        <ul class="nav navbar-nav">
+                            <li class="navitem">
+                                <a href=".." class="nav-link">Home</a>
+                            </li>
+                            <li class="navitem active">
+                                <a href="./" class="nav-link">Configuration</a>
+                            </li>
+                            <li class="navitem">
+                                <a href="../commands/" class="nav-link">Commands</a>
+                            </li>
+                            <li class="navitem">
+                                <a href="../automation/" class="nav-link">Automation</a>
+                            </li>
+                            <li class="navitem">
+                                <a href="../about/" class="nav-link">About</a>
+                            </li>
+                            <li class="navitem">
+                                <a href="../contact/" class="nav-link">Contact</a>
+                            </li>
+                        </ul>
+
+                    <ul class="nav navbar-nav ml-auto">
+                            <li class="nav-item">
+                                <a rel="prev" href=".." class="nav-link">
+                                    <i class="fa fa-arrow-left"></i> Previous
+                                </a>
+                            </li>
+                            <li class="nav-item">
+                                <a rel="next" href="../commands/" class="nav-link">
+                                    Next <i class="fa fa-arrow-right"></i>
+                                </a>
+                            </li>
+                            <li class="nav-item">
+                                <a href="https://github.com/New-Horizons-SPM/scanbot/edit/master/docs/configuration.md" class="nav-link"><i class="fa fa-github"></i> Edit on GitHub</a>
+                            </li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <div class="container">
+            <div class="row">
+                    <div class="col-md-3"><div class="navbar-light navbar-expand-md bs-sidebar hidden-print affix" role="complementary">
+    <div class="navbar-header">
+        <button type="button" class="navbar-toggler collapsed" data-toggle="collapse" data-target="#toc-collapse" title="Table of Contents">
+            <span class="fa fa-angle-down"></span>
+        </button>
+    </div>
+
+    
+    <div id="toc-collapse" class="navbar-collapse collapse card bg-secondary">
+        <ul class="nav flex-column">
+            
+            <li class="nav-item" data-level="1"><a href="#configuration" class="nav-link">Configuration</a>
+              <ul class="nav flex-column">
+            <li class="nav-item" data-level="2"><a href="#tcp-connection" class="nav-link">TCP Connection</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+            <li class="nav-item" data-level="2"><a href="#data-storage" class="nav-link">Data Storage</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+            <li class="nav-item" data-level="2"><a href="#nanonis-configuration" class="nav-link">Nanonis Configuration</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+              </ul>
+            </li>
+        </ul>
+    </div>
+</div></div>
+                    <div class="col-md-9" role="main">
+
+<h1 id="configuration">Configuration</h1>
+<p>scanbot_config.ini is the Scanbot configuration file that is loaded on startup.</p>
+<h2 id="tcp-connection">TCP Connection</h2>
+<p>For communicating with Nanonis V5 software, you must configure the TCP settings.
+Scanbot requires at least two ports to perform correctly</p>
+<pre><code>ip=&lt;IP Adress&gt;          # IP adress of the machine running Nanonis. Defaults to local host 127.0.0.1
+port_list=&lt;P1,P2,...&gt;   # Available ports. See Nanonis =&gt; Main Options =&gt; TCP Programming Interface.
+</code></pre>
+<h2 id="data-storage">Data Storage</h2>
+<p>Data acquired during Scanbot's operation can be saved in a few ways by setting the <code>upload_method</code> field.</p>
+<ol>
+<li><code>upload_method=path</code> configures Scanbot to convert acquired images to PNG format and save them locally to a path specified by <code>path=&lt;path&gt;</code>.</li>
+<li><code>upload_method=zulip</code> configures Scanbot to send PNGs via <a href="https://zulip.com/">Zulip</a>. The <a href="https://zulip.com/api/running-bots">zuliprc</a> file must be included in the config as <code>zuliprc=&lt;path_to_zuliprc&gt;</code></li>
+<li><code>upload_method=firebase</code> configures Scanbot to upload PNGs to <a href="https://firebase.google.com/docs/storage">Google Firebase Storage</a>. 
+If using firebase, set the <code>firebase_storage_bucket=&lt;bucket&gt;</code> field. Then then <code>path=&lt;path&gt;</code> field is used as the destination on Firebase.
+For Zulip users, this Firebase link would be sent in lieu of a PNG file.</li>
+<li><code>upload_method=no_upload</code> prevents Scanbot from converting and saving the images it takes. <strong>This is the default setting.</strong></li>
+</ol>
+<p>Alternatively, Scanbot can <a href="https://en.wikipedia.org/wiki/Secure_copy_protocol">SCP</a> data to a server by setting the following two fields:</p>
+<pre><code>scp=true                    # Flag to turn feature on and off
+scp_path=&lt;user@host:path&gt;   # ssh key must be set up for this to work
+</code></pre>
+<h2 id="nanonis-configuration">Nanonis Configuration</h2>
+<p>The following optional fields relate to Nanonis configuration</p>
+<pre><code>topo_basename=&lt;.sxm basename&gt;   # base filename used when saving .sxm files. Defaults 
+temp_calibration_curve=&lt;path&gt;   # Path to the temperature calibration curve so Scanbot can read STM temperature.
+</code></pre></div>
+            </div>
+        </div>
+
+        <footer class="col-md-12">
+            <hr>
+            <p>Documentation built with <a href="https://www.mkdocs.org/">MkDocs</a>.</p>
+        </footer>
+        <script>
+            var base_url = "..",
+                shortcuts = {"help": 191, "next": 78, "previous": 80, "search": 83};
+        </script>
+        <script src="../js/base.js" defer></script>
+
+        <div class="modal" id="mkdocs_keyboard_modal" tabindex="-1" role="dialog" aria-labelledby="keyboardModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h4 class="modal-title" id="keyboardModalLabel">Keyboard Shortcuts</h4>
+                <button type="button" class="close" data-dismiss="modal"><span aria-hidden="true">&times;</span><span class="sr-only">Close</span></button>
+            </div>
+            <div class="modal-body">
+              <table class="table">
+                <thead>
+                  <tr>
+                    <th style="width: 20%;">Keys</th>
+                    <th>Action</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td class="help shortcut"><kbd>?</kbd></td>
+                    <td>Open this help</td>
+                  </tr>
+                  <tr>
+                    <td class="next shortcut"><kbd>n</kbd></td>
+                    <td>Next page</td>
+                  </tr>
+                  <tr>
+                    <td class="prev shortcut"><kbd>p</kbd></td>
+                    <td>Previous page</td>
+                  </tr>
+                  <tr>
+                    <td class="search shortcut"><kbd>s</kbd></td>
+                    <td>Search</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            <div class="modal-footer">
+            </div>
+        </div>
+    </div>
+</div>
+
+    </body>
+</html>

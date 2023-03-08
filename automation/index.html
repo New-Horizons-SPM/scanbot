@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="utf-8">
+        <meta http-equiv="X-UA-Compatible" content="IE=edge">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        
+        <meta name="author" content="Julian Ceddia">
+        
+        <link rel="shortcut icon" href="../img/favicon.ico">
+        <title>Automation - Scanbot</title>
+        <link href="../css/bootstrap.min.css" rel="stylesheet">
+        <link href="../css/font-awesome.min.css" rel="stylesheet">
+        <link href="../css/base.css" rel="stylesheet">
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/10.5.0/styles/github.min.css">
+
+        <script src="../js/jquery-1.10.2.min.js" defer></script>
+        <script src="../js/bootstrap.min.js" defer></script>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/10.5.0/highlight.min.js"></script>
+        <script>hljs.initHighlightingOnLoad();</script> 
+    </head>
+
+    <body>
+        <div class="navbar fixed-top navbar-expand-lg navbar-dark bg-primary">
+            <div class="container">
+                <a class="navbar-brand" href="..">Scanbot</a>
+                <!-- Expander button -->
+                <button type="button" class="navbar-toggler" data-toggle="collapse" data-target="#navbar-collapse">
+                    <span class="navbar-toggler-icon"></span>
+                </button>
+
+                <!-- Expanded navigation -->
+                <div id="navbar-collapse" class="navbar-collapse collapse">
+                        <!-- Main navigation -->
+                        <ul class="nav navbar-nav">
+                            <li class="navitem">
+                                <a href=".." class="nav-link">Home</a>
+                            </li>
+                            <li class="navitem">
+                                <a href="../configuration/" class="nav-link">Configuration</a>
+                            </li>
+                            <li class="navitem">
+                                <a href="../commands/" class="nav-link">Commands</a>
+                            </li>
+                            <li class="navitem active">
+                                <a href="./" class="nav-link">Automation</a>
+                            </li>
+                            <li class="navitem">
+                                <a href="../about/" class="nav-link">About</a>
+                            </li>
+                            <li class="navitem">
+                                <a href="../contact/" class="nav-link">Contact</a>
+                            </li>
+                        </ul>
+
+                    <ul class="nav navbar-nav ml-auto">
+                            <li class="nav-item">
+                                <a rel="prev" href="../commands/" class="nav-link">
+                                    <i class="fa fa-arrow-left"></i> Previous
+                                </a>
+                            </li>
+                            <li class="nav-item">
+                                <a rel="next" href="../about/" class="nav-link">
+                                    Next <i class="fa fa-arrow-right"></i>
+                                </a>
+                            </li>
+                            <li class="nav-item">
+                                <a href="https://github.com/New-Horizons-SPM/scanbot/edit/master/docs/automation.md" class="nav-link"><i class="fa fa-github"></i> Edit on GitHub</a>
+                            </li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <div class="container">
+            <div class="row">
+                    <div class="col-md-3"><div class="navbar-light navbar-expand-md bs-sidebar hidden-print affix" role="complementary">
+    <div class="navbar-header">
+        <button type="button" class="navbar-toggler collapsed" data-toggle="collapse" data-target="#toc-collapse" title="Table of Contents">
+            <span class="fa fa-angle-down"></span>
+        </button>
+    </div>
+
+    
+    <div id="toc-collapse" class="navbar-collapse collapse card bg-secondary">
+        <ul class="nav flex-column">
+            
+            <li class="nav-item" data-level="1"><a href="#automation" class="nav-link">Automation</a>
+              <ul class="nav flex-column">
+            <li class="nav-item" data-level="2"><a href="#tip-preparation" class="nav-link">Tip Preparation</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+            <li class="nav-item" data-level="2"><a href="#dual-sample-holder-navigation" class="nav-link">Dual Sample Holder Navigation</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+            <li class="nav-item" data-level="2"><a href="#in-development" class="nav-link">In Development</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+            <li class="nav-item" data-level="2"><a href="#outlook" class="nav-link">Outlook</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+              </ul>
+            </li>
+        </ul>
+    </div>
+</div></div>
+                    <div class="col-md-9" role="main">
+
+<h1 id="automation">Automation</h1>
+<p>Scanbot's long-term goal is to automate data acquisition and probe conditioning in STM/STS experiments. The first steps towards achieving
+this objective have already been taken, with automated imaging capabilities and automated tip preparation.
+To prepare a high-quality tip, Scanbot leverages the use of a Dual Sample Holder (DSH) where a sample of interest can be mounted adjacent to a clean metal surface, ideal for tip preparation.</p>
+<p><br></p>
+<h2 id="tip-preparation">Tip Preparation</h2>
+<p><img alt="auto_tip_shaping" src="AutoTipShaping.png" />
+Scanbot's ability to prepare a tip on a clean metal surface is demonstrated above. By gently pushing the apex of the scanning probe
+into an atomically flat region of a metal surface, an imprint is left that reflects the geometry of the tip. This imprint can then be scanned,
+and the resulting image is similar to the auto-correlation function of the tip's apex. The quality of the tip can be assessed by measuring the
+area, symmetry, and center of mass of the imprint. If the imprint does not meet the desired criteria, a more agressive tip shaping action is 
+carried out and the process is repeated until a high-quality tip is achieved (left to right, above).</p>
+<p><br></p>
+<h2 id="dual-sample-holder-navigation">Dual Sample Holder Navigation</h2>
+<p>When the STM tip requires refinement, Scanbot moves it from the sample of interest to the clean metal surface on the dual sample holder.
+To accomplish this, Scanbot uses the course motor to maneuver the STM tip while monitoring its position through a camera feed. After the tip has been refined,
+it is moved back to the sample of interest, where a survey can be carried out.
+In the video below, Scanbot is tracking the STM head as it moves the tip from the sample to the clean metal on the DSH
+<div class="video-container"><iframe src="../DSHNav.mp4" style="position: relative; width: 100%; height: 22.172vw" frameborder="0"allowfullscreen></iframe></div></p>
+<p><br></p>
+<h2 id="in-development">In Development</h2>
+<p>At present, the tip shaping criteria overlook the spectroscopic performance of the STM tip. Here, it is possible to leverage the well-known Shockley surface states of
+(111) metal surfaces, using them as a benchmark to compare STS obtained by the tip on a clean metal surface. As a result, an additional criterion is being developed to ensure that
+the spectra obtained using the tip on a clean metal surface closely corresponds to the anticipated Shockley surface state. In addition to this, automated STS commands are also in development.</p>
+<p><br></p>
+<h2 id="outlook">Outlook</h2>
+<p>The algorithmic approach used by Scanbot for tip shaping could benefit greatly from the integration of a machine learning agent.
+There are several parameters that determine how aggressive the tip shaping action should be when refining the scanning probe.
+Although the algorithmic approach is straightforward, it may take some time to achieve the desired tip shape. Fortunately, the algorithmic
+method can serve as a stepping stone to machine learning, as it generates a quantitative measurement of the tip's condition before and after a known tip-shaping maneuver.
+Over time, this quantitative training dataset can be used to train an AI agent to perform the task more efficiently.</p></div>
+            </div>
+        </div>
+
+        <footer class="col-md-12">
+            <hr>
+            <p>Documentation built with <a href="https://www.mkdocs.org/">MkDocs</a>.</p>
+        </footer>
+        <script>
+            var base_url = "..",
+                shortcuts = {"help": 191, "next": 78, "previous": 80, "search": 83};
+        </script>
+        <script src="../js/base.js" defer></script>
+
+        <div class="modal" id="mkdocs_keyboard_modal" tabindex="-1" role="dialog" aria-labelledby="keyboardModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h4 class="modal-title" id="keyboardModalLabel">Keyboard Shortcuts</h4>
+                <button type="button" class="close" data-dismiss="modal"><span aria-hidden="true">&times;</span><span class="sr-only">Close</span></button>
+            </div>
+            <div class="modal-body">
+              <table class="table">
+                <thead>
+                  <tr>
+                    <th style="width: 20%;">Keys</th>
+                    <th>Action</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td class="help shortcut"><kbd>?</kbd></td>
+                    <td>Open this help</td>
+                  </tr>
+                  <tr>
+                    <td class="next shortcut"><kbd>n</kbd></td>
+                    <td>Next page</td>
+                  </tr>
+                  <tr>
+                    <td class="prev shortcut"><kbd>p</kbd></td>
+                    <td>Previous page</td>
+                  </tr>
+                  <tr>
+                    <td class="search shortcut"><kbd>s</kbd></td>
+                    <td>Search</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            <div class="modal-footer">
+            </div>
+        </div>
+    </div>
+</div>
+
+    </body>
+</html>

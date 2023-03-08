@@ -1,54 +1,67 @@
-# Scanbot
+# Scanbot       [![DOI](https://zenodo.org/badge/487719232.svg)](https://zenodo.org/badge/latestdoi/487719232)
+
 Scanbot is a collection of several automated STM and nc-AFM data acquisition commands compatible with Nanonis V5 SPM control software.
+Full documentation available [here](https://new-horizons-spm.github.io/scanbot/).
+
 
 ## Installation
-First install the [nanonisTCP interface](https://github.com/New-Horizons-SPM/nanonisTCP)
+1.  Install the [nanonisTCP interface](https://github.com/New-Horizons-SPM/nanonisTCP)
 
-Clone this repository, navigate to the root directory, and run ```pip install .```
+2. Clone this repository, navigate to the root directory, and run ```pip install .```
 
 ## Setup and Run
 Scanbot can be interfaced through a terminal or via zulip
+
 ### Terminal
-Run 'python scanbot_interface.py -c'
+Run ```python scanbot_interface.py -c```
 
 ### Zulip
-1. Make sure zulip and zulip_bots are installed
-    ```
+1. Install zulip and zulip_bots
+    
+```
     pip install zulip
     pip install zulip_bots
-    ```
+```
+    
+2. [Create a zulip bot](https://zulip.com/help/add-a-bot-or-integration) and download the zuliprc file
 
-2. [Create a zulip bot](https://zulip.com/help/add-a-bot-or-integration)\
-Download the zuliprc file
-
-3. Create a config file scanbot/scanbot/scanbot_config.ini with the fields:
-    ```
+3. Add the following lines to scanbot_config.ini:
+    
+```
     zuliprc=<path_to_zuliprc>
     upload_method=zulip
-    ```
+```
 
-### Config File
-The scanbot_config.ini configuration file can store things like default IP adress, default TCP Ports, etc.
-See scanbot_interface.py/loadConfig for details. The last line of the config file must be blank.
+4. Run ```zulip-run-bot scanbot_interface.py --config=<path_to_zuliprc>```
+5. Run commands by sending messages to the Zulip bot
+
+## Usage
+For a full list of Scanbot commands, see [commands](./commands). Alternatively run the ```help``` command, or for help with a specific command, run ```help <command_name>```
+
+### Configuration
+The scanbot_config.ini configuration file can store things like the default IP adress, default TCP Ports, etc.
+See [configuration](./configuration.md) for more details.
 An example config file is:
 ```
-upload_method=path
-path=./scanbot_images/
-port_list=6501,6502,6503,6504
-ip=127.0.0.1
+ip=127.0.0.1                    # IP of the machine running Nanonis
+port_list=6501,6502,6503,6504   # Available TCP ports
+upload_method=path              # Configure Scanbot to save PNGs locally
+path=./scanbot_images/          # Directory for saved PNGs
 
 ```
-## Usage
-For a full list of commands, run the ```help``` command. For help with a specific command, run ```help <command_name>```
 
-### Functions
+### Functional Overview
 * STM
-  - Bias dependent imaging with drift correction
-  - Automated sample surveying (NxN grid)
+    - Bias dependent imaging with drift correction
+    - Automated sample surveying (NxN grid)
 * nc-AFM
-  - z-dependent imaging
-  - nc-AFM registration
-* Piezo control
-  - Move area macroscopically
+    - z-dependent nc-AFM
+    - nc-AFM registration
+* Automation
+    - Tip shaping
+    - Full control over the course motors
+    - Call custom python scripts
 
-[![DOI](https://zenodo.org/badge/487719232.svg)](https://zenodo.org/badge/latestdoi/487719232)
+## Citing
+
+If you use Scanbot in your scientific research, please consider [citing it](https://zenodo.org/badge/latestdoi/487719232).

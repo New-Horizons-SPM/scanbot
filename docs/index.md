@@ -6,7 +6,7 @@ Scanbot is a collection of several automated STM and nc-AFM data acquisition com
 ## Installation
 1.  Install the [nanonisTCP interface](https://github.com/New-Horizons-SPM/nanonisTCP)
 
-2. Clone this repository, navigate to the root directory, and run ```pip install .```
+2. Clone [this repository](https://github.com/New-Horizons-SPM/scanbot), navigate to the root directory, and run ```pip install .```
 
 ## Setup and Run
 Scanbot can be interfaced through a terminal or via zulip

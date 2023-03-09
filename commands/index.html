@@ -302,6 +302,18 @@
 <td>Execute a tip shaping action. Settings can be configures with tip_shape_props command</td>
 <td>tip_shape</td>
 </tr>
+<tr>
+<td>set_crash_safety</td>
+<td><code>-c</code>: (float) When moving the course piezos, a current above this value will be considered a crash and the tip will retract. -1 means no change. Default: <code>-1</code><br><code>-V</code>: (float) Voltage applied to the 'Z' piezo during tip retraction after a crash is detected. -1 means no change. Default: <code>-1</code><br><code>-F</code>: (float) Frequency applied to the 'Z' piezo during tip retraction after a crash is detected. -1 means no change. Default: <code>-1</code></td>
+<td>Settings applied to the Z piezo during a tip retraction after detecting a crash</td>
+<td>set_crash_safety -c=3e-9</td>
+</tr>
+<tr>
+<td>get_crash_safety</td>
+<td></td>
+<td>Return the settings for crash safety</td>
+<td>get_crash_safety</td>
+</tr>
 </tbody>
 </table>
 <p><br></p>

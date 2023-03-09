@@ -103,6 +103,10 @@
               <ul class="nav flex-column">
               </ul>
             </li>
+            <li class="nav-item" data-level="2"><a href="#fleet" class="nav-link">FLEET</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
               </ul>
             </li>
         </ul>
@@ -118,7 +122,7 @@
 <p>Install the <a href="https://github.com/New-Horizons-SPM/nanonisTCP">nanonisTCP interface</a></p>
 </li>
 <li>
-<p>Clone <a href="https://github.com/New-Horizons-SPM/scanbot">this repository</a>, navigate to the root directory, and run <code>pip install .</code></p>
+<p>Clone this repository, navigate to the root directory, and run <code>pip install .</code></p>
 </li>
 </ol>
 <h2 id="setup-and-run">Setup and Run</h2>
@@ -127,30 +131,28 @@
 <p>Run <code>python scanbot_interface.py -c</code></p>
 <h3 id="zulip">Zulip</h3>
 <ol>
-<li>Install zulip and zulip_bots</li>
-</ol>
-<pre><code>    pip install zulip
-    pip install zulip_bots
-</code></pre>
-<ol>
+<li>
+<p>Install zulip and zulip_bots</p>
+<p><code>pip install zulip</code><br>
+<code>pip install zulip_bots</code></p>
+</li>
 <li>
 <p><a href="https://zulip.com/help/add-a-bot-or-integration">Create a zulip bot</a> and download the zuliprc file</p>
 </li>
 <li>
 <p>Add the following lines to scanbot_config.ini:</p>
+<p><code>zuliprc=&lt;path_to_zuliprc&gt;</code><br>
+<code>upload_method=zulip</code></p>
 </li>
-</ol>
-<pre><code>    zuliprc=&lt;path_to_zuliprc&gt;
-    upload_method=zulip
-</code></pre>
-<ol>
-<li>Run <code>zulip-run-bot scanbot_interface.py --config=&lt;path_to_zuliprc&gt;</code></li>
+<li>
+<p>Run <code>python scanbot_interface.py -z</code></p>
+</li>
 <li>Run commands by sending messages to the Zulip bot</li>
 </ol>
 <h2 id="usage">Usage</h2>
 <p>For a full list of Scanbot commands, see <a href="./commands">commands</a>. Alternatively run the <code>help</code> command, or for help with a specific command, run <code>help &lt;command_name&gt;</code></p>
 <h3 id="configuration">Configuration</h3>
-<p>The scanbot_config.ini configuration file can store things like the default IP adress, default TCP Ports, etc.
+<p>The scanbot_config.ini configuration file can store things like the default IP adress, default TCP Ports, etc. Save it in the project's root directory.
 See <a href="configuration/">configuration</a> for more details.
 An example config file is:</p>
 <pre><code>ip=127.0.0.1                    # IP of the machine running Nanonis
@@ -179,7 +181,10 @@ path=./scanbot_images/          # Directory for saved PNGs
 </li>
 </ul>
 <h2 id="citing">Citing</h2>
-<p>If you use Scanbot in your scientific research, please consider <a href="https://zenodo.org/badge/latestdoi/487719232">citing it</a>.</p></div>
+<p>If you use Scanbot in your scientific research, please consider <a href="https://zenodo.org/badge/latestdoi/487719232">citing it</a>.</p>
+<h2 id="fleet">FLEET</h2>
+<p>Special thanks to <a href="https://www.fleet.org.au/">FLEET</a> for their contribution through the <a href="https://www.fleet.org.au/translation/#:~:text=A%20new%20FLEET%20program%20provides,translation%20skills%20in%20Centre%20membership.">FLEET Translation Program</a>.
+<img alt="FLEETLogo" src="fleet-logo.png" /></p></div>
             </div>
         </div>
 
@@ -239,5 +244,5 @@ path=./scanbot_images/          # Directory for saved PNGs
 
 <!--
 MkDocs version : 1.4.2
-Build Date UTC : 2023-03-08 03:46:18.986041+00:00
+Build Date UTC : 2023-03-09 00:13:36.628826+00:00
 -->

@@ -99,6 +99,10 @@
               <ul class="nav flex-column">
               </ul>
             </li>
+            <li class="nav-item" data-level="2"><a href="#tip-crash-safety" class="nav-link">Tip Crash Safety</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
               </ul>
             </li>
         </ul>
@@ -107,7 +111,7 @@
                     <div class="col-md-9" role="main">
 
 <h1 id="configuration">Configuration</h1>
-<p>scanbot_config.ini is the Scanbot configuration file that is loaded on startup.</p>
+<p>scanbot_config.ini is the Scanbot configuration file that is loaded from ~/scanbot on startup.</p>
 <h2 id="tcp-connection">TCP Connection</h2>
 <p>For communicating with Nanonis V5 software, you must configure the TCP settings.
 Scanbot requires at least two ports to perform correctly</p>
@@ -132,6 +136,12 @@ scp_path=&lt;user@host:path&gt;   # ssh key must be set up for this to work
 <p>The following optional fields relate to Nanonis configuration</p>
 <pre><code>topo_basename=&lt;.sxm basename&gt;   # base filename used when saving .sxm files. Defaults 
 temp_calibration_curve=&lt;path&gt;   # Path to the temperature calibration curve so Scanbot can read STM temperature.
+</code></pre>
+<h2 id="tip-crash-safety">Tip Crash Safety</h2>
+<p>The following fields set the parameters of the Z piezo when retracting the tip after a crash is detected.</p>
+<pre><code>safe_current=&lt;current&gt;              # A tunnelling current above this threshold is considered a tip crash
+safe_retract_V=&lt;Z_piezo_voltage&gt;    # Voltage applied to the Z piezo when the tip is automatically retracted after a crash is detected
+safe_retract_F=&lt;Z_piezo_frequency&gt;  # Frequency applied to the Z piezo when the tip is automatically retracted after a crash is detected
 </code></pre></div>
             </div>
         </div>

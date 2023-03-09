@@ -14,4 +14,6 @@ Maintaining a 'good tip' is not guaranteed. For instance, scanning over debris o
 task is currently performed by a trained human operator who has a 'feel' for the instrument. Automating these processes has the potential to greatly increase the efficiency and output of STMs.
 <br>
 <br>
-This project aims to automate STM probe conditioning and sample surveying as a first step towards full automation in STM experiments.
+This project aims to automate STM probe conditioning and sample surveying as a first step towards full automation in STM experiments. It was made possible by [FLEET](https://www.fleet.org.au/)
+through their [Research Translation Program](https://www.fleet.org.au/translation/#:~:text=A%20new%20FLEET%20program%20provides,translation%20skills%20in%20Centre%20membership.).
+![FLEETLogo](fleet-logo.png)

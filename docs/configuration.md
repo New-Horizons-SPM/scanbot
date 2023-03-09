@@ -1,5 +1,5 @@
 # Configuration
-scanbot_config.ini is the Scanbot configuration file that is loaded on startup.
+scanbot_config.ini is the Scanbot configuration file that is loaded from ~/scanbot on startup.
 
 ## TCP Connection
 For communicating with Nanonis V5 software, you must configure the TCP settings.
@@ -33,4 +33,12 @@ The following optional fields relate to Nanonis configuration
 ```
 topo_basename=<.sxm basename>   # base filename used when saving .sxm files. Defaults 
 temp_calibration_curve=<path>   # Path to the temperature calibration curve so Scanbot can read STM temperature.
+```
+
+## Tip Crash Safety
+The following fields set the parameters of the Z piezo when retracting the tip after a crash is detected.
+```
+safe_current=<current>              # A tunnelling current above this threshold is considered a tip crash
+safe_retract_V=<Z_piezo_voltage>    # Voltage applied to the Z piezo when the tip is automatically retracted after a crash is detected
+safe_retract_F=<Z_piezo_frequency>  # Frequency applied to the Z piezo when the tip is automatically retracted after a crash is detected
 ```

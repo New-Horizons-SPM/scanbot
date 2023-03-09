@@ -17,28 +17,24 @@ Run ```python scanbot_interface.py -c```
 ### Zulip
 1. Install zulip and zulip_bots
     
-```
-    pip install zulip
-    pip install zulip_bots
-```
+    ```pip install zulip```<br>
+    ```pip install zulip_bots```
     
 2. [Create a zulip bot](https://zulip.com/help/add-a-bot-or-integration) and download the zuliprc file
 
 3. Add the following lines to scanbot_config.ini:
     
-```
-    zuliprc=<path_to_zuliprc>
-    upload_method=zulip
-```
+    ```zuliprc=<path_to_zuliprc>```<br>
+    ```upload_method=zulip```
 
-4. Run ```zulip-run-bot scanbot_interface.py --config=<path_to_zuliprc>```
+4. Run ```python scanbot_interface.py -z```
 5. Run commands by sending messages to the Zulip bot
 
 ## Usage
 For a full list of Scanbot commands, see [commands](./commands). Alternatively run the ```help``` command, or for help with a specific command, run ```help <command_name>```
 
 ### Configuration
-The scanbot_config.ini configuration file can store things like the default IP adress, default TCP Ports, etc.
+The scanbot_config.ini configuration file can store things like the default IP adress, default TCP Ports, etc. Save it in the project's root directory.
 See [configuration](./configuration.md) for more details.
 An example config file is:
 ```
@@ -64,3 +60,7 @@ path=./scanbot_images/          # Directory for saved PNGs
 ## Citing
 
 If you use Scanbot in your scientific research, please consider [citing it](https://zenodo.org/badge/latestdoi/487719232).
+
+## FLEET
+Special thanks to [FLEET](https://www.fleet.org.au/) for their contribution through the [FLEET Translation Program](https://www.fleet.org.au/translation/#:~:text=A%20new%20FLEET%20program%20provides,translation%20skills%20in%20Centre%20membership.).
+![FLEETLogo](fleet-logo.png)

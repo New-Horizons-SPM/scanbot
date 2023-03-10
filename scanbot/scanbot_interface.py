@@ -202,6 +202,9 @@ class scanbot_interface(object):
                          'tip_shape_props'  : self.tipShapeProps,               # Read/write tip shaper properties.
                          'tip_shape'        : self.tipShape,                    # Execute a tip shape
                         # AutoSTM
+                         'auto_init'        : self.autoInit,                    # Initialise tip location
+                         'move_tip_to_sample':self.moveTipToSample,             # Automatically move the tip from its current location to the sample target location.
+                         'move_tip_to_clean': self.moveTipToClean,              # Automatically move the tip from its current location to the clean metal target location.
                          'auto_tip_shape'   : self.autoTipShape,                # Routine that automatically prepares a nice tip. Assumes the substrate is a clean metal. Ag111 works best.
                         # Misc
                          'stop'             : self.stop,                        # Interrupt whatever scanbot is doing. Also stops the current scan.
@@ -232,7 +235,7 @@ class scanbot_interface(object):
                     '-px'   : ['-default', lambda x: int(x),   "(int) Number of pixels"],
                     '-st'   : ['10',       lambda x: float(x), "(float) Drift compensation time (s)"],
                     '-stitch':['1',        lambda x: float(x), "(int) Return the stitched survey after completion. 1: Yes, else No"],
-                    '-hook' : ['',         lambda x: str(x),   "(str) Name of a custom python script to call after each image."],
+                    '-hook' : ['0',        lambda x: str(x),   "(int) Flag to call hook hk_survey.py after each complete scan. 0=No,1=Yes"],
                     '-autotip': ['0',      lambda x: str(x),   "(int) Automatic tip shaping. 0=off, 1=on. Properties for the auto tip shaper should be set with auto_tip_shaper command"]}
         
         if(_help): return arg_dict
@@ -417,6 +420,53 @@ class scanbot_interface(object):
 ###############################################################################
 # Auto STM
 ###############################################################################
+    def autoInit(self,user_args,_help=False):
+        arg_dict = {'-light'      : ['0',   lambda x: int(x),   "(int) Flag to turn the light on/off before/after initialisation. This uses hk_light.turn_on() and hk_light.turn_off() functions. 0=Don't, 1=Do"],
+                    '-cameraPort' : ['0',   lambda x: int(x),   "(int) cv2 camera port - usually 0 for desktops or 1 for laptops with an inbuilt camera."],
+                    '-demo'       : ['0',   lambda x: int(x),   "(int) Load in an mp4 recording of the tip moving instead of using live feed"]}
+        
+        if(_help): return arg_dict
+        
+        if(self.run_mode != 'c'): return "This function is only available in console mode."
+        
+        error,user_arg_dict = self.userArgs(arg_dict,user_args)
+        if(error): return error + "\nRun ```help auto_init``` if you're unsure."
+        
+        args = self.unpackArgs(user_arg_dict)
+        
+        func = lambda : self.scanbot.autoInit(*args,message=self.bot_message.copy())
+        return self.threadTask(func)
+    
+    def moveTipToSample(self,user_args,_help=False):
+        return self.moveTipToTarget(user_args,_help=_help,target="sample")
+    
+    def moveTipToClean(self,user_args,_help=False):
+        return self.moveTipToTarget(user_args,_help=_help,target="clean")
+    
+    def moveTipToTarget(self,user_args,_help=False,target=""):
+        arg_dict = {'-light'      : ['0',   lambda x: int(x),   "(int) Flag to turn the light on before moving and off after moving. This uses hk_light.turn_on() and hk_light.turn_off() functions. 0=Don't, 1=Do"],
+                    '-cameraPort' : ['0',   lambda x: int(x),   "(int) cv2 camera port - usually 0 for desktops or 1 for laptops with an inbuilt camera."],
+                    '-xStep'      : ['100', lambda x: int(x),   "(int) Number of motor steps in the X direction before updating tip position. More=Faster but might lose the tip"],
+                    '-zStep'      : ['250', lambda x: int(x),   "(int) Number of motor steps to move in +Z (upwards) before updating tip position. More=Faster but might lose the tip"],
+                    '-xV'         : ['130', lambda x: float(x), "(float) Piezo voltage when moving motor steps in x direction"],
+                    '-zV'         : ['180', lambda x: float(x), "(float) Piezo voltage when moving motor steps in z direction"],
+                    '-xF'         : ['1100',lambda x: float(x), "(float) Piezo frequency when moving motor steps in x direction"],
+                    '-zF'         : ['1100',lambda x: float(x), "(float) Piezo frequency when moving motor steps in z direction"],
+                    '-approach'   : ['1',   lambda x: int(x),   "(int) Approach when tip reaches target. 0=No,1=Yes"],
+                    '-demo'       : ['0',   lambda x: int(x),   "(int) Load in an mp4 recording of the tip moving instead of using live feed"]}
+        
+        if(_help): return arg_dict
+        
+        if(self.run_mode != 'c'): return "This function is only available in console mode."
+        
+        error,user_arg_dict = self.userArgs(arg_dict,user_args)
+        if(error): return error + "\nRun ```help move_tip_to_" + target + "``` if you're unsure."
+        
+        args = self.unpackArgs(user_arg_dict)
+        
+        func = lambda : self.scanbot.moveTipToTarget(*args,target=target)
+        return self.threadTask(func)
+        
     def autoTipShape(self,user_args,_help=False):
         arg_dict = {'-n'    : ['10',        lambda x: int(x),   "(int) Max number of tip shapes to perform"],
                     '-wh'   : ['10e-9',     lambda x: float(x), "(float) Size of the square scan frame when imaging the clean surface"],
@@ -435,7 +485,6 @@ class scanbot_interface(object):
         
         func = lambda : self.scanbot.autoTipShape(*args,message=self.bot_message.copy())
         return self.threadTask(func)
-    
     
 ###############################################################################
 # Configuration

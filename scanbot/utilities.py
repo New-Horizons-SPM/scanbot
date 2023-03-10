@@ -296,7 +296,7 @@ def trimStart(cap,frames):
 
 def getVideo(cameraPort,demo=0):
     if(demo):
-        cap = cv2.VideoCapture('../Documentation/move_tip.mp4')                 # Load in the mp4
+        cap = cv2.VideoCapture('../Dev/move_tip.mp4')                           # Load in the mp4
         trimStart(cap,frames=2000)                                              # Trim off the start of the video
         return cap
     
@@ -337,10 +337,9 @@ def drawRectangle(event, x, y, flags, param):
        getROI_final = np.array([x,y])
 
 markPoint_pos = []
-def markPoint(cap):
+def markPoint(cap,windowName="Mark a point"):
     global markPoint_pos
     
-    windowName = "SelectTipPos"
     cv2.namedWindow(windowName)
     cv2.setMouseCallback(windowName, drawCircle)
     

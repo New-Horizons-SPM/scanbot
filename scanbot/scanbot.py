@@ -25,6 +25,7 @@ import ntpath
 import numpy as np
 import nanonispyfit as napfit
 import matplotlib.pyplot as plt
+import cv2
 
 import math
 
@@ -34,15 +35,17 @@ import utilities
 
 class scanbot():
     channel      = 14                                                           # Default plot channel. Change this using plot_channel command
+    
     safeCurrent  = 5e-9                                                         # Current above this value is considered a tip crash.   Dummy value - this gets overridden by config.
     safeRetractV = 200                                                          # Voltage applied during safe retract.                  Dummy value - this gets overridden by config.
     safeRetractF = 1500                                                         # Frequency applied during safe retract.                Dummy value - this gets overridden by config.
+    
+    autoInitSet  = False                                                        # Flag to indicate whether tip, sample, and clean metal locations have been initialised
 ###############################################################################
 # Constructor
 ###############################################################################
     def __init__(self,interface):
         self.interface = interface
-        # self.safetyParams = [5e-9,2100,270]                                     # [0]: safe current threshold. [1]: safe retract motor frequency. [2]: safe retract motor voltage
         
 ###############################################################################
 # Data Acquisition
@@ -810,7 +813,7 @@ class scanbot():
         
         return True
     
-    def moveTip(self,lightOnOff,cameraPort,trackOnly,xStep,zStep,xV,zV,xF,zF,demo,roi=[],win=15,target=[]):
+    def moveTip(self,lightOnOff,cameraPort,trackOnly,xStep,zStep,xV,zV,xF,zF,demo,roi=[],target=[],tipPos=[],win=15,iamauto=False):
         """
         In development
 
@@ -828,7 +831,6 @@ class scanbot():
         win        : Window around the ROI to look at.
 
         """
-        import cv2
         NTCP,connection_error = self.connect()                                  # Connect to nanonis via TCP
         if(connection_error):
             global_.running.clear()                                             # Free up the running flag
@@ -839,14 +841,23 @@ class scanbot():
                 from hk_light import turn_on
                 turn_on()                                                       # Call the hook to do so. Hook should return null if successful, otherwise it should throw an Exception
             except Exception as e:
-                self.interface.sendReply("Error calling hook hk_lighton.py")
+                self.interface.sendReply("Error calling hook hk_light.py to turn on light")
                 self.disconnect(NTCP)
                 global_.running.clear()                                         # Free up the running flag
                 return str(e)
         
         cap = utilities.getVideo(cameraPort,demo)
+        ret,frame = utilities.getAveragedFrame(cap,n=1)                         # Read the first frame of the video to test camera feed
+        if(not ret):
+            self.interface.sendReply("Error finding camera feed. Check camera port.")
+            self.disconnect(NTCP)
+            global_.running.clear()                                             # Free up the running flag
+            cap.release()
+            cv2.destroyAllWindows()
+            return
         
         if(not len(roi)):                                                       # Don't do this if we're passing in an ROI already
+            self.autoInitSet = False                                            # If an roi hasn't been passed in, it means this was called directly by user and the auto_init will need to be redone
             ret,frame = utilities.getAveragedFrame(cap,n=1)                     # Read the first frame of the video
             
             self.interface.sendReply("Select tracking ROI. Press 'q' to cancel")
@@ -855,6 +866,8 @@ class scanbot():
                 self.interface.sendReply("Cancelling move tip")
                 self.disconnect(NTCP)
                 global_.running.clear()                                         # Free up the running flag
+                cap.release()
+                cv2.destroyAllWindows()
                 return
                 
             self.interface.sendReply("Select a marker for the tip location. Press 'q' to cancel")
@@ -866,10 +879,10 @@ class scanbot():
             self.interface.sendReply("Select target location for the tip. Press 'q' to cancel and enter track-only mode")
             target = utilities.markPoint(cap)
             
-            if(len(target)): target = target - tipPos
-            
-            if(target[1] > 0):
-                self.interface.sendReply("Error, cannot move tip lower than current position. Track-Only mode activated")
+        if(len(target)):
+            target = target - tipPos
+            if(target[1] > 0 and not iamauto):
+                self.interface.sendReply("Error: cannot move tip lower than current position. Track-Only mode activated")
                 target = []
         
         if(not len(target)): trackOnly = True
@@ -877,15 +890,19 @@ class scanbot():
         ROI = utilities.extract(frame,roi)
         WIN = utilities.extract(frame,roi,win)
         
-        xy = np.array([0,0])
+        tipToROI = tipPos - roi[0:2]
+        
         success = True
+        targetHit = False
+        xy  = np.array([0,0])
+        oxy = np.array([0,0])
+        currentPos = np.array([0,0])
         while(cap.isOpened()):
             if(not success):
                 self.interface.sendReply("Error moving area... tip crashed... stopping")
                 global_.running.clear()
                 break
             
-            if(self.checkEventFlags()): break                                   # Check event flags
             ret, frame = utilities.getAveragedFrame(cap,n=11)
             if(not ret): break
         
@@ -904,6 +921,7 @@ class scanbot():
             cv2.imshow('Frame',rec)
             
             if cv2.waitKey(25) & 0xFF == ord('q'): break                        # Press Q on keyboard to  exit
+            if(self.checkEventFlags()): break                                   # Check event flags
             
             if(trackOnly): continue
             
@@ -920,24 +938,35 @@ class scanbot():
                 success = self.moveArea(up=10, upV=zV, upF=zF, direction="X-", steps=xStep, dirV=xV, dirF=xF, zon=False, approach=False)
                 continue
             
-            print("Target Hit!")
+            targetHit = True
+            self.interface.sendReply("Target Hit!")
             break                                                               # Target reached!
         
         cap.release()
         cv2.destroyAllWindows()
+        
+        if(iamauto):
+            tipToROI = tipPos - roi[0:2]
+            self.roi[0:2] = tipPos - tipToROI
+            self.tipPos = currentPos + tipPos
         
         if(lightOnOff):                                                         # If we want to turn the light off
             try:
                 from hk_light import turn_off
                 turn_off()                                                      # Call the hook to do so. Hook should return null if successful, otherwise it should throw an Exception
             except Exception as e:
-                self.interface.sendReply("Error calling hook hk_lighton.py")
+                self.interface.sendReply("Error calling hook hk_light.py to turn light off")
                 self.disconnect(NTCP)
                 global_.running.clear()                                         # Free up the running flag
                 return str(e)
             
         self.disconnect(NTCP)                                                   # Close the TCP connection
+        
+        if(targetHit and iamauto): return "Target Hit"                          # Keep the running flag going because we might be approaching after this.
+        
         global_.running.clear()                                                 # Free up the running flag
+        
+        return
         
     def tipShape(self):
         NTCP,connection_error = self.connect()                                  # Connect to nanonis via TCP
@@ -997,6 +1026,129 @@ class scanbot():
 ###############################################################################
 # Auto STM
 ###############################################################################
+    def autoInit(self,lightOnOff,cameraPort,demo,win=15,message=""):
+        if(lightOnOff):                                                         # If we want to turn the light on
+            try:
+                from hk_light import turn_on
+                turn_on()                                                       # Call the hook to do so. Hook should return null if successful, otherwise it should throw an Exception
+            except Exception as e:
+                self.interface.sendReply("Error calling hook hk_light.py to turn on the light")
+                global_.running.clear()                                         # Free up the running flag
+                return str(e)
+        
+        cap = utilities.getVideo(cameraPort,demo)
+        
+        ret,frame = utilities.getAveragedFrame(cap,n=1)                         # Read the first frame of the video
+        if(not ret):
+            self.interface.sendReply("Error finding camera feed. Check camera port.")
+            global_.running.clear()                                             # Free up the running flag
+            cap.release()
+            cv2.destroyAllWindows()
+            return
+        
+        self.interface.sendReply("Select tracking ROI. Press 'q' to cancel")
+        roi = utilities.getROI(cap)
+        if(not len(roi)):
+            self.interface.sendReply("Cancelling...")
+            global_.running.clear()                                             # Free up the running flag
+            cap.release()
+            cv2.destroyAllWindows()
+            return
+            
+        self.interface.sendReply("Place a marker at the tip location. Press 'q' to cancel")
+        tipPos = utilities.markPoint(cap,windowName="Mark tip location")
+        if(not len(tipPos)):
+            self.interface.sendReply("Cancelling...")
+            global_.running.clear()                                             # Free up the running flag
+            cap.release()
+            cv2.destroyAllWindows()
+            return
+        
+        self.interface.sendReply("Place a marker at a safe height above the clean metal. Press 'q' to cancel")
+        cleanMetalPos = utilities.markPoint(cap,windowName="Mark clean metal location")
+        if(not len(cleanMetalPos)):
+            self.interface.sendReply("Cancelling...")
+            global_.running.clear()                                             # Free up the running flag
+            cap.release()
+            cv2.destroyAllWindows()
+            return
+        
+        self.interface.sendReply("Place a marker at a safe height above the sample. Press 'q' to cancel")
+        samplePos = utilities.markPoint(cap,windowName="Mark sample location")
+        if(not len(samplePos)):
+            self.interface.sendReply("Cancelling...")
+            global_.running.clear()                                             # Free up the running flag
+            cap.release()
+            cv2.destroyAllWindows()
+            return
+        
+        ret, frame = utilities.getAveragedFrame(cap,n=11)
+        if(not ret):
+            self.interface.sendReply("Problem with camera feed")
+            global_.running.clear()                                             # Free up the running flag
+            cap.release()
+            cv2.destroyAllWindows()
+            return
+        
+        rec = utilities.drawRec(frame.astype(np.uint8), roi)
+        rec = utilities.drawRec(rec, roi, win=win)
+            
+        rec = cv2.circle(rec, tipPos, radius=3, color=(0, 0, 255), thickness=-1)
+        rec = cv2.circle(rec, samplePos, radius=3, color=(0, 255, 0), thickness=-1)
+        rec = cv2.circle(rec, cleanMetalPos, radius=3, color=(0, 255, 0), thickness=-1)
+            
+        cv2.imshow('Frame',rec)
+        
+        self.interface.sendReply("Initialisation complete! If this doens't look correct, run it again.")
+        self.interface.sendReply("Press 'q' to exit (timeout = 30s)")
+        
+        timeout = 0
+        while(timeout < 30):
+            if cv2.waitKey(25) & 0xFF == ord('q'): break                        # Press Q on keyboard to  exit
+            time.sleep(1)
+            timeout += 1
+            
+        cap.release()
+        cv2.destroyAllWindows()
+        
+        self.autoInitSet    = True
+        self.roi            = roi
+        self.tipPos         = tipPos
+        self.samplePos      = samplePos
+        self.cleanMetalPos  = cleanMetalPos
+        
+        self.interface.sendReply("Done")
+        
+        if(lightOnOff):                                                         # If we want to turn the light on
+            try:
+                from hk_light import turn_off
+                turn_off()                                                      # Call the hook to do so. Hook should return null if successful, otherwise it should throw an Exception
+            except Exception as e:
+                self.interface.sendReply("Error calling hook hk_light.py to turn off the light.")
+                global_.running.clear()                                         # Free up the running flag
+                return str(e)
+            
+        global_.running.clear()                                                 # Free up the running flag
+        return
+    
+    def moveTipToTarget(self,lightOnOff, cameraPort, xStep, zStep, xV, zV, xF, zF, approach, demo, target):
+        if(not self.autoInitSet):
+            self.interface.sendReply("Error, run the auto_init command to initialise tip, sample, and clean metal locations")
+            global_.running.clear()                                             # Free up the running flag
+            return
+        
+        trackOnly = 0
+        if(target == "sample"):  target = self.samplePos.copy()
+        elif(target == "clean"): target = self.cleanMetalPos.copy()
+        
+        targetHit = self.moveTip(lightOnOff, cameraPort, trackOnly, xStep, zStep, xV, zV, xF, zF, demo,roi=self.roi.copy(),target=target,tipPos=self.tipPos.copy(),iamauto=True)
+        
+        if(targetHit == "Target Hit" and approach == 1):
+            self.moveArea(up=10, upV=zV, upF=zF, direction="X+", steps=0, dirV=xV, dirF=xF, zon=True)
+        
+        global_.running.clear()                                                 # Free up the running flag
+        return
+    
     def autoTipShape(self,n,wh,symTarget,sizeTarget,zQA,ztip,sleepTime,message=""):
         NTCP,connection_error = self.connect()                                  # Connect to nanonis via TCP
         if(connection_error):

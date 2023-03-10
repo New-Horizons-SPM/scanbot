@@ -235,7 +235,7 @@ class scanbot_interface(object):
                     '-px'   : ['-default', lambda x: int(x),   "(int) Number of pixels"],
                     '-st'   : ['10',       lambda x: float(x), "(float) Drift compensation time (s)"],
                     '-stitch':['1',        lambda x: float(x), "(int) Return the stitched survey after completion. 1: Yes, else No"],
-                    '-hook' : ['',         lambda x: str(x),   "(str) Name of a custom python script to call after each image."],
+                    '-hook' : ['0',        lambda x: str(x),   "(int) Flag to call hook hk_survey.py after each complete scan. 0=No,1=Yes"],
                     '-autotip': ['0',      lambda x: str(x),   "(int) Automatic tip shaping. 0=off, 1=on. Properties for the auto tip shaper should be set with auto_tip_shaper command"]}
         
         if(_help): return arg_dict

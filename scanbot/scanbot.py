@@ -891,7 +891,6 @@ class scanbot():
         WIN = utilities.extract(frame,roi,win)
         
         tipToROI = tipPos - roi[0:2]
-        print("tiptoroi",tipToROI)
         
         success = True
         targetHit = False
@@ -1138,22 +1137,15 @@ class scanbot():
             global_.running.clear()                                             # Free up the running flag
             return
         
-        print("tipPos",self.tipPos)
-        print("roi",self.roi)
-        
         trackOnly = 0
         if(target == "sample"):  target = self.samplePos.copy()
         elif(target == "clean"): target = self.cleanMetalPos.copy()
         
         targetHit = self.moveTip(lightOnOff, cameraPort, trackOnly, xStep, zStep, xV, zV, xF, zF, demo,roi=self.roi.copy(),target=target,tipPos=self.tipPos.copy(),iamauto=True)
         
-        print("tipPos",self.tipPos)
-        print("roi",self.roi)
-        
         if(targetHit == "Target Hit" and approach == 1):
             self.moveArea(up=10, upV=zV, upF=zF, direction="X+", steps=0, dirV=xV, dirF=xF, zon=True)
         
-        print('----------')
         global_.running.clear()                                                 # Free up the running flag
         return
     

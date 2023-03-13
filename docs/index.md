@@ -32,7 +32,7 @@ Run ```python scanbot_interface.py -c```
 
 ## Usage
 For a full list of Scanbot commands, see [commands](./commands). Alternatively run the ```help``` command or, for help with a specific command, run ```help <command_name>```.
-For example work-flow automation, see [Intended Usage](/automation/#intended-usage)
+For example work-flow automation, see [Intended Usage](./automation/#intended-usage)
 
 ### Configuration
 The scanbot_config.ini configuration file can store things like the default IP adress, default TCP Ports, etc. Save it in the project's root directory.
@@ -57,7 +57,7 @@ path=./scanbot_images/          # Directory for saved PNGs
     - Tip shaping
     - Full control over the course motors
 * Hooks
-    - Scanbot has a number of built-in [hooks](/hooks) to let you customise key functionality.
+    - Scanbot has a number of built-in [hooks](./hooks) to let you customise key functionality.
 
 ## Citing
 

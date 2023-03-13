@@ -51,6 +51,9 @@ class scanbot():
     xyMinF = 500                                                                # Frequency limits Dummy value - this gets overridden by config.
     
     autoInitSet  = False                                                        # Flag to indicate whether tip, sample, and clean metal locations have been initialised
+    
+    surveyParams  = []                                                          # Last survey params
+    survey2Params = []                                                          # Last survey2 params
 ###############################################################################
 # Constructor
 ###############################################################################
@@ -84,11 +87,19 @@ class scanbot():
         
         self.disconnect(NTCP)                                                   # Close the TCP connection
             
-    def survey(self,bias,n,startAt,suffix,xy,dx,px,sleepTime,stitch,hook,autotip,ox=0,oy=0,message="",enhance=False,reverse=False,clearRunning=True):
+    def survey(self,bias,n,startAt,suffix,xy,dx,px,sleepTime,stitch,survey_hk,classifier_hk,autotip,ox=0,oy=0,message="",enhance=False,reverse=False,clearRunning=True):
         NTCP,connection_error = self.connect()                                  # Connect to nanonis via TCP
         if(connection_error):
             global_.running.clear()                                             # Free up the running flag
             return connection_error                                             # Return error message if there was a problem connecting        
+        
+        if(autotip and not self.autoInitSet):
+            self.interface.sendReply("Error: run the auto_init command to initialise tip, sample, and clean metal locations before setting -autotip=1")
+            self.disconnect(NTCP)
+            global_.running.clear()                                             # Free up the running flag
+            return
+        
+        self.surveyParams = [bias,n,startAt,suffix,xy,dx,px,sleepTime,stitch,survey_hk,classifier_hk,autotip]
         
         scan  = Scan(NTCP)
         piezo = Piezo(NTCP)
@@ -130,6 +141,7 @@ class scanbot():
             _,_,px,lines = scan.BufferGet()
             stitchedSurvey = np.zeros((lines*n,px*n))*np.nan
         
+        classificationHistory = []
         for idx,frame in enumerate(frames):
             if(idx < startAt-1): continue
             
@@ -157,17 +169,28 @@ class scanbot():
             
             if(autotip):                                                        # **Currently Testing**
                 classification = utilities.classify(scanData)                   # Obtain image classification
-                if(not classification['nan']):
-                    if(classification['tipChanges'] > 0):                       # Arbitrary condition required to perform tip shape
-                        self.interface.sendReply(str(classification),message=message)
+                if(classifier_hk):
+                    try:
+                        from hk_classifier import run
+                        classification = run(scanData,filePath,classificationHistory) # Overwrite classification with the one from the hook
+                    except Exception as e:
+                        self.interface.sendReply("Warning: Call to survey hook hk_classifier.py failed:")
+                        self.interface.sendReply(str(e))
+                        self.interface.sendReply("Default Scanbot classifier will be used instead.")
+                    
+                classificationHistory.append(classification)
+                
+                if(classification["tipShape"] == 1):
+                    print("auto tip shaping initate!")
             
             pngFilename,scanDataPlaneFit = self.makePNG(scanData, filePath,returnData=True,dpi=150) # Generate a png from the scan data
             self.interface.sendPNG(pngFilename,notify=True,message=message)     # Send a png over zulip
             
-            if(hook):                                                           # call a custom python script
+            if(survey_hk):                                                      # call a custom python script
                 try:
-                    import hk_survey
-                    hk_survey()
+                    from hk_survey import run
+                    metaData = self.getMetaData(filePath)
+                    run(scanData,filePath,metaData)
                 except Exception as e:
                     self.interface.sendReply("Warning: Call to survey hook hk_survey.py failed:")
                     self.interface.sendReply(str(e))
@@ -192,9 +215,12 @@ class scanbot():
         
         self.interface.sendReply('survey \'' + suffix + '\' done',message=message) # Send a notification that the survey has completed
         
-    def survey2(self,bias,n,startAt,suffix,xy,dx,px,sleepTime,stitch,hook,autotip, # Survey params
+    def survey2(self,bias,n,startAt,suffix,xy,dx,px,sleepTime,stitch,survey_hk,classifier_hk,autotip, # Survey params
                      nx,ny,xStep,yStep,zStep,xyV,zV,xyF,zF,message=""):          # Move area params
         
+        self.survey2Params = [bias,n,startAt,suffix,xy,dx,px,sleepTime,stitch,survey_hk,classifier_hk,autotip, # Survey2 params
+                              nx,ny,xStep,yStep,zStep,xyV,zV,xyF,zF]
+    
         if(nx == 1): xStep = 0
         if(ny == 1): yStep = 0
         
@@ -216,7 +242,7 @@ class scanbot():
                 if(self.checkEventFlags()): break                               # Check event flags
                 
                 s = suffix + "_y" + str(y) + "_x" + str(x)
-                self.survey(bias,n,startAt,s,xy,dx,px,sleepTime,stitch,hook,autotip,reverse=reverse,clearRunning=False,message=message)
+                self.survey(bias,n,startAt,s,xy,dx,px,sleepTime,stitch,survey_hk,classifier_hk,autotip,reverse=reverse,clearRunning=False,message=message)
                 reverse = not reverse
                 
                 if(self.checkEventFlags()): break                               # Check event flags
@@ -1149,7 +1175,7 @@ class scanbot():
         global_.running.clear()                                                 # Free up the running flag
         return
     
-    def moveTipToTarget(self,lightOnOff, cameraPort, xStep, zStep, xV, zV, xF, zF, approach, demo, target):
+    def moveTipToTarget(self,lightOnOff, cameraPort, xStep, zStep, xV, zV, xF, zF, approach, demo, target, tipshape, retrn, run):
         if(not self.autoInitSet):
             self.interface.sendReply("Error, run the auto_init command to initialise tip, sample, and clean metal locations")
             global_.running.clear()                                             # Free up the running flag
@@ -1161,12 +1187,42 @@ class scanbot():
         
         targetHit = self.moveTip(lightOnOff, cameraPort, trackOnly, xStep, zStep, xV, zV, xF, zF, demo,roi=self.roi.copy(),target=target,tipPos=self.tipPos.copy(),iamauto=True)
         
-        if(targetHit == "Target Hit" and approach == 1):
-            self.moveArea(up=10, upV=zV, upF=zF, direction="X+", steps=0, dirV=xV, dirF=xF, zon=True)
+        if(not targetHit == "Target Hit"): return
+        
+        if(not approach == 1): return
+        
+        self.moveArea(up=10, upV=zV, upF=zF, direction="X+", steps=0, dirV=xV, dirF=xF, zon=True) # Approach
+        
+        message = ""
+        if(target == "clean" and tipshape == 1):
+            message = self.autoTipShape(n=-1, wh=10e-9, symTarget=0.9, sizeTarget=2.5, zQA=85e-10, ztip=2.5e-9, sleepTime=10)
+        
+        if(not "Tip shaping successful" in message):
+            global_.running.clear()                                                 # Free up the running flag
+            return
+            
+        if(not retrn == 1): return
+        
+        targetHit = self.moveTip(lightOnOff, cameraPort, trackOnly, xStep, zStep, xV, zV, xF, zF, demo,roi=self.roi.copy(),target="sample",tipPos=self.tipPos.copy(),iamauto=True)
+        
+        if(not targetHit == "Target Hit"): return
+        
+        self.moveArea(up=10, upV=zV, upF=zF, direction="X+", steps=0, dirV=xV, dirF=xF, zon=True) # Approach
         
         global_.running.clear()                                                 # Free up the running flag
-        return
-    
+        
+        if(not run in ["survey","survey2"]):
+            self.interface.sendReply("Error running " + run + ". -run must be one of 'survey' or 'survey2'")
+            return
+        
+        if(run == "survey"):
+            self.interface.survey(*self.surveyParams)
+            return
+                
+        if(run == "survey2"):
+            self.survey2(*self.survey2Params)
+            return
+        
     def autoTipShape(self,n,wh,symTarget,sizeTarget,zQA,ztip,sleepTime,message=""):
         NTCP,connection_error = self.connect()                                  # Connect to nanonis via TCP
         if(connection_error):

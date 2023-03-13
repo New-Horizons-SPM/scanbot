@@ -243,7 +243,7 @@ class scanbot_interface(object):
         args = self.unpackArgs(user_arg_dict)
         return self.scanbot.plot(*args)
     
-    def survey(self,user_args,_help=False):
+    def survey(self,user_args,_help=False,surveyParams=[]):
         arg_dict = {'-bias' : ['-default', lambda x: float(x), "(float) Scan bias"],
                     '-n'    : ['5',        lambda x: int(x),   "(int) Size of the nxn grid of scans"],
                     '-i'    : ['1',        lambda x: int(x),   "(int) Start the grid from this index"],
@@ -253,20 +253,23 @@ class scanbot_interface(object):
                     '-px'   : ['-default', lambda x: int(x),   "(int) Number of pixels"],
                     '-st'   : ['10',       lambda x: float(x), "(float) Drift compensation time (s)"],
                     '-stitch':['1',        lambda x: float(x), "(int) Return the stitched survey after completion. 1: Yes, else No"],
-                    '-hook' : ['0',        lambda x: str(x),   "(int) Flag to call hook hk_survey.py after each complete scan. 0=No,1=Yes"],
-                    '-autotip': ['0',      lambda x: str(x),   "(int) Automatic tip shaping. 0=off, 1=on. Properties for the auto tip shaper should be set with auto_tip_shaper command"]}
+                    '-hk_survey': ['0',    lambda x: int(x),   "(int) Flag to call a custom python script after each image. Script must be ~/scanbot/scanbot/hk_survey.py. 0=Don't call, 1=Call"],
+                    '-hk_classifier': ['0',lambda x: int(x),   "(int) Flag to call a custom classifier after each image. Script must be ~/scanbot/scanbot/hk_classifier.py. Only called if -autotip=1. 0=Don't call, 1=Call"],
+                    '-autotip': ['0',      lambda x: str(x),   "(int) Automatic tip shaping. 0=off, 1=on"]}
         
         if(_help): return arg_dict
         
-        error,user_arg_dict = self.userArgs(arg_dict,user_args)
-        if(error): return error + "\nRun ```help survey``` if you're unsure."
-        
-        args = self.unpackArgs(user_arg_dict)
+        args = surveyParams
+        if(not args):
+            error,user_arg_dict = self.userArgs(arg_dict,user_args)
+            if(error): return error + "\nRun ```help survey``` if you're unsure."
+            
+            args = self.unpackArgs(user_arg_dict)
         
         func = lambda : self.scanbot.survey(*args,message=self.bot_message.copy())
         return self.threadTask(func)
     
-    def survey2(self,user_args,_help=False):
+    def survey2(self,user_args,_help=False,survey2Params=[]):
         arg_dict = {'-bias' : ['-default', lambda x: float(x), "(float) Scan bias"],
                     '-n'    : ['5',        lambda x: int(x),   "(int) Size of the nxn grid of scans within each survey"],
                     '-i'    : ['1',        lambda x: int(x),   "(int) Start the grid from this index"],
@@ -276,8 +279,9 @@ class scanbot_interface(object):
                     '-px'   : ['-default', lambda x: int(x),   "(int) Number of pixels"],
                     '-st'   : ['10',       lambda x: float(x), "(float) Drift compensation time (s)"],
                     '-stitch':['1',        lambda x: float(x), "(int) Return the stitched survey after completion. 1: Yes, else No"],
-                    '-hook' : ['0',        lambda x: int(x),   "(int) Flag to call a custom python script after each image. Script must be ~/scanbot/scanbot/hk_survey.py. 0=Don't call, 1=Call"],
-                    '-autotip': ['0',      lambda x: str(x),   "(int) Automatic tip shaping. 0=off, 1=on. Properties for the auto tip shaper should be set with auto_tip_shaper command"],
+                    '-hk_survey': ['0',    lambda x: int(x),   "(int) Flag to call a custom python script after each image. Script must be ~/scanbot/scanbot/hk_survey.py. 0=Don't call, 1=Call"],
+                    '-hk_classifier': ['0',lambda x: int(x),   "(int) Flag to call a custom classifier after each image. Script must be ~/scanbot/scanbot/hk_classifier.py. Only called if -autotip=1. 0=Don't call, 1=Call"],
+                    '-autotip': ['0',      lambda x: str(x),   "(int) Automatic tip shaping. 0=off, 1=on"],
                     
                     '-nx'    : ['2',       lambda x: int(x),   "(int) Size of the nx x ny grid of surveys. This sets up nx x ny surveys each taken after moving -x/yStep motor steps"],
                     '-ny'    : ['2',       lambda x: int(x),   "(int) Size of the nx x ny grid of surveys. This sets up nx x ny surveys each taken after moving -x/yStep motor steps"],
@@ -292,10 +296,12 @@ class scanbot_interface(object):
         
         if(_help): return arg_dict
         
-        error,user_arg_dict = self.userArgs(arg_dict,user_args)
-        if(error): return error + "\nRun ```help survey2``` if you're unsure."
-        
-        args = self.unpackArgs(user_arg_dict)
+        args = survey2Params
+        if(not args):
+            error,user_arg_dict = self.userArgs(arg_dict,user_args)
+            if(error): return error + "\nRun ```help survey2``` if you're unsure."
+            
+            args = self.unpackArgs(user_arg_dict)
         
         func = lambda : self.scanbot.survey2(*args,message=self.bot_message.copy())
         return self.threadTask(func)
@@ -471,7 +477,9 @@ class scanbot_interface(object):
                     '-xF'         : ['1100',lambda x: float(x), "(float) Piezo frequency when moving motor steps in x direction"],
                     '-zF'         : ['1100',lambda x: float(x), "(float) Piezo frequency when moving motor steps in z direction"],
                     '-approach'   : ['1',   lambda x: int(x),   "(int) Approach when tip reaches target. 0=No,1=Yes"],
-                    '-demo'       : ['0',   lambda x: int(x),   "(int) Load in an mp4 recording of the tip moving instead of using live feed"]}
+                    '-demo'       : ['0',   lambda x: int(x),   "(int) Load in an mp4 recording of the tip moving instead of using live feed"],
+                    '-tipshape'   : ['0',   lambda x: int(x),   "(int) Flag to initiate auto_tip_shape on approach (applies to move_tip_to_clean only)"],
+                    '-return'     : ['0',   lambda x: int(x),   "(int) Return to sample after tipshaping (applies to move_tip_to_clean when -tipshape=1)"]}
         
         if(_help): return arg_dict
         

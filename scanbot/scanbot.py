@@ -40,6 +40,16 @@ class scanbot():
     safeRetractV = 200                                                          # Voltage applied during safe retract.                  Dummy value - this gets overridden by config.
     safeRetractF = 1500                                                         # Frequency applied during safe retract.                Dummy value - this gets overridden by config.
     
+    zMaxV  = 200                                                                # Voltage limits Dummy value - this gets overridden by config.
+    zMinV  = 0                                                                  # Voltage limits Dummy value - this gets overridden by config.
+    xyMaxV = 130                                                                # Voltage limits Dummy value - this gets overridden by config.
+    xyMinV = 0                                                                  # Voltage limits Dummy value - this gets overridden by config.
+        
+    zMaxF  = 5000                                                               # Frequency limits Dummy value - this gets overridden by config.
+    zMinF  = 500                                                                # Frequency limits Dummy value - this gets overridden by config.
+    xyMaxF = 5000                                                               # Frequency limits Dummy value - this gets overridden by config.
+    xyMinF = 500                                                                # Frequency limits Dummy value - this gets overridden by config.
+    
     autoInitSet  = False                                                        # Flag to indicate whether tip, sample, and clean metal locations have been initialised
 ###############################################################################
 # Constructor
@@ -686,45 +696,53 @@ class scanbot():
             self.interface.sendReply("-up must be > 10",message=message)
             return False
         
-        if(upV > 300):
-            self.disconnect(NTCP)
-            self.interface.sendReply("-upV 300 V max",message=message)
-            return False
+        if(upV > self.zMaxV):
+            upV = self.zMaxV
+            # self.disconnect(NTCP)
+            # self.interface.sendReply("-upV 300 V max",message=message)
+            # return False
         
-        if(upF > 2.5e3):
-            self.disconnect(NTCP)
-            self.interface.sendReply("-upF 2.5 kHz max",message=message)
-            return False
+        if(upF > self.zMaxF):
+            upF = self.zMaxF
+            # self.disconnect(NTCP)
+            # self.interface.sendReply("-upF 2.5 kHz max",message=message)
+            # return False
         
-        if(dirV > 200):
-            self.disconnect(NTCP)
-            self.interface.sendReply("-dirV 200 V max",message=message)
-            return False
+        if(dirV > self.xyMaxV):
+            dirV = self.xyMaxV
+            # self.disconnect(NTCP)
+            # self.interface.sendReply("-dirV 200 V max",message=message)
+            # return False
         
-        if(dirF > 2.5e3):
-            self.disconnect(NTCP)
-            self.interface.sendReply("-dirF 2.5 kHz max",message=message)
-            return False
+        if(dirF > self.xyMaxF):
+            dirF = self.xyMaxF
+            # self.disconnect(NTCP)
+            # self.interface.sendReply("-dirF 2.5 kHz max",message=message)
+            # return False
         
-        if(upV < 1):
-            self.disconnect(NTCP)                                               # Close the TCP connection
-            self.interface.sendReply("-upV must be between 1 V and 200 V",message=message)
-            return False
+        if(upV < self.zMinV):
+            upV = self.zMinV
+            # self.disconnect(NTCP)                                               # Close the TCP connection
+            # self.interface.sendReply("-upV must be between 1 V and 200 V",message=message)
+            # return False
             
-        if(upF < 500):
-            self.disconnect(NTCP)                                               # Close the TCP connection
-            self.interface.sendReply("-upF must be between 500 Hz and 2.5 kHz",message=message)
-            return False
+        if(upF < self.zMinF):
+            upF = self.zMinF
+            # self.disconnect(NTCP)                                               # Close the TCP connection
+            # self.interface.sendReply("-upF must be between 500 Hz and 2.5 kHz",message=message)
+            # return False
         
-        if(dirV < 1):
-            self.disconnect(NTCP)                                               # Close the TCP connection
-            self.interface.sendReply("-upV must be between 1 V and 200 V",message=message)
-            return False
+        if(dirV < self.xyMinV):
+            dirV = self.xyMinV
+            # self.disconnect(NTCP)                                               # Close the TCP connection
+            # self.interface.sendReply("-upV must be between 1 V and 200 V",message=message)
+            # return False
             
-        if(dirF < 500):
-            self.disconnect(NTCP)                                               # Close the TCP connection
-            self.interface.sendReply("-upF must be between 500 Hz and 2.5 kHz",message=message)
-            return False
+        if(dirF < self.xyMinF):
+            dirF = self.xyMinF
+            # self.disconnect(NTCP)                                               # Close the TCP connection
+            # self.interface.sendReply("-upF must be between 500 Hz and 2.5 kHz",message=message)
+            # return False
         
         if(not direction in ["X+","X-","Y+","Y-"]):
             self.disconnect(NTCP)                                               # Close the TCP connection

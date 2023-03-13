@@ -61,7 +61,15 @@ class scanbot_interface(object):
                     'scp_path'                  : '',                           # user@clouddatabase:path
                     'safe_current'              : '5e-9',                       # When the current goes above this threhold the tip is considered crashed. Used when controlling the course piezos
                     'safe_retract_V'            : '200',                        # Voltage applied to the 'Z' piezo when retracting tip in case of crash
-                    'safe_retract_F'            : '1500'}                       # Frequency applied to the 'Z' piezo when retracting tip in case of crash
+                    'safe_retract_F'            : '1500',                       # Frequency applied to the 'Z' piezo when retracting tip in case of crash
+                    'piezo_z_max_V'             : '200',                        # Maximum voltage that can be applied to the Z piezo
+                    'piezo_z_min_V'             : '0',                          # Minimum voltage that can be applied to the Z piezo
+                    'piezo_xy_max_V'            : '130',                        # Maximum voltage that can be applied to the X or Y piezos
+                    'piezo_xy_min_V'            : '0',                          # Minimum voltage that can be applied to the X or Y piezos
+                    'piezo_z_max_F'             : '5000',                       # Maximum frequency that can be applied to the Z piezo
+                    'piezo_z_min_F'             : '500',                        # Minimum frequency that can be applied to the Z piezo
+                    'piezo_xy_max_F'            : '5000',                       # Maximum frequency that can be applied to the X or Y piezos
+                    'piezo_xy_min_F'            : '500'}                        # Minimum frequency that can be applied to the X or Y piezos
         
         try:
             with open('scanbot_config.ini','r') as f:                           # Go through the config file to see what defaults need to be overwritten
@@ -142,6 +150,16 @@ class scanbot_interface(object):
         self.scanbot.safeCurrent  = float(initDict['safe_current'])
         self.scanbot.safeRetractV = float(initDict['safe_retract_V'])
         self.scanbot.safeRetractF = float(initDict['safe_retract_F'])
+        
+        self.scanbot.zMaxV  = float(initDict['piezo_z_max_V'])
+        self.scanbot.zMinV  = float(initDict['piezo_z_min_V'])
+        self.scanbot.xyMaxV = float(initDict['piezo_xy_max_V'])
+        self.scanbot.xyMinV = float(initDict['piezo_xy_min_V'])
+        
+        self.scanbot.zMaxF  = float(initDict['piezo_z_max_F'])
+        self.scanbot.zMinF  = float(initDict['piezo_z_min_F'])
+        self.scanbot.xyMaxF = float(initDict['piezo_xy_max_F'])
+        self.scanbot.xyMinF = float(initDict['piezo_xy_min_F'])
         
         self.loadWhitelist()
         

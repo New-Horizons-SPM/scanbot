@@ -91,7 +91,7 @@ These steps must be carried out before Scanbot is able to automatically move the
 While it can detect unstable tips, **it cannot identify doubled tips**. In the event of a tip alteration resulting in multiple tips, Scanbot will not endeavor to reshape it.
 However, if the tip becomes unstable, Scanbot will recognise this and refine the tip accordingly.
 
-**Note2: Scanbot requires a camera feed to track the tip during automated operation.** For this reason, there is a configurable [hook](./hooks/#hk_light) that will allow Scanbot to control the STM light when required.
+**Note2: Scanbot requires a camera feed to track the tip during automated operation.** For this reason, there is a configurable [hook](../hooks/#hk_light) that will allow Scanbot to control the STM light when required.
 <br>
 
 ## Operation Details

@@ -255,7 +255,7 @@ class scanbot_interface(object):
                     '-stitch':['1',        lambda x: float(x), "(int) Return the stitched survey after completion. 1: Yes, else No"],
                     '-hk_survey': ['0',    lambda x: int(x),   "(int) Flag to call a custom python script after each image. Script must be ~/scanbot/scanbot/hk_survey.py. 0=Don't call, 1=Call"],
                     '-hk_classifier': ['0',lambda x: int(x),   "(int) Flag to call a custom classifier after each image. Script must be ~/scanbot/scanbot/hk_classifier.py. Only called if -autotip=1. 0=Don't call, 1=Call"],
-                    '-autotip': ['0',      lambda x: str(x),   "(int) Automatic tip shaping. 0=off, 1=on"]}
+                    '-autotip': ['0',      lambda x: int(x),   "(int) Automatic tip shaping. 0=off, 1=on"]}
         
         if(_help): return arg_dict
         
@@ -281,7 +281,7 @@ class scanbot_interface(object):
                     '-stitch':['1',        lambda x: float(x), "(int) Return the stitched survey after completion. 1: Yes, else No"],
                     '-hk_survey': ['0',    lambda x: int(x),   "(int) Flag to call a custom python script after each image. Script must be ~/scanbot/scanbot/hk_survey.py. 0=Don't call, 1=Call"],
                     '-hk_classifier': ['0',lambda x: int(x),   "(int) Flag to call a custom classifier after each image. Script must be ~/scanbot/scanbot/hk_classifier.py. Only called if -autotip=1. 0=Don't call, 1=Call"],
-                    '-autotip': ['0',      lambda x: str(x),   "(int) Automatic tip shaping. 0=off, 1=on"],
+                    '-autotip': ['0',      lambda x: int(x),   "(int) Automatic tip shaping. 0=off, 1=on"],
                     
                     '-nx'    : ['2',       lambda x: int(x),   "(int) Size of the nx x ny grid of surveys. This sets up nx x ny surveys each taken after moving -x/yStep motor steps"],
                     '-ny'    : ['2',       lambda x: int(x),   "(int) Size of the nx x ny grid of surveys. This sets up nx x ny surveys each taken after moving -x/yStep motor steps"],
@@ -479,7 +479,8 @@ class scanbot_interface(object):
                     '-approach'   : ['1',   lambda x: int(x),   "(int) Approach when tip reaches target. 0=No,1=Yes"],
                     '-demo'       : ['0',   lambda x: int(x),   "(int) Load in an mp4 recording of the tip moving instead of using live feed"],
                     '-tipshape'   : ['0',   lambda x: int(x),   "(int) Flag to initiate auto_tip_shape on approach (applies to move_tip_to_clean only)"],
-                    '-return'     : ['0',   lambda x: int(x),   "(int) Return to sample after tipshaping (applies to move_tip_to_clean when -tipshape=1)"]}
+                    '-return'     : ['0',   lambda x: int(x),   "(int) Return to sample after tipshaping (applies to move_tip_to_clean when -tipshape=1)"],
+                    '-run'        : ['',    lambda x: str(x),   "(str) Name of the command to run upon appraching sample (applies when -return=1). Can be one of 'survey' or 'survey2'."]}
         
         if(_help): return arg_dict
         

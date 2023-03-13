@@ -364,34 +364,58 @@ def drawCircle(event, x, y, flags, param):
 ###############################################################################
 # Classifying STM Images
 ###############################################################################
-def classify(data,tipChanges=True,sharpness=False,closeDouble=False,longDouble=False):
+def classify(scanData,filename,classificationHistory):
     """
-    This checks a raw scan for the following:
+    This classifies scans based on the number of tip changes that occur in 
+    them. If more than 5 tip changes occur, the scan is considered 'bad'. If
+    more than 5 bad scans are encountered in a row, then we consider the tip in
+    need of shaping.
+    
+    This classifier can be replaced using the hook: hk_classifier.
+    See GitHub page for full documentation
 
     Parameters
     ----------
     scanData    : Raw scan data
-    tipChanges  : Look for tip changes.
-    sharpness   : Quantify sharpness.
-    closeDouble : Look for double tip (close range)
-    longDouble  : Look for double tip (long range)
+    filename    : .sxm filename
+    classificationHistory : Running list of all previous classifications
 
     Returns
     -------
-    dict:
-    "tipChanges"   : number of detected tip changes
-    "sharpness"    : a sharpness score from zero to 10  (not implemented yet)
-    "closeDouble"  : 0 = not doubled. 1 = doubled       (not implemented yet)
-    "longDouble"   : 0 = not doubled. 1 = doubled       (not implemented yet)
-    "nan"          : data passed in contains NANs
+    classification : dictionary containing labels for image
 
     """
-    nan = np.isnan(data).any()                                                  # Flag to say there are nans in data which might affect  analysis
-    scanData = np.nan_to_num(data)
+    nan = np.isnan(scanData).any()                                              # Flag to say there are nans in data which might affect  analysis
+    scanData = np.nan_to_num(scanData)
     tipChangeCount = findTipChanges(scanData.copy())
-
-    return {"tipChanges" : tipChangeCount,
-            "nan"        : nan}
+    
+    i = 0
+    badScans = 0
+    tipShape = 0
+    while(True):
+        i -= 1
+        if(abs(i) > len(classificationHistory)): break
+    
+        scan_i = classificationHistory[i]
+        
+        if(scan_i["nan"]):
+            continue                                                            # Don't count any scans that have been stopped midway
+        
+        if(scan_i["tipChanges"] > 5):                                           # If there are more than 5 tip changes in this scan, consider the tip unstable
+            badScans += 1                                                       # Keep track of the number of bad scans in a row
+        
+        if(badScans > 4):                                                       # If we get to 5 bad scans in a row, then we'll kick off tip shaping
+            tipShape = 1
+            break
+        
+        if(scan_i["tipChanges"] <= 5):                                          # If we run into a good scan, before we hit 5 bad scans, don't tip shape... we need 5 bad scans in a row for that.
+            break
+        
+    classification = {"tipChanges" : tipChangeCount,
+                      "nan"        : nan,
+                      "tipShape"   : tipShape}
+    
+    return classification
 
 def findTipChanges(scanData):
     scanData = np.diff(scanData,axis=0)**2                                      # Take the derivative in y to enhance tip changes that occur as horizontal lines. **2 to further enhance

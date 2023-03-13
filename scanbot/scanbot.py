@@ -93,7 +93,7 @@ class scanbot():
             global_.running.clear()                                             # Free up the running flag
             return connection_error                                             # Return error message if there was a problem connecting        
         
-        if(autotip and not self.autoInitSet):
+        if((autotip == 1) and (self.autoInitSet == False)):
             self.interface.sendReply("Error: run the auto_init command to initialise tip, sample, and clean metal locations before setting -autotip=1")
             self.disconnect(NTCP)
             global_.running.clear()                                             # Free up the running flag
@@ -168,7 +168,7 @@ class scanbot():
             _,scanData,_ = scan.FrameDataGrab(14, 1)                            # Grab the data within the scan frame. Channel 14 is . 1 is forward data direction
             
             if(autotip):                                                        # **Currently Testing**
-                classification = utilities.classify(scanData)                   # Obtain image classification
+                classification = utilities.classify(scanData,filePath,classificationHistory) # Obtain image classification
                 if(classifier_hk):
                     try:
                         from hk_classifier import run
@@ -1175,17 +1175,17 @@ class scanbot():
         global_.running.clear()                                                 # Free up the running flag
         return
     
-    def moveTipToTarget(self,lightOnOff, cameraPort, xStep, zStep, xV, zV, xF, zF, approach, demo, target, tipshape, retrn, run):
+    def moveTipToTarget(self,lightOnOff, cameraPort, xStep, zStep, xV, zV, xF, zF, approach, demo, tipshape, retrn, run, target):
         if(not self.autoInitSet):
             self.interface.sendReply("Error, run the auto_init command to initialise tip, sample, and clean metal locations")
             global_.running.clear()                                             # Free up the running flag
             return
         
         trackOnly = 0
-        if(target == "sample"):  target = self.samplePos.copy()
-        elif(target == "clean"): target = self.cleanMetalPos.copy()
+        if(target == "sample"):  targetPos = self.samplePos.copy()
+        elif(target == "clean"): targetPos = self.cleanMetalPos.copy()
         
-        targetHit = self.moveTip(lightOnOff, cameraPort, trackOnly, xStep, zStep, xV, zV, xF, zF, demo,roi=self.roi.copy(),target=target,tipPos=self.tipPos.copy(),iamauto=True)
+        targetHit = self.moveTip(lightOnOff, cameraPort, trackOnly, xStep, zStep, xV, zV, xF, zF, demo,roi=self.roi.copy(),target=targetPos,tipPos=self.tipPos.copy(),iamauto=True)
         
         if(not targetHit == "Target Hit"): return
         
@@ -1195,15 +1195,17 @@ class scanbot():
         
         message = ""
         if(target == "clean" and tipshape == 1):
-            message = self.autoTipShape(n=-1, wh=10e-9, symTarget=0.9, sizeTarget=2.5, zQA=85e-10, ztip=2.5e-9, sleepTime=10)
+            message = self.autoTipShape(n=-1, wh=10e-9, symTarget=0.9, sizeTarget=2.5, zQA=-85e-11, ztip=-2.5e-9, sleepTime=1, iamauto=True)
+            if(not message): message = ""
         
         if(not "Tip shaping successful" in message):
-            global_.running.clear()                                                 # Free up the running flag
+            global_.running.clear()                                             # Free up the running flag
             return
             
         if(not retrn == 1): return
         
-        targetHit = self.moveTip(lightOnOff, cameraPort, trackOnly, xStep, zStep, xV, zV, xF, zF, demo,roi=self.roi.copy(),target="sample",tipPos=self.tipPos.copy(),iamauto=True)
+        targetPos = self.samplePos.copy()
+        targetHit = self.moveTip(lightOnOff, cameraPort, trackOnly, xStep, zStep, xV, zV, xF, zF, demo,roi=self.roi.copy(),target=targetPos,tipPos=self.tipPos.copy(),iamauto=True)
         
         if(not targetHit == "Target Hit"): return
         
@@ -1216,14 +1218,14 @@ class scanbot():
             return
         
         if(run == "survey"):
-            self.interface.survey(*self.surveyParams)
+            self.interface.survey(user_args=[],_help=False,surveyParams=self.surveyParams)
             return
                 
         if(run == "survey2"):
-            self.survey2(*self.survey2Params)
+            self.survey2(user_args=[],_help=False,surveyParams=self.survey2Params)
             return
         
-    def autoTipShape(self,n,wh,symTarget,sizeTarget,zQA,ztip,sleepTime,message=""):
+    def autoTipShape(self,n,wh,symTarget,sizeTarget,zQA,ztip,sleepTime,message="",iamauto=False):
         NTCP,connection_error = self.connect()                                  # Connect to nanonis via TCP
         if(connection_error):
             global_.running.clear()                                             # Free up the running flag
@@ -1272,7 +1274,7 @@ class scanbot():
         attempt = 0                                                             # Keep track of number of attempts to tip shape
         tipQA   = False                                                         # Temp flag
         xy = np.array([0,0])
-        while(attempt < n):
+        while(attempt < n or n==-1):
             scanModule.FrameSet(*xy, w=wh, h=wh)
             
             scanModule.Action(scan_action="start",scan_direction="up")          # Start an upward scan
@@ -1354,7 +1356,11 @@ class scanbot():
         self.interface.sendReply(message + " after " + str(attempt+1) + " attempts")
         
         self.disconnect(NTCP)                                                   # Close the TCP connection
+        
+        if(iamauto): return message                                             # Don't clear the running flag if called by iamauto
+        
         global_.running.clear()                                                 # Free up the running flag
+        
         
 ###############################################################################
 # Config

@@ -39,7 +39,7 @@ probe (such as sharpening it) and identifying areas of interest on a sample. The
 heavily relies on the exact geometry and composition of the apex of the scanning probe. Blunt tips result
 in blurry images while contaminated tips can lead to noisy images due to interactions with the sample. To
 improve image quality, the probe can be conditioned using a process called "tip shaping," which involves
-refining the tip by plunging it into a metallic substrate. Maintaining a "good tip" is not always
+refining the tip by plunging it into a metallic substrate. Maintaining a "good tip" is not guaranteed
 as scanning over debris or rough areas can alter the tip.
 
 Fortunately, these tasks can be automated, and Scanbot is a program that not only automates several STM
@@ -66,7 +66,7 @@ aggressive tip shaping action is carried out, and the process is repeated until 
 achieved.
 
 ![Successive images (left to right) of the tip's imprint on a clean metal
-surface, each following a more agressive tip-shaping action in a different location. The Area
+surface, each following a more agressive tip-shaping action in a different location. The area
 and circulatiry of each imprint reflects the geometry of the apex of the scanning probe. Thus
 the process is repeated until a desired geometry is achieved.\label{fig:2}](AutoTipShaping.png)
 
@@ -75,7 +75,7 @@ the process is repeated until a desired geometry is achieved.\label{fig:2}](Auto
 To reduce the time-intensive nature of STM experiments, various innovative solutions have been
 implemented to automate specific tasks. For instance, Wang et al. created a Python package that
 automates probe conditioning for Scanning Tunneling Spectroscopy [@Wang_2021]. However, this package
-still requires manual preparation of the tip for STM such that it can produce clean images.
+still requires manual preparation of the tip for such that it can acquire clean images.
 Some researchers have employed the use of machine learning algorithms [@Gordon_2020] to analyse
 acquired images and determine when a probe needs refining, then Reinforcement Learning agents can
 condition the probe accordingly [@Schiffrin_2020]. Although these approaches have significantly advanced

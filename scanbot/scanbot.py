@@ -1313,7 +1313,7 @@ class scanbot():
             while(timedOut and isClean):                                        # Periodically check if the current scan is of a clean region
                 timedOut, _, filePath = scanModule.WaitEndOfScan(timeout=3000)  # Wait until the scan finishes or 3 sec, whichever occurs first
                 _,cleanImage,_ = scanModule.FrameDataGrab(14, 1)                # Image of the 'clean' surface
-                isClean = utilities.isClean(cleanImage,lxy=wh,threshold=1e-9,sensitivity=1) # Check if the scan so far is of a clean area
+                isClean = utilities.isClean(cleanImage,lxy=wh,threshold=0.3e-9,sensitivity=1) # Check if the scan so far is of a clean area
             
             cleanImage = np.flipud(cleanImage)                                  # Flip because the scan direction is up
             if(not isClean):

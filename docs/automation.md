@@ -1,7 +1,7 @@
 # Automation
 ## Overview
-Scanbot's long-term goal is to automate data acquisition and probe conditioning in STM/STS experiments. The first steps towards achieving
-this objective have already been taken, with automated imaging capabilities and automated tip preparation.
+Scanbot's ultimate goal is to automate the data acquisition and probe conditioning in STM/STS experiments. Although this may seem ambitious, Scanbot has already made significant progress
+towards achieving this goal, including the development of automated imaging and tip preparation capabilities.
 To prepare a high-quality tip, Scanbot leverages the use of a dual sample holder where a sample of interest can be mounted adjacent to a clean metal surface, ideal for tip preparation.
 
 <br>
@@ -11,8 +11,9 @@ To prepare a high-quality tip, Scanbot leverages the use of a dual sample holder
 Scanbot's ability to prepare a tip on a clean metal surface is demonstrated above. By gently pushing the apex of the scanning probe
 into an atomically flat region of a metal surface, an imprint is left that reflects the geometry of the tip. This imprint can then be scanned,
 and the resulting image is similar to the auto-correlation function of the tip's apex. The quality of the tip can be assessed by measuring the
-area, symmetry, and center of mass of the imprint. If the imprint does not meet the desired criteria, a more aggressive tip shaping action is 
-carried out and the process is repeated until a high-quality tip is achieved (left to right, above). A detailed process is given [below](#auto-tip-shaping)
+area, symmetry, and center of mass of the imprint. For instance, the middle panel shows an imprint of a tip that is very likely doubled. If the
+imprint does not meet the desired criteria, a more aggressive tip shaping action is carried out and the process is repeated until a
+high-quality tip is achieved (left to right, above). A detailed process is given [below](#auto-tip-shaping).
 
 <br>
 
@@ -83,6 +84,11 @@ These steps must be carried out before Scanbot is able to automatically move the
     - When scanbot detects that the tip is unstable, it will automatically navigate the tip to the clean metal surface and initiate the ```auto_tip_shape``` command.
     - Once the tip is refined, it will be moved back to the sample and the survey will continue.
 
+**Note:** Although Scanbot excels at identifying noisy images resulting from tip-sample interaction, its capacity to evaluate overall image quality remains restricted.
+While it can detect unstable tips, **it cannot identify doubled tips**. In the event of a tip alteration resulting in multiple tips, Scanbot will not endeavor to reshape it.
+However, if the tip becomes unstable, Scanbot will recognise this and refine the tip accordingly.
+
+**Note2: Scanbot requires a camera feed to track the tip during automated operation.** For this reason, there is a configurable [hook](/hooks/#hk_classifier) that will allow Scanbot to control the STM light when required.
 <br>
 
 ## Operation Details
@@ -94,7 +100,19 @@ The ```auto_tip_shape``` command is executed as follows:
     - The scan will be monitored line by line and if the area is contaminated or contains a step edge, the scan will be stopped and the scan frame will be moved.
 2. If the small scan completes and the area is clean, a light tip shape (~0.8 nm) will be performed in the centre of the frame.
 3. The imprint of the tip will be imaged.
-4. The contour of the imprint's enclosed area and circularity will be calculated and compared against the criteria set by the options ```-size``` and ```-sym```, respectively.
+4. The contour of the imprint's enclosed area and circularity will be calculated and compared against the criteria set by the options ```-size=<area_in_nm2>``` and ```-sym=<score_0-1>```, respectively.
 5. If the criteria are met, a successful tip shape is declared and the process stops here. Otherwise, a more aggressive tip shape is carried out and the process starts over.
+6. In the event where the entire scan region is either unsuitable for tip shaping or the area has been destroyed by tip shaping, Scanbot will automatically call the ```move_area``` command, before continuing.
 
 ### Auto Tip Maneuvering
+The primary concern when it comes to automating movement of the STM head is accidental tip crashes.
+The following rules have been applied to any command where the course piezos are utilised:
+<br>
+
+- The tip can never be moved in the ```Z-``` direction (down) when using the course piezo. Instead, auto approach is used.
+- When moving in ```X``` or ```Y``` directions, the tunnelling current must be monitored after every 10 steps.
+- A tunnelling current greater than the threshold set in the config file is considered a crash (see [Tip Crash Safety](/configuration/#tip-crash-safety)).
+- In the event of a crash, the tip will be retracted using the ```Z+``` piezo and operation will cease.
+
+**Please make sure to set appropriate piezo voltages and frequencies when using any of the commands that control the course piezos. You can configure voltage and frequency limits in the [config file](/configuration/#piezo-safety).**
+<br><br><br>

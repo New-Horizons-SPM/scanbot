@@ -42,3 +42,17 @@ safe_current=<current>              # A tunnelling current above this threshold 
 safe_retract_V=<Z_piezo_voltage>    # Voltage applied to the Z piezo when the tip is automatically retracted after a crash is detected
 safe_retract_F=<Z_piezo_frequency>  # Frequency applied to the Z piezo when the tip is automatically retracted after a crash is detected
 ```
+
+## Piezo Safety
+The following fields configure the piezo voltage and frequency limits
+```
+piezo_z_max_V=<max_Z_piezo_voltage>     # Maximum voltage that can be applied to the Z piezo
+piezo_z_min_V=<min_Z_piezo_voltage>     # Minimum voltage that can be applied to the Z piezo
+piezo_xy_max_V=<max_XY_piezo_voltage>   # Maximum voltage that can be applied to the X or Y piezos
+piezo_xy_min_V=<min_XY_piezo_voltage>   # Minimum voltage that can be applied to the X or Y piezos
+
+piezo_z_max_F=<max_Z_piezo_frequency>   # Maximum frequency that can be applied to the Z piezo
+piezo_z_min_F=<min_Z_piezo_frequency>   # Minimum frequency that can be applied to the Z piezo
+piezo_xy_max_F=<max_XY_piezo_frequency> # Maximum frequency that can be applied to the X or Y piezos
+piezo_xy_min_F=<min_XY_piezo_frequency> # Minimum frequency that can be applied to the X or Y piezos
+```

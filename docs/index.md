@@ -31,7 +31,8 @@ Run ```python scanbot_interface.py -c```
 5. Run commands by sending messages to the Zulip bot
 
 ## Usage
-For a full list of Scanbot commands, see [commands](./commands). Alternatively run the ```help``` command, or for help with a specific command, run ```help <command_name>```
+For a full list of Scanbot commands, see [commands](./commands). Alternatively run the ```help``` command or, for help with a specific command, run ```help <command_name>```.
+For example work-flow automation, see [Intended Usage](/automation/#intended-usage)
 
 ### Configuration
 The scanbot_config.ini configuration file can store things like the default IP adress, default TCP Ports, etc. Save it in the project's root directory.
@@ -55,7 +56,8 @@ path=./scanbot_images/          # Directory for saved PNGs
 * Automation
     - Tip shaping
     - Full control over the course motors
-    - Call custom python scripts
+* Hooks
+    - Scanbot has a number of built-in [hooks](/hooks) to let you customise key functionality.
 
 ## Citing
 

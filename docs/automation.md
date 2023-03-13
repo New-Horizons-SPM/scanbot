@@ -43,7 +43,7 @@ Through the operation of Scanbot, these measurements will be used to build a tra
 
 ## Intended Usage
 This section describes how the automation aspect of Scanbot can be used for supervised or unsupervised operation. Note that you can still take advantage of Scanbot's
-[data acquisition commands](./commands/#data-acquisition) without automating the entire process.
+[data acquisition commands](../commands/#data-acquisition) without automating the entire process.
 
 ### 1. Setup
 These steps must be carried out before Scanbot is able to automatically move the tip between the sample and the clean metal.
@@ -76,7 +76,7 @@ These steps must be carried out before Scanbot is able to automatically move the
 3. Periodically monitor the scans stream (for Zulip users, each scan will be sent through the steam the survey was started from).
 4. If the tip requires refinement, run ```stop``` followed by ```move_tip_to_clean``` with the options ```-tipshape=1```, ```-return=1```, and ```-run=survey```
     - Here, Scanbot will automatically move the tip to the clean metal location set in ```auto_init```
-    - With ```-tipshape=1```, the [Auto Tip Shaping](/automation/#auto_tip_shaping) process will begin after approaching
+    - With ```-tipshape=1```, the auto tip shaping process will begin after approaching
     - With ```-return=1```, Scanbot will move the tip back to the sample location set in ```auto_init```
     - With ```-run=survey```, Scanbot will begin a survey with the same options as the previous survey
     - **Note: If the function passed to the -run option has not been run previously, the default parameters will be used - check them to ensure they are compatible with your system in this case.**
@@ -114,8 +114,8 @@ The following rules have been applied to any command where the course piezos are
 
 - The tip can never be moved in the ```Z-``` direction (down) when using the course piezo. Instead, auto approach is used.
 - When moving in ```X``` or ```Y``` directions, the tunnelling current must be monitored after every 10 steps.
-- A tunnelling current greater than the threshold set in the config file is considered a crash (see [Tip Crash Safety](./configuration/#tip-crash-safety)).
+- A tunnelling current greater than the threshold set in the config file is considered a crash (see [Tip Crash Safety](../configuration/#tip-crash-safety)).
 - In the event of a crash, the tip will be retracted using the ```Z+``` piezo and operation will cease.
 
-**Please make sure to set appropriate piezo voltages and frequencies when using any of the commands that control the course piezos. You can configure voltage and frequency limits in the [config file](./configuration/#piezo-safety).**
+**Please make sure to set appropriate piezo voltages and frequencies when using any of the commands that control the course piezos. You can configure voltage and frequency limits in the [config file](../configuration/#piezo-safety).**
 <br><br><br>

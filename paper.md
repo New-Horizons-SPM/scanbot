@@ -84,7 +84,7 @@ challenging to transfer the code to other labs studying different systems or wor
 brands of STMs.
 
 To overcome these limitations, we have developed Scanbot, a Python robot that is compatible with
-a broader range of STMs, specifically those compatible with the Nanonis V5 software. Additionally,
+a broader range of STMs, specifically those compatible with the Nanonis V5 software [@Ceddia_2022]. Additionally,
 our package incorporates Scanbot's distinctive approach to tip shaping, which involves monitoring
 the tip's motion above a dual sample holder. This method is particularly beneficial in experiments
 where the sample's properties might make it challenging to achieve a high-quality scanning probe

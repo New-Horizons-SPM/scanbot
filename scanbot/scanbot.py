@@ -87,7 +87,7 @@ class scanbot():
         
         self.disconnect(NTCP)                                                   # Close the TCP connection
             
-    def survey(self,bias,n,startAt,suffix,xy,dx,px,sleepTime,stitch,survey_hk,classifier_hk,autotip,ox=0,oy=0,message="",enhance=False,reverse=False,clearRunning=True):
+    def survey(self,bias,n,startAt,suffix,xy,dx,px,sleepTime,stitch,survey_hk,classifier_hk,autotip,ox=0,oy=0,message="",enhance=False,reverse=False,iamauto=False):
         NTCP,connection_error = self.connect()                                  # Connect to nanonis via TCP
         if(connection_error):
             global_.running.clear()                                             # Free up the running flag
@@ -141,6 +141,7 @@ class scanbot():
             _,_,px,lines = scan.BufferGet()
             stitchedSurvey = np.zeros((lines*n,px*n))*np.nan
         
+        callAutoTipShape = False
         classificationHistory = []
         for idx,frame in enumerate(frames):
             if(idx < startAt-1): continue
@@ -182,6 +183,8 @@ class scanbot():
                 
                 if(classification["tipShape"] == 1):
                     print("auto tip shaping initate!")
+                    global_.running.clear()
+                    callAutoTipShape = True
             
             pngFilename,scanDataPlaneFit = self.makePNG(scanData, filePath,returnData=True,dpi=150) # Generate a png from the scan data
             self.interface.sendPNG(pngFilename,notify=True,message=message)     # Send a png over zulip
@@ -204,6 +207,8 @@ class scanbot():
                 metaData = self.getMetaData(filePath)
                 pklFile = utilities.pklDict(scanData,filePath,*metaData,comments="scanbot")
                 self.interface.uploadToCloud(pklFile)                           # Send data to cloud database
+            
+            if(self.checkEventFlags()): break                                   # Check event flags
         
         if(stitch == 1 and not np.isnan(stitchedSurvey).all()):
             stitchFilepath = self.makePNG(stitchedSurvey,pngFilename = suffix + '.png',dpi=150*n, fit=False)
@@ -211,9 +216,17 @@ class scanbot():
         
         scan.PropsSet(series_name=basename)                                     # Put back the original basename
         self.disconnect(NTCP)                                                   # Close the TCP connection
-        if(clearRunning): global_.running.clear()                               # Free up the running flag
-        
+    
         self.interface.sendReply('survey \'' + suffix + '\' done',message=message) # Send a notification that the survey has completed
+        
+        if(not iamauto):
+            global_.running.clear()                                             # Free up the running flag
+        
+        if(iamauto): return callAutoTipShape
+        
+        if(callAutoTipShape):
+            user_args = ['-run=survey', '-return=1', '-tipshape=1']
+            self.interface.moveTipToClean(user_args=user_args)
         
     def survey2(self,bias,n,startAt,suffix,xy,dx,px,sleepTime,stitch,survey_hk,classifier_hk,autotip, # Survey params
                      nx,ny,xStep,yStep,zStep,xyV,zV,xyF,zF,message=""):          # Move area params
@@ -242,7 +255,7 @@ class scanbot():
                 if(self.checkEventFlags()): break                               # Check event flags
                 
                 s = suffix + "_y" + str(y) + "_x" + str(x)
-                self.survey(bias,n,startAt,s,xy,dx,px,sleepTime,stitch,survey_hk,classifier_hk,autotip,reverse=reverse,clearRunning=False,message=message)
+                callAutoTipShape = self.survey(bias,n,startAt,s,xy,dx,px,sleepTime,stitch,survey_hk,classifier_hk,autotip,reverse=reverse,iamauto=False,message=message)
                 reverse = not reverse
                 
                 if(self.checkEventFlags()): break                               # Check event flags
@@ -275,6 +288,10 @@ class scanbot():
             time.sleep(sleepTime)
             
         global_.running.clear()
+        
+        if(callAutoTipShape):
+            user_args = ['-run=survey2', '-return=1', '-tipshape=1']
+            self.interface.moveTipToClean(user_args=user_args)
             
     def zdep(self,zi,zf,nz,iset,bset,dciset,bias,dcbias,ft,bt,dct,px,dcpx,lx,dclx,suffix,makeGIF,message=""):
         """
@@ -935,6 +952,12 @@ class scanbot():
         WIN = utilities.extract(frame,roi,win)
         
         tipToROI = tipPos - roi[0:2]
+        
+        print("withdrawing")
+        zController = ZController(NTCP)
+        zController.Withdraw(wait_until_finished=True,timeout=3)                # Withdwar the tip
+        print("withdrew")
+        time.sleep(0.25)
         
         success = True
         targetHit = False

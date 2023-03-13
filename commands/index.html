@@ -46,6 +46,9 @@
                                 <a href="../automation/" class="nav-link">Automation</a>
                             </li>
                             <li class="navitem">
+                                <a href="../hooks/" class="nav-link">Hooks</a>
+                            </li>
+                            <li class="navitem">
                                 <a href="../about/" class="nav-link">About</a>
                             </li>
                             <li class="navitem">
@@ -65,7 +68,7 @@
                                 </a>
                             </li>
                             <li class="nav-item">
-                                <a href="https://github.com/New-Horizons-SPM/scanbot" class="nav-link"><i class="fa fa-github"></i> View on GitHub</a>
+                                <a href="https://github.com/New-Horizons-SPM/scanbot/edit/master/docs/commands.md" class="nav-link"><i class="fa fa-github"></i> Edit on GitHub</a>
                             </li>
                     </ul>
                 </div>
@@ -95,10 +98,11 @@
               <ul class="nav flex-column">
               </ul>
             </li>
-            <li class="nav-item" data-level="2"><a href="#data-acqusition" class="nav-link">Data Acqusition</a>
-              <ul class="nav flex-column">
               </ul>
             </li>
+            
+            <li class="nav-item" data-level="1"><a href="#data-acquisition" class="nav-link">Data Acquisition</a>
+              <ul class="nav flex-column">
             <li class="nav-item" data-level="2"><a href="#stm-tip-actions" class="nav-link">STM Tip Actions</a>
               <ul class="nav flex-column">
               </ul>
@@ -229,7 +233,7 @@
 </tbody>
 </table>
 <p><br></p>
-<h2 id="data-acqusition">Data Acqusition</h2>
+<h1 id="data-acquisition">Data Acquisition</h1>
 <table>
 <thead>
 <tr>
@@ -336,9 +340,21 @@
 </tr>
 <tr>
 <td>auto_tip_shape</td>
-<td><code>-n</code>: (int) Max number of tip shapes to perform. Default: <code>10</code><br><code>-wh</code>: (float) Size of the square scan frame when imaging the clean surface. Default: <code>10e-9</code><br><code>-sym</code>: (float) Minimum circularity requirement. 0=don't care, 1=perfectly circle. Default: <code>0.7</code><br><code>-size</code>: (float) Max size of the desired tip imprint in units of nm2. Default: <code>1.2</code><br><code>-zQA</code>: (float) z-lift when performing a light tip shape to asses quality of tip (m). Default: <code>-0.9e-9</code><br><code>-ztip</code>: (float) z-lift when performing a tip shape to alter the tip (m). Default: <code>-1.5e-9</code><br><code>-st</code>: (int) Drift compensation time (s). Default: <code>10</code></td>
-<td>Routine that automatically prepares a nice tip. Assumes the substrate is a clean metal. Ag111 works best.</td>
+<td><code>-n</code>: (int) Max number of tip shapes to perform. -1 means keep going until criterea met. Default: <code>10</code><br><code>-wh</code>: (float) Size of the square scan frame when imaging the clean surface. Default: <code>10e-9</code><br><code>-sym</code>: (float) Minimum circularity requirement. 0=don't care, 1=perfectly circle. Default: <code>0.7</code><br><code>-size</code>: (float) Max size of the desired tip imprint in units of nm2. Default: <code>1.2</code><br><code>-zQA</code>: (float) z-lift when performing a light tip shape to asses quality of tip (m). Default: <code>-0.9e-9</code><br><code>-ztip</code>: (float) z-lift when performing a tip shape to alter the tip (m). Default: <code>-1.5e-9</code><br><code>-st</code>: (int) Drift compensation time (s). Default: <code>10</code></td>
+<td>Routine that automatically prepares a nice tip. Assumes the substrate is a clean metal.</td>
 <td>auto_tip_shape -sym=0.9 -size=2.1</td>
+</tr>
+<tr>
+<td>auto_init</td>
+<td><code>-light</code>: (int) Flag to turn the light on/off before/after initialisation. This uses hk_light.turn_on() and hk_light.turn_off() functions. 0=Don't, 1=Do. Default: <code>0</code><br><code>-cameraPort</code>: (int) cv2 camera port - usually 0 for desktops or 1 for laptops with an inbuilt camera.. Default: <code>0</code><br><code>-demo</code>: (int) Load in an mp4 recording of the tip moving instead of using live feed. Default: <code>0</code><br></td>
+<td>Initialise tip, sample, and clean metal positions using the camera feed</td>
+<td>auto_init -cameraPort=0</td>
+</tr>
+<tr>
+<td>move_tip_to_sample<br>move_tip_to_clean</td>
+<td><code>-light</code>: (int) Flag to turn the light on before moving and off after moving. This uses hk_light.turn_on() and hk_light.turn_off() functions. 0=Don't, 1=Do. Default: <code>0</code><br><code>-cameraPort</code>: (int) cv2 camera port - usually 0 for desktops or 1 for laptops with an inbuilt camera. Default: <code>0</code><br><code>-xStep</code>: (int) Number of motor steps in the X direction before updating tip position. More=Faster but might lose the tip. Default: <code>100</code><br><code>-zStep</code>: (int) Number of motor steps to move in +Z (upwards) before updating tip position. More=Faster but might lose the tip. Default: <code>250</code><br><code>-xV</code>: (float) Piezo voltage when moving motor steps in x direction. Default: <code>130</code><br><code>-zV</code>: (float) Piezo voltage when moving motor steps in z direction. Default: <code>180</code><br><code>-xF</code>: (float) Piezo frequency when moving motor steps in x direction. Default: <code>1100</code><br><code>-zF</code>: (float) Piezo frequency when moving motor steps in z direction. Default: <code>1100</code><br><code>-approach</code>: (int) Approach when tip reaches target. 0=No,1=Yes. Default: <code>1</code><br><code>-demo</code>: (int) Load in an mp4 recording of the tip moving instead of using live feed. Default: <code>0</code></td>
+<td>After auto_init has been run, automatically move the tip to sample/clean metal locations using the camera</td>
+<td>move_tip_to_sample -light=1</td>
 </tr>
 </tbody>
 </table></div>

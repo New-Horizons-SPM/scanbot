@@ -8,7 +8,7 @@
         <meta name="author" content="Julian Ceddia">
         
         <link rel="shortcut icon" href="../img/favicon.ico">
-        <title>About - Scanbot</title>
+        <title>Hooks - Scanbot</title>
         <link href="../css/bootstrap.min.css" rel="stylesheet">
         <link href="../css/font-awesome.min.css" rel="stylesheet">
         <link href="../css/base.css" rel="stylesheet">
@@ -45,11 +45,11 @@
                             <li class="navitem">
                                 <a href="../automation/" class="nav-link">Automation</a>
                             </li>
-                            <li class="navitem">
-                                <a href="../hooks/" class="nav-link">Hooks</a>
-                            </li>
                             <li class="navitem active">
-                                <a href="./" class="nav-link">About</a>
+                                <a href="./" class="nav-link">Hooks</a>
+                            </li>
+                            <li class="navitem">
+                                <a href="../about/" class="nav-link">About</a>
                             </li>
                             <li class="navitem">
                                 <a href="../contact/" class="nav-link">Contact</a>
@@ -58,17 +58,17 @@
 
                     <ul class="nav navbar-nav ml-auto">
                             <li class="nav-item">
-                                <a rel="prev" href="../hooks/" class="nav-link">
+                                <a rel="prev" href="../automation/" class="nav-link">
                                     <i class="fa fa-arrow-left"></i> Previous
                                 </a>
                             </li>
                             <li class="nav-item">
-                                <a rel="next" href="../contact/" class="nav-link">
+                                <a rel="next" href="../about/" class="nav-link">
                                     Next <i class="fa fa-arrow-right"></i>
                                 </a>
                             </li>
                             <li class="nav-item">
-                                <a href="https://github.com/New-Horizons-SPM/scanbot/edit/master/docs/about.md" class="nav-link"><i class="fa fa-github"></i> Edit on GitHub</a>
+                                <a href="https://github.com/New-Horizons-SPM/scanbot/edit/master/docs/hooks.md" class="nav-link"><i class="fa fa-github"></i> Edit on GitHub</a>
                             </li>
                     </ul>
                 </div>
@@ -88,8 +88,20 @@
     <div id="toc-collapse" class="navbar-collapse collapse card bg-secondary">
         <ul class="nav flex-column">
             
-            <li class="nav-item" data-level="2"><a href="#about" class="nav-link">About</a>
+            <li class="nav-item" data-level="1"><a href="#hooks" class="nav-link">Hooks</a>
               <ul class="nav flex-column">
+            <li class="nav-item" data-level="2"><a href="#hk_light" class="nav-link">hk_light</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+            <li class="nav-item" data-level="2"><a href="#hk_survey" class="nav-link">hk_survey</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+            <li class="nav-item" data-level="2"><a href="#hk_classifier" class="nav-link">hk_classifier</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
               </ul>
             </li>
         </ul>
@@ -97,25 +109,90 @@
 </div></div>
                     <div class="col-md-9" role="main">
 
-<h2 id="about">About</h2>
-<p><br>
-Scanning Tunnelling Microscopes (STM) are powerful instruments, capable of characterising the topography and electronic properties of surfaces with atomic scale resolution.
-They accomplish this by scanning an atomically sharp probe at a small distance (&lt; 1 nm) above the surface of a sample, while monitoring an electric current that tunnels across the gap.
-This tunnelling current depends on the nature of the sample directly below the tip, thus atomic-scale images of the surface can be assembled by plotting the tunnelling current as a function
-of the probe’s position in x and y. In this way, surfaces can be characterised from the microscopic scale (on the order of micrometres) down to the sub-nanometre scale.
-<br>
-<br>
-Conditioning (e.g. sharpening) of the probe, along with finding regions of interest on a sample are two time-consuming (and often tedious) tasks common in STM experiments.
-The quality of STM images depends greatly on the exact geometry and composition at the apex of the scanning probe. Blunt tips result in blurry images while contaminated tips can
-interact with the sample during a scan to produce noisy images. To improve image quality, the probe can be conditioned via a process called ‘tip shaping’, which involves plunging the
-tip of the probe into a metallic substrate in order to refine it. This is a somewhat random process that is repeated until a tip capable of acquiring images of sufficient quality is achieved.
-Maintaining a 'good tip' is not guaranteed. For instance, scanning over debris or excessively rough areas can alter the tip, resulting in the need to tip shape once again. This frustrating (and often infuriating)
-task is currently performed by a trained human operator who has a 'feel' for the instrument. Automating these processes has the potential to greatly increase the efficiency and output of STMs.
-<br>
-<br>
-This project aims to automate STM probe conditioning and sample surveying as a first step towards full automation in STM experiments. It was made possible by <a href="https://www.fleet.org.au/">FLEET</a>
-through their <a href="https://www.fleet.org.au/translation/#:~:text=A%20new%20FLEET%20program%20provides,translation%20skills%20in%20Centre%20membership.">Research Translation Program</a>.
-<img alt="FLEETLogo" src="../fleet-logo.png" /></p></div>
+<h1 id="hooks">Hooks</h1>
+<p><a href="https://www.rswebsols.com/tutorials/programming/software-development-hook-hooking">Hooks</a> allow you to add or replace key components of Scanbot's functionality where system-specific customisation is required.
+The ability to do this without rewriting source code means you can pull Scanbot updates without losing your custom functionality. For example, Scanbot monitors a camera feed when tracking the motion of the STM
+head during automated operation; a task that may require a light to be switched on or off at times. Obviously, the code needed to achieve this will vary from system to system. This is where the user-written hook
+<code>hk_light.py</code> would be called by Scanbot to perform such a task. This page details all the hooks currently available to Scanbot. Feel free to raise an issue on the GitHub page if you require a hook at a certain
+point in Scanbot's source code. All hooks must be saved in the directory ~/scanbot/scanbot/</p>
+<h2 id="hk_light">hk_light</h2>
+<p>This hook is called by any function that requires control over the STM light when monitoring the camera feed.</p>
+<ul>
+<li>Inputs: None</li>
+<li>Outputs: None</li>
+<li>Error handling: Raise an <code>Exception</code> if unable to turn the light on or off</li>
+</ul>
+<p>Structure:
+hk_light.py must contain two functions: <code>turn_on</code> and <code>turn_off</code>. An example is shown below:</p>
+<pre><code class="language-Python">def turn_on():
+    # Code to turn light on
+    # If unsuccessful:
+        # Raise Exception
+    # If successful:
+    print(&quot;Light on!&quot;)
+
+def turn_off():
+    # Code to turn light off
+    # If unsuccessful:
+        # Raise Exception
+    # If successful:
+    print(&quot;Light off!&quot;)
+</code></pre>
+<p><br></p>
+<h2 id="hk_survey">hk_survey</h2>
+<p>This hook can be called at the completion of every scan in a <code>survey</code> or <code>survey2</code> when the <code>-hk_survey</code> option is set.</p>
+<ul>
+<li>Inputs:<ol>
+<li>Raw scan data</li>
+<li>.sxm filename</li>
+<li>A Python dictionary containing metadata about the scan</li>
+</ol>
+</li>
+<li>Outputs: None</li>
+<li>Error handling: None</li>
+</ul>
+<p>Structure:
+hk_survey must contain the function <code>run</code>. An example is shown below:</p>
+<pre><code class="language-Python">def run(scan_data,filename,metadata):
+    # Code to process the image (e.g. plane fit, filtering, etc.)
+    # Code to save the image or send the image to a server
+    # Code to do anything you want
+</code></pre>
+<h2 id="hk_classifier">hk_classifier</h2>
+<p>This hook can called at the completion of every scan in a <code>survey</code> or <code>survey2</code> when the <code>-autotip</code> and <code>-hk_classifier</code> options are set.
+Its purpose is to use an alternative image classifier when assessing the quality of completed STM images and to decide when Scanbot should reshape the tip.</p>
+<ul>
+<li>Inputs:<ol>
+<li>Raw scan data</li>
+<li>.sxm filename</li>
+<li>Record of all previous classifications - a list of dictionaries</li>
+</ol>
+</li>
+<li>Outputs:<ol>
+<li>A python dictionary containing classification labels. The only mandatory label is "tipShape". This is what tells Scanbot whether to execute a tip shape or not.</li>
+</ol>
+</li>
+<li>Error handling: None</li>
+</ul>
+<p>Structure: hk_classifier.py must contain the function <code>run</code>. An example is shown below:</p>
+<pre><code class="language-Python">def run(scan_data,filename,classification_hist):
+    # Code to process the image (e.g. plane fit, filtering, etc.)
+
+    # API call to external classifier (e.g. AI agent)
+
+    classification = {&quot;tipChanges&quot;: &lt;output from classifier&gt;,   # Example trait to keep track of
+                      &quot;unstable&quot;: &lt;output from classifier&gt;,     # Example trait to keep track of
+                      &quot;multipleTips&quot;: &lt;output from classifier&gt;, # Example trait to keep track of
+
+    # Check the classification history to see if we've had a bad run of images
+
+    if(num_bad_images &gt; threshold):
+        classification[&quot;tipShape&quot;] = True                       # Tell Scanbot to reshape the tip
+    else:
+        classification[&quot;tipShape&quot;] = False                      # Tell Scanbot not to reshape the tip
+
+    return classification
+</code></pre></div>
             </div>
         </div>
 

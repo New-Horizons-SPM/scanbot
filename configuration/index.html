@@ -46,6 +46,9 @@
                                 <a href="../automation/" class="nav-link">Automation</a>
                             </li>
                             <li class="navitem">
+                                <a href="../hooks/" class="nav-link">Hooks</a>
+                            </li>
+                            <li class="navitem">
                                 <a href="../about/" class="nav-link">About</a>
                             </li>
                             <li class="navitem">
@@ -65,7 +68,7 @@
                                 </a>
                             </li>
                             <li class="nav-item">
-                                <a href="https://github.com/New-Horizons-SPM/scanbot" class="nav-link"><i class="fa fa-github"></i> View on GitHub</a>
+                                <a href="https://github.com/New-Horizons-SPM/scanbot/edit/master/docs/configuration.md" class="nav-link"><i class="fa fa-github"></i> Edit on GitHub</a>
                             </li>
                     </ul>
                 </div>
@@ -100,6 +103,10 @@
               </ul>
             </li>
             <li class="nav-item" data-level="2"><a href="#tip-crash-safety" class="nav-link">Tip Crash Safety</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+            <li class="nav-item" data-level="2"><a href="#piezo-safety" class="nav-link">Piezo Safety</a>
               <ul class="nav flex-column">
               </ul>
             </li>
@@ -142,6 +149,18 @@ temp_calibration_curve=&lt;path&gt;   # Path to the temperature calibration curv
 <pre><code>safe_current=&lt;current&gt;              # A tunnelling current above this threshold is considered a tip crash
 safe_retract_V=&lt;Z_piezo_voltage&gt;    # Voltage applied to the Z piezo when the tip is automatically retracted after a crash is detected
 safe_retract_F=&lt;Z_piezo_frequency&gt;  # Frequency applied to the Z piezo when the tip is automatically retracted after a crash is detected
+</code></pre>
+<h2 id="piezo-safety">Piezo Safety</h2>
+<p>The following fields configure the piezo voltage and frequency limits</p>
+<pre><code>piezo_z_max_V=&lt;max_Z_piezo_voltage&gt;     # Maximum voltage that can be applied to the Z piezo
+piezo_z_min_V=&lt;min_Z_piezo_voltage&gt;     # Minimum voltage that can be applied to the Z piezo
+piezo_xy_max_V=&lt;max_XY_piezo_voltage&gt;   # Maximum voltage that can be applied to the X or Y piezos
+piezo_xy_min_V=&lt;min_XY_piezo_voltage&gt;   # Minimum voltage that can be applied to the X or Y piezos
+
+piezo_z_max_F=&lt;max_Z_piezo_frequency&gt;   # Maximum frequency that can be applied to the Z piezo
+piezo_z_min_F=&lt;min_Z_piezo_frequency&gt;   # Minimum frequency that can be applied to the Z piezo
+piezo_xy_max_F=&lt;max_XY_piezo_frequency&gt; # Maximum frequency that can be applied to the X or Y piezos
+piezo_xy_min_F=&lt;min_XY_piezo_frequency&gt; # Minimum frequency that can be applied to the X or Y piezos
 </code></pre></div>
             </div>
         </div>

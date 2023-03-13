@@ -145,7 +145,7 @@ Through the operation of Scanbot, these measurements will be used to build a tra
 <p><br></p>
 <h2 id="intended-usage">Intended Usage</h2>
 <p>This section describes how the automation aspect of Scanbot can be used for supervised or unsupervised operation. Note that you can still take advantage of Scanbot's
-<a href="/commands/#data-acquisition">data acquisition commands</a> without automating the entire process.</p>
+<a href="./commands/#data-acquisition">data acquisition commands</a> without automating the entire process.</p>
 <h3 id="1-setup">1. Setup</h3>
 <p>These steps must be carried out before Scanbot is able to automatically move the tip between the sample and the clean metal.</p>
 <ol>
@@ -186,7 +186,7 @@ Through the operation of Scanbot, these measurements will be used to build a tra
 <li>Periodically monitor the scans stream (for Zulip users, each scan will be sent through the steam the survey was started from).</li>
 <li>If the tip requires refinement, run <code>stop</code> followed by <code>move_tip_to_clean</code> with the options <code>-tipshape=1</code>, <code>-return=1</code>, and <code>-run=survey</code><ul>
 <li>Here, Scanbot will automatically move the tip to the clean metal location set in <code>auto_init</code></li>
-<li>With <code>-tipshape=1</code>, the <a href="/#auto_tip_shaping">Auto Tip Shaping</a> process will begin after approaching</li>
+<li>With <code>-tipshape=1</code>, the <a href="/automation/#auto_tip_shaping">Auto Tip Shaping</a> process will begin after approaching</li>
 <li>With <code>-return=1</code>, Scanbot will move the tip back to the sample location set in <code>auto_init</code></li>
 <li>With <code>-run=survey</code>, Scanbot will begin a survey with the same options as the previous survey</li>
 <li><strong>Note: If the function passed to the -run option has not been run previously, the default parameters will be used - check them to ensure they are compatible with your system in this case.</strong></li>
@@ -205,7 +205,7 @@ Through the operation of Scanbot, these measurements will be used to build a tra
 <p><strong>Note:</strong> Although Scanbot excels at identifying noisy images resulting from tip-sample interaction, its capacity to evaluate overall image quality remains restricted.
 While it can detect unstable tips, <strong>it cannot identify doubled tips</strong>. In the event of a tip alteration resulting in multiple tips, Scanbot will not endeavor to reshape it.
 However, if the tip becomes unstable, Scanbot will recognise this and refine the tip accordingly.</p>
-<p><strong>Note2: Scanbot requires a camera feed to track the tip during automated operation.</strong> For this reason, there is a configurable <a href="/hooks/#hk_light">hook</a> that will allow Scanbot to control the STM light when required.
+<p><strong>Note2: Scanbot requires a camera feed to track the tip during automated operation.</strong> For this reason, there is a configurable <a href="./hooks/#hk_light">hook</a> that will allow Scanbot to control the STM light when required.
 <br></p>
 <h2 id="operation-details">Operation Details</h2>
 <h3 id="auto-tip-shaping">Auto Tip Shaping</h3>
@@ -228,10 +228,10 @@ The following rules have been applied to any command where the course piezos are
 <ul>
 <li>The tip can never be moved in the <code>Z-</code> direction (down) when using the course piezo. Instead, auto approach is used.</li>
 <li>When moving in <code>X</code> or <code>Y</code> directions, the tunnelling current must be monitored after every 10 steps.</li>
-<li>A tunnelling current greater than the threshold set in the config file is considered a crash (see <a href="/configuration/#tip-crash-safety">Tip Crash Safety</a>).</li>
+<li>A tunnelling current greater than the threshold set in the config file is considered a crash (see <a href="./configuration/#tip-crash-safety">Tip Crash Safety</a>).</li>
 <li>In the event of a crash, the tip will be retracted using the <code>Z+</code> piezo and operation will cease.</li>
 </ul>
-<p><strong>Please make sure to set appropriate piezo voltages and frequencies when using any of the commands that control the course piezos. You can configure voltage and frequency limits in the <a href="/configuration/#piezo-safety">config file</a>.</strong>
+<p><strong>Please make sure to set appropriate piezo voltages and frequencies when using any of the commands that control the course piezos. You can configure voltage and frequency limits in the <a href="./configuration/#piezo-safety">config file</a>.</strong>
 <br><br><br></p></div>
             </div>
         </div>

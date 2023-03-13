@@ -1,6 +1,6 @@
 # Automation
 ## Overview
-Scanbot's ultimate goal is to automate the data acquisition and probe conditioning in STM/STS experiments. Although this may seem ambitious, Scanbot has already made significant progress
+Scanbot's ultimate goal is to automate data acquisition and probe conditioning in STM/STS experiments. Although this may seem ambitious, Scanbot has already made significant progress
 towards achieving this goal, including the development of automated imaging and tip preparation capabilities.
 To prepare a high-quality tip, Scanbot leverages the use of a dual sample holder where a sample of interest can be mounted adjacent to a clean metal surface, ideal for tip preparation.
 
@@ -11,9 +11,9 @@ To prepare a high-quality tip, Scanbot leverages the use of a dual sample holder
 Scanbot's ability to prepare a tip on a clean metal surface is demonstrated above. By gently pushing the apex of the scanning probe
 into an atomically flat region of a metal surface, an imprint is left that reflects the geometry of the tip. This imprint can then be scanned,
 and the resulting image is similar to the auto-correlation function of the tip's apex. The quality of the tip can be assessed by measuring the
-area, symmetry, and center of mass of the imprint. For instance, the middle panel shows an imprint of a tip that is very likely doubled. If the
+area, symmetry, and center of mass of the imprint - for instance, the middle panel shows an imprint of a tip that is very likely doubled. If the
 imprint does not meet the desired criteria, a more aggressive tip shaping action is carried out and the process is repeated until a
-high-quality tip is achieved (left to right, above). A detailed process is given [below](#auto-tip-shaping).
+high-quality tip is achieved (left to right, above). Details about this process are given [below](#auto-tip-shaping).
 
 <br>
 
@@ -28,8 +28,10 @@ In the video below, Scanbot is tracking the STM head as it moves the tip from th
 
 ### In Development
 At present, the tip shaping criteria overlook the spectroscopic performance of the STM tip. Here, it is possible to leverage the well-known Shockley surface states of
-(111) metal surfaces, using them as a benchmark to compare STS obtained by the tip on a clean metal surface. As a result, an additional criterion is being developed to ensure that
-the spectra obtained using the tip on a clean metal surface closely corresponds to the anticipated Shockley surface state. In addition to this, automated STS commands are also in development.
+(111) metal surfaces, using them as a benchmark to compare STS obtained by the tip on a clean metal surface. As a result, an additional criterion could ensure that
+the spectra obtained using the tip on a clean metal surface closely corresponds to the anticipated Shockley surface state.
+Thanks to [Wang, et al.](https://pubs.acs.org/doi/pdf/10.1021/acs.jpca.0c10731), the groundwork for this has already been done so integrating this feature into Scanbot should be trivial!
+In addition to this, automated STS commands are also in development.
 
 There are several indicators that determine how aggressive the tip shaping action should be when refining the scanning probe.
 Thus, the algorithmic approach used by Scanbot for tip shaping could benefit greatly from the integration of a machine learning agent.
@@ -40,14 +42,15 @@ Through the operation of Scanbot, these measurements will be used to build a tra
 <br>
 
 ## Intended Usage
-This section describes how the automation aspect of Scanbot can be used for supervised or unsupervised operation.
+This section describes how the automation aspect of Scanbot can be used for supervised or unsupervised operation. Note that you can still take advantage of Scanbot's
+[data acquisition commands](/commands/#data-acquisition) without automating the entire process.
 
 ### 1. Setup
 These steps must be carried out before Scanbot is able to automatically move the tip between the sample and the clean metal.
 
 1. Drive the STM tip to a location in close proximity to the sample, making sure the STM tip, sample of interest, and clean metal surface are in clear view of the camera. 
 2. Run the ```auto_init``` command. This will initialise the locations of the STM tip, sample, and clean metal.
-    - Draw a box around the length of the entire tip, enapsulating some of the tip holder in the frame like in the video above.
+    - Draw a box around the length of the entire tip, encapsulating some of the tip holder in the frame like in the video above.
     - Place a marker at the apex of the tip.
     - Place a marker at a safe distance above the clean metal.
     - Place a marker at a safe distance above the sample.
@@ -88,7 +91,7 @@ These steps must be carried out before Scanbot is able to automatically move the
 While it can detect unstable tips, **it cannot identify doubled tips**. In the event of a tip alteration resulting in multiple tips, Scanbot will not endeavor to reshape it.
 However, if the tip becomes unstable, Scanbot will recognise this and refine the tip accordingly.
 
-**Note2: Scanbot requires a camera feed to track the tip during automated operation.** For this reason, there is a configurable [hook](/hooks/#hk_classifier) that will allow Scanbot to control the STM light when required.
+**Note2: Scanbot requires a camera feed to track the tip during automated operation.** For this reason, there is a configurable [hook](/hooks/#hk_light) that will allow Scanbot to control the STM light when required.
 <br>
 
 ## Operation Details

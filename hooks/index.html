@@ -102,6 +102,10 @@
               <ul class="nav flex-column">
               </ul>
             </li>
+            <li class="nav-item" data-level="2"><a href="#hk_autotipshape" class="nav-link">hk_autoTipShape</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
               </ul>
             </li>
         </ul>
@@ -152,7 +156,7 @@ def turn_off():
 <li>Error handling: None</li>
 </ul>
 <p>Structure:
-hk_survey must contain the function <code>run</code>. An example is shown below:</p>
+hk_survey.py must contain the function <code>run</code>. An example is shown below:</p>
 <pre><code class="language-Python">def run(scan_data,filename,metadata):
     # Code to process the image (e.g. plane fit, filtering, etc.)
     # Code to save the image or send the image to a server
@@ -192,6 +196,37 @@ Its purpose is to use an alternative image classifier when assessing the quality
         classification[&quot;tipShape&quot;] = False                      # Tell Scanbot not to reshape the tip
 
     return classification
+</code></pre>
+<h2 id="hk_autotipshape">hk_autoTipShape</h2>
+<p>This hook can be called from the auto_tip_shape command, prior to performing a tip shaping action, when the <code>-hk_autoTipShape</code> option is set.
+Its purpose is to adjust the tip shaping parameters based on either the image of the tip's imprint or the size and symmetry scores assigned to the imprint by Scanbot.</p>
+<ul>
+<li>Inputs:<ol>
+<li>Image of the region prior to making the imprint</li>
+<li>Image of the tip's imprint</li>
+<li>1D array containing all the tip shaping properties. See <a href="https://github.com/New-Horizons-SPM/nanonisTCP">nanonisTCP.TipShaper</a>.</li>
+<li>Size score (nm2) assigned by Scanbot.</li>
+<li>Circularity score (0=very bad, 1=perfect circle) assigned by Scanbot</li>
+</ol>
+</li>
+<li>Outputs:<ol>
+<li>(Optional) 1D array containing the desired tip shaping parameters.</li>
+</ol>
+</li>
+<li>Error handling: None</li>
+</ul>
+<p>Structure: hk_autoTipShape must contain the funtion <code>run</code>. An example is show below:</p>
+<pre><code class="language-Python">def run(cleanImage, tipImprint, tipShapeProps, size, sym):
+    # Code to filter tipImprint
+
+    # API call to RL Agent to determine appropriate tip shaping parameters
+
+    # Adjust relevant tip shaping parameters
+    tipShapeProps[3] = agent.z1     # Amount to plunge the tip into the surface (m)
+    tipShapeProps[5] = agent.bias   # Bias applied while the tip is in the suface (V)
+    tipShapeProps[7] = agent.z2     # Amount to pull tip out of the surface (m)
+
+    return tipShapeProps            # Return the updated tip shaping properties
 </code></pre></div>
             </div>
         </div>

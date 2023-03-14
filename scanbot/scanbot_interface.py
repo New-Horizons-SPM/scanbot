@@ -501,7 +501,8 @@ class scanbot_interface(object):
                     '-size' : ['1.2',       lambda x: float(x), "(float) Max size of the desired tip imprint in units of nm2"],
                     '-zQA'  : ['-0.9e-9',   lambda x: float(x), "(float) z-lift when performing a light tip shape to asses quality of tip (m)"],
                     '-ztip' : ['-1.5e-9',   lambda x: float(x), "(float) z-lift when performing a tip shape to alter the tip (m)"],
-                    '-st'   : ['10',        lambda x: int(x),   "(int) Drift compensation time (s)"]}
+                    '-st'   : ['10',        lambda x: int(x),   "(int) Drift compensation time (s)"],
+                    '-hk_tipShape' : ['0',  lambda x: int(x),   "(int) Flag to call the hook hk_tipShape. Use this hook to adjust the tip shaping parameters based on size/symmetry scores, or based on the image of the tip imprint itself. 0=Don't call, 1=Call"],}
         
         if(_help): return arg_dict
         

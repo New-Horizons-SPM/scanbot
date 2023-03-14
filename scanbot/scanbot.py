@@ -1248,7 +1248,7 @@ class scanbot():
             self.survey2(user_args=[],_help=False,surveyParams=self.survey2Params)
             return
         
-    def autoTipShape(self,n,wh,symTarget,sizeTarget,zQA,ztip,sleepTime,message="",iamauto=False):
+    def autoTipShape(self,n,wh,symTarget,sizeTarget,zQA,ztip,sleepTime,tipShape_hk,message="",iamauto=False):
         NTCP,connection_error = self.connect()                                  # Connect to nanonis via TCP
         if(connection_error):
             global_.running.clear()                                             # Free up the running flag
@@ -1343,6 +1343,7 @@ class scanbot():
             _, _, filePath = scanModule.WaitEndOfScan()                         # Wait until the scan finishes
             if(not filePath): break                                             # If the scan was stopped before finishing, stop program
             _,tipImprint,_ = scanModule.FrameDataGrab(14, 1)                    # Image of the tip's crater after very light tip shape action
+            cleanImage = np.flipud(cleanImage)                                  # Flip because the scan direction is up
             
             # Probably do something here to periodically check scan area (as
             # above) in case the tip blew up and left the area a mess.
@@ -1359,6 +1360,16 @@ class scanbot():
             
             edgeOfFrame = xy - np.array([wh,0])/2
             folme.XYPosSet(*edgeOfFrame,Wait_end_of_move=True)                  # Move the tip to the left edge of the scan frame
+            
+            if(tipShape_hk):
+                try:
+                    import hk_tipShape
+                    temp_tipShapeProps = hk_tipShape.run(cleanImage,tipImprint,tipShapeProps.copy(),size,symmetry)
+                    if(not type(temp_tipShapeProps) == None):
+                        tipShapeProps = temp_tipShapeProps
+                except Exception as e:
+                    self.interface.sendReply("Error calling hk_tipShape...")
+                    self.interface.sendReply(str(e))
             
             self.tipShapeProps(*tipShapeProps)                                  # Set the tip shaping properties up to change the tip
             time.sleep(1)

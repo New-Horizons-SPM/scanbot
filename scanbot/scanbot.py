@@ -1365,7 +1365,9 @@ class scanbot():
                 try:
                     import hk_tipShape
                     temp_tipShapeProps = hk_tipShape.run(cleanImage,tipImprint,tipShapeProps.copy(),size,symmetry)
-                    if(not type(temp_tipShapeProps) == None):
+                    if(not type(temp_tipShapeProps) == type(None)):
+                        if(not len(temp_tipShapeProps) == len(tipShapeProps)):
+                            self.interface.sendReply("Warning: tipShapeProps returned from hk_tipShape.py does not contain expected number of parameters. See documentation for nanonisTCP.TipShaper. This will probably cause an error.")
                         tipShapeProps = temp_tipShapeProps
                 except Exception as e:
                     self.interface.sendReply("Error calling hk_tipShape...")

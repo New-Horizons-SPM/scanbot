@@ -102,7 +102,7 @@
               <ul class="nav flex-column">
               </ul>
             </li>
-            <li class="nav-item" data-level="2"><a href="#hk_autotipshape" class="nav-link">hk_autoTipShape</a>
+            <li class="nav-item" data-level="2"><a href="#hk_tipshape" class="nav-link">hk_tipShape</a>
               <ul class="nav flex-column">
               </ul>
             </li>
@@ -197,8 +197,8 @@ Its purpose is to use an alternative image classifier when assessing the quality
 
     return classification
 </code></pre>
-<h2 id="hk_autotipshape">hk_autoTipShape</h2>
-<p>This hook can be called from the auto_tip_shape command, prior to performing a tip shaping action, when the <code>-hk_autoTipShape</code> option is set.
+<h2 id="hk_tipshape">hk_tipShape</h2>
+<p>This hook can be called from the auto_tip_shape command, prior to performing a tip shaping action, when the <code>-hk_tipShape</code> option is set.
 Its purpose is to adjust the tip shaping parameters based on either the image of the tip's imprint or the size and symmetry scores assigned to the imprint by Scanbot.</p>
 <ul>
 <li>Inputs:<ol>
@@ -215,7 +215,7 @@ Its purpose is to adjust the tip shaping parameters based on either the image of
 </li>
 <li>Error handling: None</li>
 </ul>
-<p>Structure: hk_autoTipShape must contain the funtion <code>run</code>. An example is show below:</p>
+<p>Structure: hk_tipShape.py must contain the funtion <code>run</code>. An example is show below:</p>
 <pre><code class="language-Python">def run(cleanImage, tipImprint, tipShapeProps, size, sym):
     # Code to filter tipImprint
 

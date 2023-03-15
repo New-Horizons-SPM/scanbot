@@ -84,8 +84,8 @@ def run(scan_data,filename,classification_hist):
     return classification
 ```
 
-## hk_autoTipShape
-This hook can be called from the auto_tip_shape command, prior to performing a tip shaping action, when the ```-hk_autoTipShape``` option is set.
+## hk_tipShape
+This hook can be called from the auto_tip_shape command, prior to performing a tip shaping action, when the ```-hk_tipShape``` option is set.
 Its purpose is to adjust the tip shaping parameters based on either the image of the tip's imprint or the size and symmetry scores assigned to the imprint by Scanbot.
 
 * Inputs:
@@ -98,7 +98,7 @@ Its purpose is to adjust the tip shaping parameters based on either the image of
     1. (Optional) 1D array containing the desired tip shaping parameters.
 * Error handling: None
 
-Structure: hk_autoTipShape must contain the funtion ```run```. An example is show below:
+Structure: hk_tipShape.py must contain the funtion ```run```. An example is show below:
 ```Python
 def run(cleanImage, tipImprint, tipShapeProps, size, sym):
     # Code to filter tipImprint

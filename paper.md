@@ -77,7 +77,7 @@ implemented to automate specific tasks. For instance, Wang et al. created a Pyth
 automates probe conditioning for Scanning Tunneling Spectroscopy [@Wang_2021]. However, this package
 still requires manual preparation of the tip for such that it can acquire clean images.
 Some researchers have employed the use of machine learning algorithms [@Gordon_2020] to analyse
-acquired images and determine when a probe needs refining, then Reinforcement Learning agents can
+acquired images and determine when a probe needs refining, then Reinforcement Learning (RL) agents can
 condition the probe accordingly [@Schiffrin_2020]. Although these approaches have significantly advanced
 automated STM experiments, they are often tailored to specific surfaces and STM equipment, making it
 challenging to transfer the code to other labs studying different systems or working with different
@@ -91,16 +91,22 @@ where the sample's properties might make it challenging to achieve a high-qualit
 without needing to manually switch out the sample for a clean metal on which the tip can be prepared.
 
 Scanbot has been developed in a modular fashion, which means its functionality can easily be expanded
-or improved through contributions from the open-source community. For instance, the algorithmic
-approach to tip shaping might benefit from adaption to machine learning. This could be achieved by
-leveraging hooks in the code where alternative, custom Python scripts can seamlessly replace existing
-functionality, with the only requirement being that the inputs and outputs are the same. Complete
-documentation for Scanbot, including how such hooks can be leveraged, can be found
-[here](https://new-horizons-spm.github.io/scanbot/). With Scanbot, researchers can spend less time
-preparing probes and more time acquiring high-quality STM data.
+or improved through contributions from the open-source community. Furthermore, through the use of [hooks](https://new-horizons-spm.github.io/scanbot/hooks/),
+users can customise or replace key functionality that is likely to be system- or lab-specific, without 
+rewriting Scanbot's source code. This has the advantage of being able to pull the latest Scanbot updates wihtout
+losing customised code. Such hooks can also be used to improve Scanbot's existing functionality or test potential new features. For instance,
+Scanbot's algorithmic approach to automated tip shaping might benefit the integration of an RL agent. This could be achieved by
+leveraging the hook [hk_tipShape](https://new-horizons-spm.github.io/scanbot/hooks/#hk_tipshape) where important parameters related to tip shaping can be adjusted based on images of the tip's imprint.
+Complete documentation for Scanbot, including how such hooks can be leveraged, can be found at https://new-horizons-spm.github.io/scanbot.
 
 # Acknowledgements
 
-We acknowledge contributions from FLEET for funding this project through their research translation program
+A.S. acknowledges funding support from the ARC Future
+Fellowship scheme (FT150100426). J.C., B.L., and J.H.
+acknowledge funding support from the Australian Research
+Council (ARC) Centre of Excellence in Future Low-Energy
+Electronics Technologies (CE170100039). J.C., and B.L. are supported
+through an Australian Government Research Training Program
+(RTP) Scholarship.
 
 # References

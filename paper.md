@@ -96,7 +96,7 @@ users can customise or replace key functionality that is likely to be system- or
 rewriting Scanbot's source code. This has the advantage of being able to pull the latest Scanbot updates wihtout
 losing customised code. Such hooks can also be used to improve Scanbot's existing functionality or test potential new features. For instance,
 Scanbot's algorithmic approach to automated tip shaping might benefit the integration of an RL agent. This could be achieved by
-leveraging the hook [hk_tipShape](https://new-horizons-spm.github.io/scanbot/hooks/#hk_tipshape) where important parameters related to tip shaping can be adjusted based on images of the tip's imprint.
+leveraging the hook [hk_tipShape](https://new-horizons-spm.github.io/scanbot/hooks/#hk_tipshape), where important parameters related to tip shaping can be adjusted based on images of the tip's imprint.
 Complete documentation for Scanbot, including how such hooks can be leveraged, can be found at https://new-horizons-spm.github.io/scanbot.
 
 # Acknowledgements

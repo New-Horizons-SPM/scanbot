@@ -990,18 +990,12 @@ class scanbot():
         win        : Window around the ROI to look at.
 
         """
-        NTCP,connection_error = self.connect()                                  # Connect to nanonis via TCP
-        if(connection_error):
-            global_.running.clear()                                             # Free up the running flag
-            return connection_error                                             # Return error message if there was a problem connecting
-        
         if(lightOnOff):                                                         # If we want to turn the light on
             try:
                 from hk_light import turn_on
                 turn_on()                                                       # Call the hook to do so. Hook should return null if successful, otherwise it should throw an Exception
             except Exception as e:
                 self.interface.sendReply("Error calling hook hk_light.py to turn on light")
-                self.disconnect(NTCP)
                 global_.running.clear()                                         # Free up the running flag
                 return str(e)
         
@@ -1009,7 +1003,6 @@ class scanbot():
         ret,frame = utilities.getAveragedFrame(cap,n=1)                         # Read the first frame of the video to test camera feed
         if(not ret):
             self.interface.sendReply("Error finding camera feed. Check camera port.")
-            self.disconnect(NTCP)
             global_.running.clear()                                             # Free up the running flag
             cap.release()
             cv2.destroyAllWindows()
@@ -1023,7 +1016,6 @@ class scanbot():
             roi = utilities.getROI(cap)
             if(not len(roi)):
                 self.interface.sendReply("Cancelling move tip")
-                self.disconnect(NTCP)
                 global_.running.clear()                                         # Free up the running flag
                 cap.release()
                 cv2.destroyAllWindows()
@@ -1050,12 +1042,6 @@ class scanbot():
         WIN = utilities.extract(frame,roi,win)
         
         tipToROI = tipPos - roi[0:2]
-        
-        print("withdrawing")
-        zController = ZController(NTCP)
-        zController.Withdraw(wait_until_finished=True,timeout=3)                # Withdwar the tip
-        print("withdrew")
-        time.sleep(0.25)
         
         success = True
         targetHit = False
@@ -1121,12 +1107,9 @@ class scanbot():
                 turn_off()                                                      # Call the hook to do so. Hook should return null if successful, otherwise it should throw an Exception
             except Exception as e:
                 self.interface.sendReply("Error calling hook hk_light.py to turn light off")
-                self.disconnect(NTCP)
                 global_.running.clear()                                         # Free up the running flag
                 return str(e)
             
-        self.disconnect(NTCP)                                                   # Close the TCP connection
-        
         if(targetHit and iamauto): return "Target Hit"                          # Keep the running flag going because we might be approaching after this.
         
         global_.running.clear()                                                 # Free up the running flag

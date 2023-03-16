@@ -212,6 +212,7 @@ class scanbot_interface(object):
                          'plot'             : self.plot,                        # Generate plot of the current scan frame. Select channel using plot_channel
                          'survey'           : self.survey,                      # Take a survey within the current scan area.
                          'survey2'          : self.survey2,                     # Take several surveys at different macroscopic locations by moving the tip between each survey.
+                         'bias_dep'         : self.biasDep,                     # Take a series of bias dependent images.
                          'zdep'             : self.zdep,                        # z-dependant scanning. Useful for nc-AFM or other constant height imaging
                          'afm_registration' : self.registration,                # Take a constant height scan and perform a tip-lift at a given line.
                         # Tip Actions
@@ -304,6 +305,31 @@ class scanbot_interface(object):
             args = self.unpackArgs(user_arg_dict)
         
         func = lambda : self.scanbot.survey2(*args,message=self.bot_message.copy())
+        return self.threadTask(func)
+    
+    def biasDep(self,user_args,_help=False):
+        arg_dict = {'-n'   : ['5',          lambda x: int(x),   "(int) Number of images to take b/w initial and final bias"],
+                    '-bdc' : ['-1',         lambda x: float(x), "(float) Bias of the drift correction images (V)"],
+                    '-tdc' : ['0.3',        lambda x: float(x), "(float) Time per line for drift correction images (s)"],
+                    '-tbdc': ['1',          lambda x: float(x), "(float) Backward direction speed multiplier for drift correct image. E.g. 1=same speed, 2=twice as fast, 0.5=half speed"],
+                    '-pxdc': ['128',        lambda x: int(x),   "(int) Number of pixels in drift correct images. 0=no drift correction"],
+                    '-lxdc': ['0',          lambda x: int(x),   "(int) Number of lines in drift correct image. 0=keep same ratio as px:lx"],
+                    '-bi'  : ['-1',         lambda x: float(x), "(float) Initial Bias (V)"],
+                    '-bf'  : ['1',          lambda x: float(x), "(float) Final Bias (V)"],
+                    '-px'  : ['-default',   lambda x: int(x),   "(int) Number of pixels in images"],
+                    '-lx'  : ['0',          lambda x: int(x),   "(int) Number of lines in images. 0=same as px"],
+                    '-tlf' : ['-default',   lambda x: float(x), "(float) Time per line (forward direction) (s)"],
+                    '-tb'  : ['1',          lambda x: float(x), "(float) Backward direction speed multiplier. E.g. 1=same speed, 2=twice as fast, 0.5=half speed"],
+                    '-s'   : ['sb-biasdep', lambda x: str(x),   "(str) Suffix for the set of bias dep sxm files"]}
+        
+        if(_help): return arg_dict
+        
+        error,user_arg_dict = self.userArgs(arg_dict,user_args)
+        if(error): return error + "\nRun ```help bias_dep``` if you're unsure."
+        
+        args = self.unpackArgs(user_arg_dict)
+        
+        func = lambda : self.scanbot.biasDep(*args,message=self.bot_message.copy())
         return self.threadTask(func)
         
     def zdep(self,user_args,_help=False):

@@ -292,6 +292,104 @@ class scanbot():
         if(callAutoTipShape):
             user_args = ['-run=survey2', '-return=1', '-tipshape=1']
             self.interface.moveTipToClean(user_args=user_args)
+    
+    def biasDep(self,nb,dcbias,tdc,dcSpeedRatio,pxdc,lxdc,bi,bf,px,lx,tlf,speedRatio,suffix,message=""):
+        NTCP,connection_error = self.connect()                                  # Connect to nanonis via TCP
+        if(connection_error):
+            global_.running.clear()                                             # Free up the running flag
+            return connection_error                                             # Return error message if there was a problem connecting  
+        
+        self.interface.reactToMessage("working_on_it",message=message)
+        
+        scanModule  = Scan(NTCP)
+        
+        basename = self.interface.topoBasename                                  # Get the basename that's been set in config file
+        if(not basename): basename = scanModule.PropsGet()[3]                   # Get the save basename from nanonis if one isn't supplied
+        tempBasename = basename + '_' + suffix + '_'                            # Create a temp basename for this survey
+        scanModule.PropsSet(series_name=tempBasename)                           # Set the basename in nanonis for this survey
+        
+        scanFrame = scanModule.FrameGet()                                       # [x,y,w,h,theta]
+        
+        if(tlf == '-default'): _,_,tlf,_,_,_ = scanModule.SpeedGet()            # Get the default time per line if it's not provided
+        
+        print(px,lx,pxdc,lxdc)
+        if(px == '-default'): px = scanModule.BufferGet()[2]                    # Get the default number of pixels from nanonis
+        px = int(np.ceil(px/16)*16)                                             # Ensure the number of pixels is divisible by 16 (nanonis requirement)
+        if(lx == 0): lx = px                                                    # Default lx=px if lx not provided
+        
+        pxdc = int(np.ceil(pxdc/16)*16)                                         # Ensure the number of pixels for the drift correct frame is divisible by 16 (nanonis requirement)
+        if(lxdc == 0): lxdc = int((pxdc*lx)/px)                                 # Keep the same ratio as px:lx if lxdc not provided
+        
+        print(px,lx,pxdc,lxdc)
+        if(px < 16 or lx < 0 or pxdc < 16 or lxdc < 0): 
+            self.interface.sendReply("Error: Check -px, -lx, -pxdc, and -lxdc",message=message)
+            global_.running.clear()                                             # Free up the running flag
+            self.disconnect(NTCP)
+            return
+        
+        dx    = scanFrame[2]/px
+        dy    = scanFrame[3]/lxdc
+        dxy   = np.array([dx,dy])
+        ox,oy = np.array([0,0])
+        
+        GIF       = []
+        biasList  = np.linspace(bi,bf,nb)
+        initialDC = np.zeros((pxdc,pxdc))
+        for idx,bias in enumerate(biasList):
+            self.interface.sendReply("Scan " + str(idx+1) + "/" + str(nb))
+            if(abs(dcbias) > 0):                                                # If drift correction is turned on, take a drift correction image
+                time.sleep(0.25)
+                scanModule.BufferSet(pixels=pxdc,lines=lxdc)
+                scanModule.SpeedSet(fwd_line_time=tdc,speed_ratio=dcSpeedRatio)
+                
+                print("Ramping bias to " + str(dcbias) + " and taking drift correction image.")
+                self.rampBias(NTCP, dcbias)
+                time.sleep(0.25)
+                
+                basename_dc = tempBasename + str(int(dcbias*100)/100) + "V-DC_"
+                scanModule.PropsSet(series_name=basename_dc)                    # Set the basename for drift correction images
+                scanModule.Action('start',scan_direction='up')
+                _, _, filePath = scanModule.WaitEndOfScan()
+                if(not filePath): break                                         # If the scan was stopped manually before, stop here
+                _,driftCorrection,_ = scanModule.FrameDataGrab(14, 1)
+                
+                if(np.sum(initialDC) == 0): initialDC = driftCorrection         # On the first run through, we will compare the initial drift correction frame with itself, so ox,oy = 0,0
+                ox,oy = utilities.getFrameOffset(initialDC,driftCorrection,dxy,theta=-scanFrame[4]) # Frame offset for drift correction. passing negative scan angle because nanonis is backwards
+                print("Frame offset correction offset: " + str([ox,oy]))
+                
+                scanFrame[0] -= ox
+                scanFrame[1] -= oy
+                scanModule.FrameSet(*scanFrame)                                 # Move the scan frame
+                
+            print("Ramping to next image bias: " + str(int(100*bias)/100) + " V")
+            self.rampBias(NTCP, bias)                                           # Ramp to the next image bias
+            
+            scanModule.BufferSet(pixels=px,lines=lx)
+            scanModule.SpeedSet(fwd_line_time=tlf,speed_ratio=speedRatio)
+            
+            basename_image = tempBasename + str(int(100*bias)/100) + "V_"
+            scanModule.PropsSet(series_name=basename_image)                     # Set the basename in nanonis for this survey
+            
+            scanModule.Action('start',scan_direction='down')
+            _, _, filePath = scanModule.WaitEndOfScan()
+            if(not filePath): break
+            
+            _,scanData,_ = scanModule.FrameDataGrab(14, 1)                      # 14 = z., 18 is Freq. shift
+            pngFilename = self.makePNG(scanData, filePath)                      # Generate a png from the scan data
+            GIF.append(scanData)
+            
+            self.interface.sendPNG(pngFilename,notify=False,message=message)    # Send a png over zulip
+            
+        time.sleep(0.25)
+        scanModule.PropsSet(series_name=basename)                               # Put back the original basename
+        
+        # self.interface.sendPNG(utilities.makeGif(GIF),notify=False,message=message)
+        
+        self.interface.sendReply("biasDep " + suffix + " complete.")
+        
+        self.disconnect(NTCP)                                                   # Close the TCP connection
+        global_.running.clear()                                                 # Free up the running flag
+            
             
     def zdep(self,zi,zf,nz,iset,bset,dciset,bias,dcbias,ft,bt,dct,px,dcpx,lx,dclx,suffix,makeGIF,message=""):
         """
@@ -421,7 +519,7 @@ class scanbot():
            scanTime  += 2*dclx*dct
            delayTime += 1.5
         
-        GIF = np.empty((len(dzList)),lx,px)
+        GIF = []
         eta = len(dzList)*(scanTime + delayTime)
         completionTime = dt.now() + timedelta(seconds=eta)
         self.interface.sendReply("Starting zdep.. ETA: " + str(completionTime))
@@ -519,7 +617,7 @@ class scanbot():
             
             _,scanData,_ = scanModule.FrameDataGrab(18, 1)                      # 14 = z., 18 is Freq. shift
             pngFilename = self.makePNG(scanData, filePath)                      # Generate a png from the scan data
-            GIF[idx] = scanData
+            GIF.append(scanData)
             
             self.interface.sendPNG(pngFilename,notify=False,message=message)    # Send a png over zulip
             

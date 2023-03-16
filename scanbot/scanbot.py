@@ -327,7 +327,7 @@ class scanbot():
             self.disconnect(NTCP)
             return
         
-        dx    = scanFrame[2]/px
+        dx    = scanFrame[2]/pxdc
         dy    = scanFrame[3]/lxdc
         dxy   = np.array([dx,dy])
         ox,oy = np.array([0,0])
@@ -506,7 +506,7 @@ class scanbot():
             piezo.DriftCompSet(on=False, vx=0, vy=0, vz=0)
             
         previous_zref = {}
-        dx  = scanFrame[2]/px; dy  = scanFrame[3]/dclx
+        dx  = scanFrame[2]/dcpx; dy  = scanFrame[3]/dclx
         dxy = np.array([dx,dy])
         ox,oy = np.array([0,0])
         dzList = np.linspace(zi, zf, nz)

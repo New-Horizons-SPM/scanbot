@@ -130,6 +130,7 @@ def getAveragedFrame(cap,n=1):
         avgFrame += np.array(frame).astype(np.float32)
     
     avgFrame = avgFrame/n
+    
     return ret,avgFrame
 
 def extract(frame,roi,win=0):
@@ -148,8 +149,7 @@ def extract(frame,roi,win=0):
     ROI : Captured region of interest
 
     """
-    ROI = np.array(frame[roi[1]-win:win+roi[1] + roi[3],roi[0]-win:win+roi[0] + roi[2]]) # Extract the roi from the frame
-    ROI = np.sum(ROI,axis=2).astype(float)                                      # Convert RGB to 1 channel by summing along the 3rd dimenstion
+    ROI = np.array(frame[roi[1]-win:win+roi[1] + roi[3],roi[0]-win:win+roi[0] + roi[2]]).astype(float) # Extract the roi from the frame
     return ROI
 
 def enhanceEdges(im,trim=0):
@@ -173,7 +173,7 @@ def enhanceEdges(im,trim=0):
     edges = np.sqrt(grad[0]**2 + grad[1]**2)
     if(trim > 0): edges = edges[trim:-trim,trim:-trim]
     return edges
-    
+
 def trackROI(im1,im2,dxy=[1,1]):
     """
     Returns the offset of im2 relative to im1. im1 and im2 must be the same
@@ -195,7 +195,7 @@ def trackROI(im1,im2,dxy=[1,1]):
     im1_edges = enhanceEdges(im1)
     im2_edges = enhanceEdges(im2)
     
-    xcor = sp.correlate2d(im1_edges,im2_edges, boundary='symm', mode='same')
+    xcor = sp.correlate2d(im1_edges,im2_edges,mode='same')
     y,x  = np.unravel_index(xcor.argmax(), xcor.shape)
 
     ni = np.array(xcor.shape)
@@ -206,7 +206,7 @@ def trackROI(im1,im2,dxy=[1,1]):
     
     return np.array([ox,oy])
 
-def update(roi,ROI,win,frame,oxy=[0,0],xy=[0,0]):
+def update(roi,ROI,win,frame,initialFrame,oxy=[0,0],xy=[0,0]):
     """
     Checks whether the region of interest around the tip has moved close enough
     to the edge of the window it's tracked within. If it has moved close enough
@@ -236,19 +236,30 @@ def update(roi,ROI,win,frame,oxy=[0,0],xy=[0,0]):
     xy  : Running x,y coordinate of the tip with respect to its original pos
 
     """
+    diff = abs(initialFrame.astype(float) - frame.astype(float))
+    tip = np.max(diff,axis=2)
+    tip /= np.max(tip)
+    
     x,y = oxy
     
+    if(not len(ROI)):
+        ROI = extract(tip,roi)
+        WIN = extract(tip,roi,win)
+        return ROI,WIN,roi,xy
+        
     if(abs(x) > win/4):
+        print("roi changing x")
         roi[0] += x
         xy[0]  += x
-        ROI = extract(frame,roi)
+        ROI = extract(tip,roi) # Do  - initialFrame thing here
         
     if(abs(y) > win/4):
+        print("roi changing y")
         roi[1] += y
         xy[1]  += y
-        ROI = extract(frame,roi)
+        ROI = extract(tip,roi)
         
-    WIN = extract(frame,roi,win)
+    WIN = extract(tip,roi,win)
         
     return ROI,WIN,roi,xy
 
@@ -296,12 +307,61 @@ def trimStart(cap,frames):
 
 def getVideo(cameraPort,demo=0):
     if(demo):
-        cap = cv2.VideoCapture('../Dev/move_tip.mp4')                           # Load in the mp4
-        trimStart(cap,frames=2000)                                              # Trim off the start of the video
+        cap = cv2.VideoCapture('../Dev/move_tip_2.mp4')                         # Load in the mp4
+        # trimStart(cap,frames=2000)                                              # Trim off the start of the video
         return cap
     
     cap = cv2.VideoCapture(cameraPort,cv2.CAP_DSHOW)                            # Camera feed. Camera port: usually 0 for desktop and 1 for laptops with a camera. cv2.CAP_DSHOW is magic
     return cap
+
+clicked = False
+def getInitialFrame(cap,n=10,demo=0):
+    global clicked
+    clicked = False
+    initialFrame = []
+    
+    if(demo):
+        cp = cv2.VideoCapture('../Dev/initialise.mp4')                          # Load in the mp4
+        # initialFrame = imread("initialFrame.png")
+    else:
+        cp = cap
+    
+    print("Getting initial frame...")
+    windowName = "Move the tip out of view, then click to confirm. 'q' to cancel."
+    cv2.namedWindow(windowName)
+    cv2.setMouseCallback(windowName, checkClick)
+    while(not clicked):
+        _,frame = getAveragedFrame(cp,n=1)
+        cv2.imshow(windowName,frame.astype(np.uint8))
+        if cv2.waitKey(25) & 0xFF == ord('q'): break                            # Press Q on keyboard to  exit
+    
+    if(clicked):
+        _,initialFrame = getAveragedFrame(cp,n=n)
+        
+    cv2.destroyAllWindows()
+    return initialFrame
+
+def displayUntilClick(cap):
+    global clicked
+    clicked = False
+    
+    print("Move the tip in view, then click to confirm. 'q' to cancel.")
+    windowName = "Move the tip in view, then click to confirm. 'q' to cancel."
+    cv2.namedWindow(windowName)
+    cv2.setMouseCallback(windowName, checkClick)
+    while(not clicked):
+        _,frame = getAveragedFrame(cap,n=1)
+        cv2.imshow(windowName,frame.astype(np.uint8))
+        if cv2.waitKey(25) & 0xFF == ord('q'): break                            # Press Q on keyboard to  exit
+        
+    cv2.destroyAllWindows()
+    
+    return clicked == True
+    
+def checkClick(event, x, y, flags, param):
+    global clicked
+    if event == cv2.EVENT_LBUTTONUP: clicked = True
+    return
 
 getROI_initial = []
 getROI_final = []
@@ -320,10 +380,13 @@ def getROI(cap):
         cv2.imshow(windowName,frame.astype(np.uint8))
         if cv2.waitKey(25) & 0xFF == ord('q'): break                            # Press Q on keyboard to  exit
     
-    cv2.destroyAllWindows() 
+    cv2.destroyAllWindows()
     
     roi = []
     if(len(getROI_final)): roi = [*getROI_initial,*(getROI_final - getROI_initial)]
+    
+    roi[2] += (roi[2]+1)%2
+    roi[3] += (roi[2]+1)%2
     
     getROI_initial = []
     getROI_final = []

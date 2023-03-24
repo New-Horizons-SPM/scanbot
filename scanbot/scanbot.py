@@ -972,7 +972,7 @@ class scanbot():
         
         return True
     
-    def moveTip(self,lightOnOff,cameraPort,trackOnly,xStep,zStep,xV,zV,xF,zF,demo,roi=[],target=[],tipPos=[],win=15,iamauto=False):
+    def moveTip(self,lightOnOff,cameraPort,trackOnly,xStep,zStep,xV,zV,xF,zF,demo,roi=[],target=[],tipPos=[],win=50,iamauto=False):
         """
         In development
 
@@ -1038,15 +1038,15 @@ class scanbot():
         
         if(not len(target)): trackOnly = True
         
-        ROI = utilities.extract(frame,roi)
-        WIN = utilities.extract(frame,roi,win)
-        
+        ROI = []
+        ROI,WIN,roi,xy = utilities.update(roi,ROI,win,frame,self.initialFrame.copy())
         tipToROI = tipPos - roi[0:2]
         
         success = True
         targetHit = False
         xy  = np.array([0,0])
         oxy = np.array([0,0])
+        currentPos = np.array([0,0])
         currentPos = np.array([0,0])
         while(cap.isOpened()):
             if(not success):
@@ -1061,7 +1061,9 @@ class scanbot():
             
             currentPos = xy + oxy
             
-            ROI,WIN,roi,xy = utilities.update(roi,ROI,win,frame,oxy,xy)
+            ROI,WIN,roi,xy = utilities.update(roi,ROI,win,frame,self.initialFrame.copy(),oxy,xy)
+            
+            print(currentPos)
             
             rec = utilities.drawRec(frame.astype(np.uint8), roi, xy=oxy)
             rec = utilities.drawRec(rec, roi, win=win)
@@ -1174,7 +1176,7 @@ class scanbot():
 ###############################################################################
 # Auto STM
 ###############################################################################
-    def autoInit(self,lightOnOff,cameraPort,demo,win=15,message=""):
+    def autoInit(self,lightOnOff,cameraPort,demo,win=50,message=""):
         if(lightOnOff):                                                         # If we want to turn the light on
             try:
                 from hk_light import turn_on
@@ -1194,6 +1196,24 @@ class scanbot():
             cv2.destroyAllWindows()
             return
         
+        self.interface.sendReply("Move the tip completely out of view of the camera. 'q' to cancel")
+        initialFrame = utilities.getInitialFrame(cap,demo=demo)
+        if(not len(initialFrame)):
+            self.interface.sendReply("Cancelling...")
+            global_.running.clear()                                             # Free up the running flag
+            cap.release()
+            cv2.destroyAllWindows()
+            return
+        
+        self.interface.sendReply("Move the tip back into view of the camera. 'q' to cancel")
+        goAhead = utilities.displayUntilClick(cap)
+        if(not goAhead):
+            self.interface.sendReply("Cancelling...")
+            global_.running.clear()                                             # Free up the running flag
+            cap.release()
+            cv2.destroyAllWindows()
+            return
+            
         self.interface.sendReply("Select tracking ROI. Press 'q' to cancel")
         roi = utilities.getROI(cap)
         if(not len(roi)):
@@ -1264,6 +1284,7 @@ class scanbot():
         self.tipPos         = tipPos
         self.samplePos      = samplePos
         self.cleanMetalPos  = cleanMetalPos
+        self.initialFrame   = initialFrame
         
         self.interface.sendReply("Done")
         

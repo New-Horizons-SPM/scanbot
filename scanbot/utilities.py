@@ -174,7 +174,7 @@ def enhanceEdges(im,trim=0):
     if(trim > 0): edges = edges[trim:-trim,trim:-trim]
     return edges
 
-def trackROI(im1,im2,dxy=[1,1]):
+def trackROI(im1,im2,dxy=[1,1],direction=""):
     """
     Returns the offset of im2 relative to im1. im1 and im2 must be the same
     size and scale. Keep dxy=[1,1] to return offset in units of pixels.
@@ -192,6 +192,8 @@ def trackROI(im1,im2,dxy=[1,1]):
     [ox,oy] : offset in x and y
 
     """
+    # im1_edges = im1
+    # im2_edges = im2
     im1_edges = enhanceEdges(im1)
     im2_edges = enhanceEdges(im2)
     
@@ -201,10 +203,19 @@ def trackROI(im1,im2,dxy=[1,1]):
     ni = np.array(xcor.shape)
     oy,ox = np.array([y,x]).astype(int) - (ni/2).astype(int)
     
+    limit = 10
+    if(direction == "X"):
+        if(abs(oy) > limit):
+            oy = limit*np.sign(oy)
+            
+    if(direction == "Z"):
+        if(abs(ox) > limit):
+            ox = limit*np.sign(ox)
+    
     ox *= -dxy[0]
     oy *= -dxy[1]
     
-    return np.array([ox,oy])
+    return np.array([ox,oy])#,xcor
 
 def update(roi,ROI,win,frame,initialFrame,oxy=[0,0],xy=[0,0]):
     """
@@ -239,6 +250,10 @@ def update(roi,ROI,win,frame,initialFrame,oxy=[0,0],xy=[0,0]):
     diff = abs(initialFrame.astype(float) - frame.astype(float))
     tip = np.max(diff,axis=2)
     tip /= np.max(tip)
+    mask = tip > 0.25
+    initialFrame[mask,:] = 0.0
+    diff = abs(initialFrame - frame)
+    tip = np.max(diff,axis=2)
     
     x,y = oxy
     
@@ -247,13 +262,13 @@ def update(roi,ROI,win,frame,initialFrame,oxy=[0,0],xy=[0,0]):
         WIN = extract(tip,roi,win)
         return ROI,WIN,roi,xy
         
-    if(abs(x) > win/4):
+    if(abs(x) > win/10):
         print("roi changing x")
         roi[0] += x
         xy[0]  += x
         ROI = extract(tip,roi) # Do  - initialFrame thing here
         
-    if(abs(y) > win/4):
+    if(abs(y) > win/10):
         print("roi changing y")
         roi[1] += y
         xy[1]  += y

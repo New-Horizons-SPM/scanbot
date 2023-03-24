@@ -1047,7 +1047,9 @@ class scanbot():
         xy  = np.array([0,0])
         oxy = np.array([0,0])
         currentPos = np.array([0,0])
-        currentPos = np.array([0,0])
+        previousPos = np.array([0,0])
+        pk = []
+        direction = ""
         while(cap.isOpened()):
             if(not success):
                 self.interface.sendReply("Error moving area... tip crashed... stopping")
@@ -1057,7 +1059,7 @@ class scanbot():
             ret, frame = utilities.getAveragedFrame(cap,n=11)
             if(not ret): break
         
-            oxy = utilities.trackROI(im1=ROI, im2=WIN)
+            oxy = utilities.trackROI(im1=ROI, im2=WIN, direction=direction)
             
             currentPos = xy + oxy
             
@@ -1071,6 +1073,10 @@ class scanbot():
             if(len(tipPos)): rec = cv2.circle(rec, currentPos + tipPos, radius=3, color=(0, 0, 255), thickness=-1)
             if(len(target)): rec = cv2.circle(rec, target + tipPos, radius=3, color=(0, 255, 0), thickness=-1)
             
+            if(not (currentPos == previousPos).all()):
+                pk.append([rec,ROI,WIN,currentPos])
+                previousPos = currentPos.copy()
+                
             cv2.imshow('Frame',rec)
             
             if cv2.waitKey(25) & 0xFF == ord('q'): break                        # Press Q on keyboard to  exit
@@ -1079,14 +1085,17 @@ class scanbot():
             if(trackOnly): continue
             
             if(currentPos[1] > target[1]):                                      # First priority is to always keep the tip above this line
+                direction = "Z"
                 if(demo): continue
                 success = self.moveArea(up=zStep, upV=zV, upF=zF, direction="X+", steps=0, dirV=xV, dirF=xF, zon=False, approach=False)
                 continue
             if(currentPos[0] < target[0]):
+                direction = "X"
                 if(demo): continue
                 success = self.moveArea(up=10, upV=zV, upF=zF, direction="X+", steps=xStep, dirV=xV, dirF=xF, zon=False, approach=False)
                 continue
             if(currentPos[0] > target[0]):
+                direction = "X"
                 if(demo): continue
                 success = self.moveArea(up=10, upV=zV, upF=zF, direction="X-", steps=xStep, dirV=xV, dirF=xF, zon=False, approach=False)
                 continue
@@ -1097,7 +1106,8 @@ class scanbot():
         
         cap.release()
         cv2.destroyAllWindows()
-        
+        import pickle
+        pickle.dump(pk,open('test.pk','wb'))
         if(iamauto):
             tipToROI = tipPos - roi[0:2]
             self.roi[0:2] = tipPos - tipToROI

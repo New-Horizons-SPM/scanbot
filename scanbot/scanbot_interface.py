@@ -69,7 +69,8 @@ class scanbot_interface(object):
                     'piezo_z_max_F'             : '5000',                       # Maximum frequency that can be applied to the Z piezo
                     'piezo_z_min_F'             : '500',                        # Minimum frequency that can be applied to the Z piezo
                     'piezo_xy_max_F'            : '5000',                       # Maximum frequency that can be applied to the X or Y piezos
-                    'piezo_xy_min_F'            : '500'}                        # Minimum frequency that can be applied to the X or Y piezos
+                    'piezo_xy_min_F'            : '500',                        # Minimum frequency that can be applied to the X or Y piezos
+                    'hk_commands'               : '0'}                          # Flag to look for customised commands in hk_commands
         
         try:
             with open('scanbot_config.ini','r') as f:                           # Go through the config file to see what defaults need to be overwritten
@@ -161,6 +162,11 @@ class scanbot_interface(object):
         self.scanbot.xyMaxF = float(initDict['piezo_xy_max_F'])
         self.scanbot.xyMinF = float(initDict['piezo_xy_min_F'])
         
+        self.hk_commands = []
+        if(int(initDict['hk_commands'])):
+           from hk_commands import hk_commands
+           self.hk_commands = hk_commands(self)
+        
         self.loadWhitelist()
         
     def firebaseInit(self):
@@ -217,7 +223,6 @@ class scanbot_interface(object):
                          'afm_registration' : self.registration,                # Take a constant height scan and perform a tip-lift at a given line.
                         # Tip Actions
                          'move_area'        : self.moveArea,                    # Quickly move the tip to a new area (blindly)
-                         'move_tip'         : self.moveTip,                     # Move the tip to a target location using the camera feed to track the motion of the STM head
                          'tip_shape_props'  : self.tipShapeProps,               # Read/write tip shaper properties.
                          'tip_shape'        : self.tipShape,                    # Execute a tip shape
                         # AutoSTM
@@ -406,30 +411,6 @@ class scanbot_interface(object):
         args = self.unpackArgs(user_arg_dict)
         
         self.scanbot.moveArea(*args,message=self.bot_message.copy())
-    
-    def moveTip(self,user_args,_help=False):
-        arg_dict = {'-light'      : ['0',   lambda x: int(x),   "(int) Flag to turn the light on before moving and off after moving. This uses hk_light.turn_on() and hk_light.turn_off() functions. 0=Don't, 1=Do"],
-                    '-cameraPort' : ['0',   lambda x: int(x),   "(int) cv2 camera port - usually 0 for desktops or 1 for laptops with an inbuilt camera."],
-                    '-trackOnly'  : ['0',   lambda x: int(x),   "(int) Flag to not disable motor and simply track the tip. 0=motor active. 1=tracking only mode"],
-                    '-xStep'      : ['100', lambda x: int(x),   "(int) Number of motor steps in the X direction before updating tip position. More=Faster but might lose the tip"],
-                    '-zStep'      : ['250', lambda x: int(x),   "(int) Number of motor steps to move in +Z (upwards) before updating tip position. More=Faster but might lose the tip"],
-                    '-xV'         : ['130', lambda x: float(x), "(float) Piezo voltage when moving motor steps in x direction"],
-                    '-zV'         : ['180', lambda x: float(x), "(float) Piezo voltage when moving motor steps in z direction"],
-                    '-xF'         : ['1100',lambda x: float(x), "(float) Piezo frequency when moving motor steps in x direction"],
-                    '-zF'         : ['1100',lambda x: float(x), "(float) Piezo frequency when moving motor steps in z direction"],
-                    '-demo'       : ['0',   lambda x: int(x),   "(int) Load in an mp4 recording of the tip moving instead of using live feed"]}
-        
-        if(_help): return arg_dict
-        
-        if(self.run_mode != 'c'): return "This function is only available in console mode."
-        
-        error,user_arg_dict = self.userArgs(arg_dict,user_args)
-        if(error): return error + "\nRun ```help move_tip``` if you're unsure."
-        
-        args = self.unpackArgs(user_arg_dict)
-        
-        func = lambda : self.scanbot.moveTip(*args)
-        return self.threadTask(func)
     
     def tipShape(self,user_args,_help=False):
         arg_dict = {}
@@ -708,6 +689,11 @@ class scanbot_interface(object):
         command = messageContent.split(' ')[0].lower()
         args    = messageContent.split(' ')[1:]
         
+        if(self.hk_commands and command in self.hk_commands.commands):
+            reply = self.hk_commands.commands[command](args)
+            if(reply): self.sendReply(reply)
+            return
+        
         if(not command in self.commands):
             reply = "Invalid command. Run *help* to see command list"
             self.sendReply(reply)
@@ -836,11 +822,15 @@ class scanbot_interface(object):
         
         command = args[0]
         if(not command in self.commands):
-            return "Run ```help``` to see a list of valid commands"
+            if(self.hk_commands and not command in self.hk_commands.commands):
+                return "Run ```help``` to see a list of valid commands"
         
         try:
             helpStr = "**" + command + "**\n"
-            arg_dict = self.commands[command](args,_help=True)
+            try:
+                arg_dict = self.hk_commands.commands[command](args,_help=True)
+            except:
+                arg_dict = self.commands[command](args,_help=True)
             for key,value in arg_dict.items():
                 if(key == 'help'): continue
                 if(key):

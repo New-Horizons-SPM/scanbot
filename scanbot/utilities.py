@@ -142,47 +142,6 @@ def getAveragedFrame(cap,n=1,initialFrame=[]):
     
     return ret,avgFrame
 
-def extract(frame,roi,win=0):
-    """
-    Extracts a region of interest (roi) from the frame.
-
-    Parameters
-    ----------
-    frame : picture
-    roi   : [x,y,w,h] where x,y is the top left corner. y=0 is at the top
-    win   : Number of pixels to capture around the roi. (i.e. capture a region 
-            centrered around the roi that is 'win' pixels larger than roi)
-
-    Returns
-    -------
-    ROI : Captured region of interest
-
-    """
-    ROI = np.array(frame[roi[1]-win:win+roi[1] + roi[3],roi[0]-win:win+roi[0] + roi[2]]).astype(float) # Extract the roi from the frame
-    return ROI
-
-def enhanceEdges(im,trim=0):
-    """
-    Enhance the edges of an image by taking the grad
-
-    Parameters
-    ----------
-    im : TYPE
-        DESCRIPTION.
-    trim : TYPE, optional
-        DESCRIPTION. The default is 0.
-
-    Returns
-    -------
-    edges : TYPE
-        DESCRIPTION.
-
-    """
-    grad  = np.gradient(im)
-    edges = np.sqrt(grad[0]**2 + grad[1]**2)
-    if(trim > 0): edges = edges[trim:-trim,trim:-trim]
-    return edges
-
 def trackTip(ROI,tipPos):
     threshold = 160
     ret,thresh = cv2.threshold(ROI.astype(np.uint8),threshold,255,0)            # Set threshold values for finding contours. high threshold since we've saturated the edges
@@ -227,110 +186,6 @@ def trackTip(ROI,tipPos):
     
     return tipPos
     
-def trackROI(im1,im2,dxy=[1,1],direction=""):
-    """
-    Returns the offset of im2 relative to im1. im1 and im2 must be the same
-    size and scale. Keep dxy=[1,1] to return offset in units of pixels.
-    When using with nanonis to detect drift, take the current scan frame 
-    position and subtract ox,oy from it. i.e.: center_x -= ox; center_y -= oy
-
-    Parameters
-    ----------
-    im1 : image to compare against
-    im2 : image to get the offset of
-    dxy : pixel size in x and y: [dx,dy]
-
-    Returns
-    -------
-    [ox,oy] : offset in x and y
-
-    """
-    # im1_edges = im1
-    # im2_edges = im2
-    im1_edges = enhanceEdges(im1)
-    im2_edges = enhanceEdges(im2)
-    
-    xcor = sp.correlate2d(im1_edges,im2_edges,mode='same')
-    y,x  = np.unravel_index(xcor.argmax(), xcor.shape)
-
-    ni = np.array(xcor.shape)
-    oy,ox = np.array([y,x]).astype(int) - (ni/2).astype(int)
-    
-    limit = 10
-    if(direction == "X"):
-        if(abs(oy) > limit):
-            oy = limit*np.sign(oy)
-            
-    if(direction == "Z"):
-        if(abs(ox) > limit):
-            ox = limit*np.sign(ox)
-    
-    ox *= -dxy[0]
-    oy *= -dxy[1]
-    
-    return np.array([ox,oy]),xcor
-
-def update(roi,ROI,win,frame,initialFrame,oxy=[0,0],xy=[0,0]):
-    """
-    Checks whether the region of interest around the tip has moved close enough
-    to the edge of the window it's tracked within. If it has moved close enough
-    to the edge, the roi coordinates are updated by oxy, then the sub image,
-    ROI is recaptured from the frame, as is the window around the sub image. 
-    This recentres WIN around roi so the tip can continue being tracked.
-
-    Parameters
-    ----------
-    roi : coordinates of the region of interest
-    ROI : 2D sub matrix/image extracted from frame using the coordinates roi
-    win : window size around roi
-    frame : whole frame
-    oxy : offset of the tracked ROI within the window. (i.e. coordinate of the 
-          moving tip within a static window around the ROI). This value will 
-          reset to 0,0 when the ROI reaches close to the edge if the window and 
-          the ROI/roi is updated
-    xy  : Running x,y coordinate of the tip with respect to its original pos
-
-    Returns
-    -------
-    ROI : Original ROI unless the tip moves close enough to the edge of the 
-          window around roi. In which case, the coordinates roi are updated and
-          ROI and WIN are recaptured
-    WIN : Window around the ROI. Is updated when ROI is updated
-    roi : Coordinates of the ROI
-    xy  : Running x,y coordinate of the tip with respect to its original pos
-
-    """
-    diff = abs(initialFrame.astype(float) - frame.astype(float))
-    tip = np.max(diff,axis=2)
-    tip /= np.max(tip)
-    mask = tip > 0.25
-    initialFrame[mask,:] = 0.0
-    diff = abs(initialFrame - frame)
-    tip = np.max(diff,axis=2)
-    
-    x,y = oxy
-    
-    if(not len(ROI)):
-        ROI = extract(tip,roi)
-        WIN = extract(tip,roi,win)
-        return ROI,WIN,roi,xy
-        
-    if(abs(x) > win/10):
-        print("roi changing x")
-        roi[0] += x
-        xy[0]  += x
-        ROI = extract(tip,roi) # Do  - initialFrame thing here
-        
-    if(abs(y) > win/10):
-        print("roi changing y")
-        roi[1] += y
-        xy[1]  += y
-        ROI = extract(tip,roi)
-        
-    WIN = extract(tip,roi,win)
-        
-    return ROI,WIN,roi,xy
-
 def drawRec(frame,rec,xy=[0,0],win=0):
     """
     Draw a rectangle at a location in the frame
@@ -390,7 +245,6 @@ def getInitialFrame(cap,n=10,demo=0):
     
     if(demo):
         cp = cv2.VideoCapture('../Dev/initialise.mp4')                          # Load in the mp4
-        # initialFrame = imread("initialFrame.png")
     else:
         cp = cap
     
@@ -430,35 +284,6 @@ def checkClick(event, x, y, flags, param):
     global clicked
     if event == cv2.EVENT_LBUTTONUP: clicked = True
     return
-
-getROI_initial = []
-getROI_final = []
-def getROI(cap):
-    global getROI_initial
-    global getROI_final
-    
-    print("Getting ROI")
-    windowName = "SelectROI"
-    cv2.namedWindow(windowName)
-    cv2.setMouseCallback(windowName, drawRectangle)
-    
-    _,frame = getAveragedFrame(cap,n=1)
-    while True:
-        if(len(getROI_final)): break
-        cv2.imshow(windowName,frame.astype(np.uint8))
-        if cv2.waitKey(25) & 0xFF == ord('q'): break                            # Press Q on keyboard to  exit
-    
-    cv2.destroyAllWindows()
-    
-    roi = []
-    if(len(getROI_final)): roi = [*getROI_initial,*(getROI_final - getROI_initial)]
-    
-    roi[2] += (roi[2]+1)%2
-    roi[3] += (roi[2]+1)%2
-    
-    getROI_initial = []
-    getROI_final = []
-    return roi
 
 def drawRectangle(event, x, y, flags, param):
     global getROI_initial, getROI_final

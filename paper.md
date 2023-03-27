@@ -44,7 +44,7 @@ as scanning over debris or rough areas can alter the tip.
 
 Fortunately, these tasks can be automated, and Scanbot is a program that not only automates several STM
 data acquisition techniques but also fully automates tip shaping and sample surveying in STM experiments.
-Scanbot utilises a dual sample holder (DSH) to prepare a high-quality tip, where a sample of interest can
+Scanbot utilises a dual sample holder (DSH) (figure 1) to prepare a high-quality tip, where a sample of interest can
 be mounted alongside a clean metal surface, which is ideal for tip preparation. When the STM tip requires
 refinement, Scanbot moves it from the sample of interest to the clean metal surface on the DSH. This is
 accomplished using built-in motors to maneuver the STM tip while tracking its position through a camera
@@ -53,9 +53,12 @@ Figure 1 shows how the position of the STM tip is tracked while it is moved from
 surface for tip refinement.
 
 ![Tracking and maneuvering the STM probe above the dual sample holder.
-The probe (inner blue box) is tracked within a moving window (outer blue box) as
-the tip (red marker) is moved from its initial position to its target position
-(green marker) over the clean metal surface.\label{fig:1}](TipTracking.png)
+**a)** Schematic of the dual sample holder setup.
+A sample of interest can be mounted next to a clean metal surface (e.g. Au(111)) which is ideal for tip shaping.
+**b)** A view from the camera feed used to track the STM probe as it is moved from the sample to the clean metal
+where the tip can be refined. The red marker indicates the current position of the probe apex and the green marker
+indicates the target position above the clean metal. A video of this can be seen in Scanbot's [documentation](https://new-horizons-spm.github.io/scanbot/automation/).
+\label{fig:1}](TipTracking.png)
 
 Figure 2 demonstrates Scanbot's ability to prepare a tip on a clean metal surface. By gently pushing the
 apex of the scanning probe into an atomically flat region of a metal surface, an imprint is left that

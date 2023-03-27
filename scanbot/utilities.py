@@ -106,7 +106,7 @@ def makeGif(GIF):
 ###############################################################################
 # Tip tracking
 ###############################################################################
-def getAveragedFrame(cap,n=1):
+def getAveragedFrame(cap,n=1,initialFrame=[]):
     """
     Read frames from cv2.VideoCapture
 
@@ -130,6 +130,15 @@ def getAveragedFrame(cap,n=1):
         avgFrame += np.array(frame).astype(np.float32)
     
     avgFrame = avgFrame/n
+    
+    if(len(initialFrame)):
+        diff = abs(initialFrame.astype(float) - frame.astype(float))
+        tip = np.max(diff,axis=2)
+        tip /= np.max(tip)
+        mask = tip > 0.25
+        initialFrame[mask,:] = 0.0
+        diff = abs(initialFrame - frame)
+        avgFrame = np.max(diff,axis=2)
     
     return ret,avgFrame
 
@@ -174,6 +183,50 @@ def enhanceEdges(im,trim=0):
     if(trim > 0): edges = edges[trim:-trim,trim:-trim]
     return edges
 
+def trackTip(ROI,tipPos):
+    threshold = 160
+    ret,thresh = cv2.threshold(ROI.astype(np.uint8),threshold,255,0)            # Set threshold values for finding contours. high threshold since we've saturated the edges
+    contours,hierarchy = cv2.findContours(thresh, 1, 2)                         # Pull out all contours
+    
+    area = 10
+    tipContour = -1
+    minRow = tipPos[1] - area
+    maxRow = tipPos[1] + area
+    if(minRow < 0): minRow = 0
+    if(maxRow > len(ROI) - 1): maxRow = len(ROI) - 1
+    
+    minCol = tipPos[0] - area
+    maxCol = tipPos[0] + area
+    if(minCol < 0): minCol = 0
+    if(maxCol > len(ROI[0]) - 1): maxCol = len(ROI[0]) - 1
+    
+    for idx,c in enumerate(contours):
+        mask = np.zeros_like(ROI).astype(np.uint8)
+        cv2.drawContours(mask, contours, idx, 255, -1)                          # Draw filled in contour on mask
+        if(np.sum(mask[minRow:maxRow,minCol:maxCol] > 0)):
+            tipContour = idx
+            break
+        
+    mask = mask/np.max(mask)
+    mask = mask.astype(np.uint8)
+    
+    if(tipContour == -1):
+        print("LOST TIP")
+        mask = np.zeros_like(ROI).astype(np.uint8)
+        cv2.drawContours(mask, contours, -1, 255, -1)                           # Draw filled in contour on mask
+        return mask,tipPos
+    
+    tipRow = max(loc for loc, val in enumerate(np.argmax(mask > 0,axis=1) > 0) if val)
+    mask[minRow:maxRow,minCol:maxCol] *= 2
+    mask[mask < 2] = 0
+    tipColLeft = np.argmax(np.argmax(mask > 0,axis=0) > 0)
+    tipColRight = len(mask[0]) - np.argmax(np.argmax(np.fliplr(mask) > 0,axis=0) > 0) - 1
+    tipCol = int((tipColLeft + tipColRight)/2)
+    
+    tipPos = np.array([tipCol,tipRow])
+    
+    return tipPos
+    
 def trackROI(im1,im2,dxy=[1,1],direction=""):
     """
     Returns the offset of im2 relative to im1. im1 and im2 must be the same
@@ -215,7 +268,7 @@ def trackROI(im1,im2,dxy=[1,1],direction=""):
     ox *= -dxy[0]
     oy *= -dxy[1]
     
-    return np.array([ox,oy])#,xcor
+    return np.array([ox,oy]),xcor
 
 def update(roi,ROI,win,frame,initialFrame,oxy=[0,0],xy=[0,0]):
     """

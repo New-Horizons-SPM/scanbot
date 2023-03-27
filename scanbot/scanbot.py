@@ -1038,43 +1038,31 @@ class scanbot():
         
         if(not len(target)): trackOnly = True
         
-        ROI = []
-        ROI,WIN,roi,xy = utilities.update(roi,ROI,win,frame,self.initialFrame.copy())
-        tipToROI = tipPos - roi[0:2]
-        
         success = True
         targetHit = False
-        xy  = np.array([0,0])
-        oxy = np.array([0,0])
-        currentPos = np.array([0,0])
         previousPos = np.array([0,0])
         pk = []
-        direction = ""
+        currentPos = tipPos.copy()
         while(cap.isOpened()):
             if(not success):
                 self.interface.sendReply("Error moving area... tip crashed... stopping")
                 global_.running.clear()
                 break
             
-            ret, frame = utilities.getAveragedFrame(cap,n=11)
+            ret, frame = utilities.getAveragedFrame(cap,n=11,initialFrame=self.initialFrame.copy())
             if(not ret): break
         
-            oxy = utilities.trackROI(im1=ROI, im2=WIN, direction=direction)
-            
-            currentPos = xy + oxy
-            
-            ROI,WIN,roi,xy = utilities.update(roi,ROI,win,frame,self.initialFrame.copy(),oxy,xy)
+            currentPos = utilities.trackTip(frame,currentPos)
             
             print(currentPos)
             
-            rec = utilities.drawRec(frame.astype(np.uint8), roi, xy=oxy)
-            rec = utilities.drawRec(rec, roi, win=win)
-            
-            if(len(tipPos)): rec = cv2.circle(rec, currentPos + tipPos, radius=3, color=(0, 0, 255), thickness=-1)
+            ret, frame = cap.read()
+            if(not ret): break
+            rec = cv2.circle(frame, currentPos, radius=3, color=(0, 0, 255), thickness=-1)
             if(len(target)): rec = cv2.circle(rec, target + tipPos, radius=3, color=(0, 255, 0), thickness=-1)
             
             if(not (currentPos == previousPos).all()):
-                pk.append([rec,ROI,WIN,currentPos])
+                pk.append([rec,currentPos,frame])
                 previousPos = currentPos.copy()
                 
             cv2.imshow('Frame',rec)

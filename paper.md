@@ -67,7 +67,7 @@ achieved.
 
 ![Successive images (left to right) of the tip's imprint on a clean metal
 surface, each following a more agressive tip-shaping action in a different location. The area
-and circulatiry of each imprint reflects the geometry of the apex of the scanning probe. Thus
+and circularity of each imprint reflects the geometry of the apex of the scanning probe. Thus
 the process is repeated until a desired geometry is achieved.\label{fig:2}](AutoTipShaping.png)
 
 # Statement of need
@@ -75,7 +75,7 @@ the process is repeated until a desired geometry is achieved.\label{fig:2}](Auto
 To reduce the time-intensive nature of STM experiments, various innovative solutions have been
 implemented to automate specific tasks. For instance, Wang et al. created a Python package that
 automates probe conditioning for Scanning Tunneling Spectroscopy [@Wang_2021]. However, this package
-still requires manual preparation of the tip for such that it can acquire clean images.
+still requires manual preparation of the tip such that it can acquire clean images.
 Some researchers have employed the use of machine learning algorithms [@Gordon_2020] to analyse
 acquired images and determine when a probe needs refining, then Reinforcement Learning (RL) agents can
 condition the probe accordingly [@Schiffrin_2020]. Although these approaches have significantly advanced

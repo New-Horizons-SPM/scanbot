@@ -129,6 +129,7 @@ high-quality tip is achieved (left to right, above). Details about this process 
 To accomplish this, Scanbot uses the course motor to maneuver the STM tip while monitoring its position through a camera feed. After the tip has been refined,
 it is moved back to the sample of interest, where a survey can be carried out.
 In the video below, Scanbot is tracking the STM head as it moves the tip from the sample to the clean metal on the dual sample holder.
+<img alt="DSH" src="../DSH.png" />
 <div class="video-container"><iframe src="../DSHNav.mp4" style="position: relative; width: 100%; height: 22.172vw" frameborder="0"allowfullscreen></iframe></div></p>
 <p><br></p>
 <h3 id="in-development">In Development</h3>
@@ -149,14 +150,15 @@ Through the operation of Scanbot, these measurements will be used to build a tra
 <h3 id="1-setup">1. Setup</h3>
 <p>These steps must be carried out before Scanbot is able to automatically move the tip between the sample and the clean metal.</p>
 <ol>
-<li>Drive the STM tip to a location in close proximity to the sample, making sure the STM tip, sample of interest, and clean metal surface are in clear view of the camera. </li>
+<li>Making sure the STM tip, sample of interest, and clean metal surface are in clear view of the camera.</li>
 <li>Run the <code>auto_init</code> command. This will initialise the locations of the STM tip, sample, and clean metal.<ul>
-<li>Draw a box around the length of the entire tip, encapsulating some of the tip holder in the frame like in the video above.</li>
-<li>Place a marker at the apex of the tip.</li>
+<li>Drive the tip completely outside the view of the camera, then click within the picture to set the background frame.</li>
+<li>Drive the tip back into view of the camera, in close proximity to the sample.</li>
+<li>Place a marker near the apex of the tip.</li>
 <li>Place a marker at a safe distance above the clean metal.</li>
 <li>Place a marker at a safe distance above the sample.</li>
 <li><strong>Note: Close any other applications that use the camera as they might prevent Scanbot from accessing it.</strong></li>
-<li><strong>Note2: If the course piezos are moved manually at any point, Scanbot will have incorrect information about the location of the tip and this process must be repeated.</strong></li>
+<li><strong>Note2: If the course piezos are moved manually at any point, Scanbot will have incorrect information about the location of the tip and this process must be repeated. Same goes for moving the camera.</strong></li>
 </ul>
 </li>
 </ol>
@@ -165,7 +167,7 @@ Through the operation of Scanbot, these measurements will be used to build a tra
 <ol>
 <li>Run the <code>move_tip_to_clean</code> command. This will move the tip to the location you set above the clean metal and begin an auto approach.<ul>
 <li><strong>Configure the correct piezo voltages, frequency, and number of steps for your machine</strong> (see <a href="../commands/">commands</a> or run <code>help move_tip_to_clean</code>).</li>
-<li>Observe the camera feed and ensure the tip is tracked correctly. If not, run <code>stop</code>, then rerun <code>auto_init</code> and carefully draw a new box around the tip.</li>
+<li>Observe the camera feed and ensure the tip is tracked correctly. If not, run <code>stop</code>, then rerun <code>auto_init</code> after refocusing the camera.</li>
 <li>Note: run the <code>stop</code> command at any time to abort.</li>
 </ul>
 </li>
@@ -226,7 +228,7 @@ However, if the tip becomes unstable, Scanbot will recognise this and refine the
 The following rules have been applied to any command where the course piezos are utilised:
 <br></p>
 <ul>
-<li>The tip can never be moved in the <code>Z-</code> direction (down) when using the course piezo. Instead, auto approach is used.</li>
+<li>Scanbot can never move the tip in the <code>Z-</code> direction (down) when using the course piezo. Instead, auto approach is used.</li>
 <li>When moving in <code>X</code> or <code>Y</code> directions, the tunnelling current must be monitored after every 10 steps.</li>
 <li>A tunnelling current greater than the threshold set in the config file is considered a crash (see <a href="../configuration/#tip-crash-safety">Tip Crash Safety</a>).</li>
 <li>In the event of a crash, the tip will be retracted using the <code>Z+</code> piezo and operation will cease.</li>

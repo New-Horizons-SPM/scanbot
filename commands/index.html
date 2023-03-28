@@ -338,12 +338,6 @@
 </thead>
 <tbody>
 <tr>
-<td>move_tip</td>
-<td><code>-light</code>: (int) Flag to turn the light on before moving and off after moving. This uses hk_light.turn_on() and hk_light.turn_off() functions. 0=Don't, 1=Do. Default: <code>0</code><br><code>-cameraPort</code>: (int) cv2 camera port - usually 0 for desktops or 1 for laptops with an inbuilt camera.. Default: <code>0</code><br><code>-trackOnly</code>: (int) Flag to not disable motor and simply track the tip. 0=motor active. 1=tracking only mode. Default: <code>0</code><br><code>-xStep</code>: (int) Number of motor steps in the X direction before updating tip position. More=Faster but might lose the tip. Default: <code>100</code><br><code>-zStep</code>: (int) Number of motor steps to move in +Z (upwards) before updating tip position. More=Faster but might lose the tip. Default: <code>250</code><br><code>-xV</code>: (float) Piezo voltage when moving motor steps in x direction. Default: <code>130</code><br><code>-zV</code>: (float) Piezo voltage when moving motor steps in z direction. Default: <code>180</code><br><code>-xF</code>: (float) Piezo frequency when moving motor steps in x direction. Default: <code>1100</code><br><code>-zF</code>: (float) Piezo frequency when moving motor steps in z direction. Default: <code>1100</code></td>
-<td>Move the tip to a target location using the camera feed to track the motion of the STM head</td>
-<td>move_tip -trackOnly=1</td>
-</tr>
-<tr>
 <td>auto_tip_shape</td>
 <td><code>-n</code>: (int) Max number of tip shapes to perform. -1 means keep going until criterea met. Default: <code>10</code><br><code>-wh</code>: (float) Size of the square scan frame when imaging the clean surface. Default: <code>10e-9</code><br><code>-sym</code>: (float) Minimum circularity requirement. 0=don't care, 1=perfectly circle. Default: <code>0.7</code><br><code>-size</code>: (float) Max size of the desired tip imprint in units of nm2. Default: <code>1.2</code><br><code>-zQA</code>: (float) z-lift when performing a light tip shape to asses quality of tip (m). Default: <code>-0.9e-9</code><br><code>-ztip</code>: (float) z-lift when performing a tip shape to alter the tip (m). Default: <code>-1.5e-9</code><br><code>-st</code>: (int) Drift compensation time (s). Default: <code>10</code></td>
 <td>Routine that automatically prepares a nice tip. Assumes the substrate is a clean metal.</td>

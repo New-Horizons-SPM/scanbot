@@ -22,6 +22,7 @@ When the STM tip requires refinement, Scanbot moves it from the sample of intere
 To accomplish this, Scanbot uses the course motor to maneuver the STM tip while monitoring its position through a camera feed. After the tip has been refined,
 it is moved back to the sample of interest, where a survey can be carried out.
 In the video below, Scanbot is tracking the STM head as it moves the tip from the sample to the clean metal on the dual sample holder.
+![DSH](DSH.png)
 ![type:video](DSHNav.mp4)
 
 <br>
@@ -48,21 +49,22 @@ This section describes how the automation aspect of Scanbot can be used for supe
 ### 1. Setup
 These steps must be carried out before Scanbot is able to automatically move the tip between the sample and the clean metal.
 
-1. Drive the STM tip to a location in close proximity to the sample, making sure the STM tip, sample of interest, and clean metal surface are in clear view of the camera. 
+1. Making sure the STM tip, sample of interest, and clean metal surface are in clear view of the camera.
 2. Run the ```auto_init``` command. This will initialise the locations of the STM tip, sample, and clean metal.
-    - Draw a box around the length of the entire tip, encapsulating some of the tip holder in the frame like in the video above.
-    - Place a marker at the apex of the tip.
+    - Drive the tip completely outside the view of the camera, then click within the picture to set the background frame.
+    - Drive the tip back into view of the camera, in close proximity to the sample.
+    - Place a marker near the apex of the tip.
     - Place a marker at a safe distance above the clean metal.
     - Place a marker at a safe distance above the sample.
     - **Note: Close any other applications that use the camera as they might prevent Scanbot from accessing it.**
-    - **Note2: If the course piezos are moved manually at any point, Scanbot will have incorrect information about the location of the tip and this process must be repeated.**
+    - **Note2: If the course piezos are moved manually at any point, Scanbot will have incorrect information about the location of the tip and this process must be repeated. Same goes for moving the camera.**
 
 ### 2. End-to-End Supervised Test
 **It is advised to go through these steps, especially steps 1 and 3, each time ```auto_init``` is run.**
 
 1. Run the ```move_tip_to_clean``` command. This will move the tip to the location you set above the clean metal and begin an auto approach.
     - **Configure the correct piezo voltages, frequency, and number of steps for your machine** (see [commands](commands.md) or run ```help move_tip_to_clean```).
-    - Observe the camera feed and ensure the tip is tracked correctly. If not, run ```stop```, then rerun ```auto_init``` and carefully draw a new box around the tip.
+    - Observe the camera feed and ensure the tip is tracked correctly. If not, run ```stop```, then rerun ```auto_init``` after refocusing the camera.
     - Note: run the ```stop``` command at any time to abort.
 2. Once the tip has approached, run ```auto_tip_shape``` with the appropriate inputs for your system (e.g. metal used, etc.).
     - This function may take some time, for testing purposes run the ```stop``` command once you've [verified it's working correctly](#auto-tip-shaping).
@@ -112,7 +114,7 @@ The primary concern when it comes to automating movement of the STM head is acci
 The following rules have been applied to any command where the course piezos are utilised:
 <br>
 
-- The tip can never be moved in the ```Z-``` direction (down) when using the course piezo. Instead, auto approach is used.
+- Scanbot can never move the tip in the ```Z-``` direction (down) when using the course piezo. Instead, auto approach is used.
 - When moving in ```X``` or ```Y``` directions, the tunnelling current must be monitored after every 10 steps.
 - A tunnelling current greater than the threshold set in the config file is considered a crash (see [Tip Crash Safety](../configuration/#tip-crash-safety)).
 - In the event of a crash, the tip will be retracted using the ```Z+``` piezo and operation will cease.

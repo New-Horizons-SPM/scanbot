@@ -112,3 +112,161 @@ def run(cleanImage, tipImprint, tipShapeProps, size, sym):
     
     return tipShapeProps            # Return the updated tip shaping properties
 ```
+
+## hk_commands
+This hook is used to implement custom written commands into Scanbot. To enable it, set ```hk_commands=1``` in ```scanbot_config.ini```.
+Commands in hk_commands.py that have the same name as any existing Scanbot command will take priority.
+
+Structure: hk_commands.py must contain the class ```hk_commands``` and contain the class variable ```commands```. ```commands``` is a python dictionary
+that maps the command name (key), as called by the user, to the function that handles it.
+
+Scanbot commands can be run either in the main thread or in a separate thread. The below Python code shows the implementation of two similar commands,
+the first, ```change_bias```, is a scenario where threading may be unnecessary, while in the second, ```change_bias2```, it could be useful.
+To test this script:
+
+1. Set ```hk_commands=1``` in ```scanbot_config.ini```
+2. Copy and paste the below code to ~/scanbot/scanbot/hk_commands.py
+3. Restart Scanbot ```python scanbot_interface.py -c```
+4. Try running ```help change_bias``` or simply ```change_bias -V=1```
+
+**hk_commands.py**
+```Python
+from nanonisTCP.Bias import Bias                                                # Import the NanonisTCP Bias Module. Used to control the tip bias
+import global_                                                                  # Import the global variables
+import time                                                                     # Import time for sleeping
+
+class hk_commands(object):
+    def __init__(self,interface):                                               # Set up the constructor like this
+        self.interface = interface                                              # Reference to scanbot_interface
+        self.initCommandDict()                                                  # Initialise the dictionary containing a list of custom commands
+    
+    def initCommandDict(self):
+        self.commands = {                                                       # A dictionary that maps commands with function names.
+                         'change_bias'  : self.changeBias,                      # An example command without threading. Here, the user will call change_bias
+                         'change_bias2' : self.changeBias2,                     # An example command with threading. Here, the user will call change_bias2
+                         }
+    
+    def changeBias(self,user_args,_help=False):
+        """
+        This function changes the bias in Nanonis. It performs this task
+        without the use of multi-threading which means it cannot Scanbot will
+        be busy until the task is complete. This is fine for commands that will
+        not interfere with other threaded tasks (e.g. taking control of the 
+        motors while a survey is running). Tasks that are not threaded can run
+        while a threaded task is already running. Tasks that are not threaded
+        cannot be stopped until complete (i.e. running 'stop' command will not
+        work).
+
+        Parameters
+        ----------
+        user_args : arguments passed in by the user when calling the command
+        _help     : flag set when user calls "help change_bias"
+
+        """
+        arg_dict = {'-V'    : ['0',        lambda x: float(x), "(float) Set the tip bias."],
+                    '-arg2' : ['some str', lambda x: str(x),   "(str) An example user argument that defaults to 'some str' is a string."]}
+        
+        if(_help): return arg_dict                                              # This will get called when the user runs the command 'help exUnthreaded'
+        
+        error,user_arg_dict = self.interface.userArgs(arg_dict,user_args)       # This will validate arg1 and arg2 as int() and str(), respectively
+        if(error):
+            return error + "\nRun ```help change_bias``` if you're unsure."     # Inform the user of any errors in their input
+        
+        V,arg2 = self.interface.unpackArgs(user_arg_dict)                       # Unpack the arguments
+        
+        if(V == 0):                                                             # Validation
+            errorMessage = "Cannot set bias to zero!"
+            return errorMessage                                                 # Return with error
+        
+        NTCP,connection_error = self.interface.scanbot.connect()                # Connect to nanonis via TCP
+        if(connection_error):
+            return connection_error                                             # Return error message if there was a problem connecting        
+        
+        biasModule = Bias(NTCP)                                                 # The NanonisTCP Bias module
+        biasModule.Set(V)                                                       # Set the bias in Nanonis
+        
+        self.interface.sendReply("Bias set to " + str(V) + "! arg2 = " + arg2)  # This is how you send a reply.
+        
+        self.interface.scanbot.disconnect(NTCP)                                 # Remember to free up the TCP port
+        
+        return                                                                  # Return None for success
+    
+    def changeBias2(self,user_args,_help=False):
+        """
+        This function will change the bias in Nanonis by threading the function
+        "threadedFunction" after validating user input. Only one threaded
+        function can run at a time. If the user tries to run a second threaded
+        function, they will be presented with an error. This is handled by the
+        global flags in global_. Threaded tasks run in the background and can
+        be stopped by the user running the "stop" command.
+
+        Parameters
+        ----------
+        user_args : arguments passed in by the user when calling the command
+        _help     : flag set when user calls "help change_bias2"
+
+        """
+        arg_dict = {'-V'    : ['0',  lambda x: float(x), "(float) Set the tip bias."],
+                    '-wait' : ['10', lambda x: int(x),   "(int) Seconds to wait after changing bias."]}
+        
+        if(_help): return arg_dict                                              # This will get called when the user runs the command 'help exUnthreaded'
+        
+        error,user_arg_dict = self.interface.userArgs(arg_dict,user_args)       # This will validate arg1 and arg2 as int() and str(), respectively
+        if(error):
+            return error + "\nRun ```help change_bias2``` if you're unsure."    # Inform the user of any errors in their input
+        
+        args = self.interface.unpackArgs(user_arg_dict)                         # Unpack the arguments
+        
+        func = lambda : self.threadedFunction(*args)                            # Handle to the function to be threaded
+        return self.interface.threadTask(func)                                  # Return and thread the function
+    
+    def threadedFunction(self,V,wait):
+        """
+        This function changes the bias in Nanonis and then waits a specified
+        amount of time.
+        
+        This function is run on a new thread. It will run in the backgound 
+        while Scanbot can still reveive commands. It should periodically check
+        event flags by calling 'self.interface.scanbot.checkEventFlags()'. If
+        True is returned, the 'stop' function has been called by the user.
+        Whenever returning, the global running flag should be cleared by 
+        calling global_.running.clear().
+
+        Parameters
+        ----------
+        V    : Change the bias to this value
+        wait : Wait this many seconds after changing the bias
+
+        """
+        if(V == 0):                                                             # Validation
+            errorMessage = "Cannot set bias to zero!"
+            global_.running.clear()                                             # Free up the running flag. This must be done whenever exiting a threaded function
+            return errorMessage                                                 # Return with error
+        
+        NTCP,connection_error = self.interface.scanbot.connect()                # Connect to nanonis via TCP
+        if(connection_error):
+            global_.running.clear()                                             # Free up the running flag. This must be done whenever exiting a threaded function
+            return connection_error                                             # Return error message if there was a problem connecting        
+        
+        biasModule = Bias(NTCP)                                                 # The NanonisTCP Bias module
+        biasModule.Set(V)                                                       # Set the bias in Nanonis
+        
+        self.interface.sendReply("Bias set to " + str(V))                       # This is how you send a reply.
+        
+        self.interface.sendReply("Waiting " + str(wait) + " seconds...")        # This is how you send a reply.
+        
+        seconds = 0
+        while(seconds < wait):
+            time.sleep(1)
+            seconds += 1                                                        # Keep track of how many seconds have gone by
+            if(self.interface.scanbot.checkEventFlags() == True):               # Periodically check event flags when appropriate to see if the user has called "stop"
+                self.interface.sendReply("Stopping early!")                     # This is how you send a reply.
+                break
+        
+        self.interface.sendReply("Done!")                                       # This is how you send a reply.
+        
+        self.interface.scanbot.disconnect(NTCP)                                 # Remember to free up the TCP port
+        global_.running.clear()                                                 # Free up the running flag. This must be done whenever exiting a threaded function
+        
+        return
+```

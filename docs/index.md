@@ -32,7 +32,7 @@ Run ```python scanbot_interface.py -c```
 
 ## Usage
 For a full list of Scanbot commands, see [commands](./commands). Alternatively run the ```help``` command or, for help with a specific command, run ```help <command_name>```.
-For example work-flow automation, see [Intended Usage](./automation/#intended-usage)
+For example work-flow automation, see [Intended Usage](./automation/#intended-usage). To implement your own Scanbot commands, see [hk_commads](./hooks/#hk_commands).
 
 ### Configuration
 The scanbot_config.ini configuration file can store things like the default IP adress, default TCP Ports, etc. Save it in the project's root directory.
@@ -58,6 +58,11 @@ path=./scanbot_images/          # Directory for saved PNGs
     - Full control over the course motors
 * Hooks
     - Scanbot has a number of built-in [hooks](./hooks) to let you customise key functionality.
+
+## Contributing
+If you would like to contibute to the Scanbot project you can do this through the GitHub [Issue Register](https://github.com/New-Horizons-SPM/scanbot/issues).
+If you come across a problem with Scanbot or would like to request new features, you can raise a [new issue](https://github.com/New-Horizons-SPM/scanbot/issues/new).
+Alternatively, scan through our [existing issues](https://github.com/New-Horizons-SPM/scanbot/issues); if you find one you're interested in fixing/implementing, feel free to open a pull request.
 
 ## Citing
 

@@ -79,11 +79,11 @@ To reduce the time-intensive nature of STM experiments, various innovative solut
 implemented to automate specific tasks. For instance, Wang et al. created a Python package that
 automates probe conditioning for Scanning Tunneling Spectroscopy [@Wang_2021]. However, this package
 still requires manual preparation of the tip such that it can acquire clean images.
-Some researchers have employed the use of machine learning algorithms [@Gordon_2020] to analyse
-acquired images and determine when a probe needs refining, then Reinforcement Learning (RL) agents can
+Some researchers have employed the use of machine learning algorithms to analyse
+acquired images and determine when a probe needs refining [@Gordon_2020][@Rashidi_2018], then Reinforcement Learning (RL) agents can
 condition the probe accordingly [@Schiffrin_2020]. Although these approaches have significantly advanced
 automated STM experiments, they are often tailored to specific surfaces and STM equipment, making it
-challenging to transfer the code to other labs studying different systems or working with different
+challenging to transfer directly to other labs studying different systems or working with different
 brands of STMs.
 
 To overcome these limitations, we have developed Scanbot, a Python robot that is compatible with

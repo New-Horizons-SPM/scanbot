@@ -27,6 +27,12 @@ In the video below, Scanbot is tracking the STM head as it moves the tip from th
 
 <br>
 
+### Sample Surveying
+After preparing a tip, scanbot can autonomously survey a sample of interest using the ```survey``` and ```survey2``` commands. The series of images acquired below were taken by Scanbot
+of a real sample in our lab. Each image in the 7x7 grid is a 100 nm, 512x512 pixel topographic scan. Upon completion of the survey, Scanbot can retract the tip, move to a new location,
+and begin acquiring a new survey. If the tip becomes unstable during a survey, Scanbot will automatically retract the tip and repreapre it according to the protocols above.
+![survey](survey.png)
+
 ### In Development
 At present, the tip shaping criteria overlook the spectroscopic performance of the STM tip. Here, it is possible to leverage the well-known Shockley surface states of
 (111) metal surfaces, using them as a benchmark to compare STS obtained by the tip on a clean metal surface. As a result, an additional criterion could ensure that

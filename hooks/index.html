@@ -284,7 +284,7 @@ class hk_commands(object):
 
         if(_help): return arg_dict                                              # This will get called when the user runs the command 'help exUnthreaded'
 
-        error,user_arg_dict = self.interface.userArgs(arg_dict,user_args)       # This will validate arg1 and arg2 as int() and str(), respectively
+        error,user_arg_dict = self.interface.userArgs(arg_dict,user_args)       # This will validate args V and arg2 as float() and str(), respectively
         if(error):
             return error + &quot;\nRun ```help change_bias``` if you're unsure.&quot;     # Inform the user of any errors in their input
 
@@ -327,7 +327,7 @@ class hk_commands(object):
 
         if(_help): return arg_dict                                              # This will get called when the user runs the command 'help exUnthreaded'
 
-        error,user_arg_dict = self.interface.userArgs(arg_dict,user_args)       # This will validate arg1 and arg2 as int() and str(), respectively
+        error,user_arg_dict = self.interface.userArgs(arg_dict,user_args)       # This will validate args V and wait as float() and int(), respectively
         if(error):
             return error + &quot;\nRun ```help change_bias2``` if you're unsure.&quot;    # Inform the user of any errors in their input
 

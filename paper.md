@@ -80,14 +80,14 @@ implemented to automate specific tasks. For instance, Wang et al. created a Pyth
 automates probe conditioning for Scanning Tunneling Spectroscopy [@Wang_2021]. However, this package
 still requires manual preparation of the tip such that it can acquire clean images.
 Some researchers have employed the use of machine learning algorithms to analyse
-acquired images and determine when a probe needs refining [@Gordon_2020][@Rashidi_2018], then Reinforcement Learning (RL) agents can
+acquired images and determine when a probe needs refining [@Gordon_2020], [@Rashidi_2018], then Reinforcement Learning (RL) agents can
 condition the probe accordingly [@Schiffrin_2020]. Although these approaches have significantly advanced
 automation in STM experiments, they are often tailored to specific surfaces and STM equipment, making it
 challenging to transfer directly to other labs studying different systems or working with different
 STM systems.
 
 To overcome these limitations, we have developed Scanbot, a Python robot that is compatible with
-a broader range of STMs, specifically those compatible with the Nanonis V5 software [@Nanonis_2015][@Ceddia_2022]. Additionally,
+a broader range of STMs, specifically those compatible with the Nanonis V5 software [@Nanonis_2015], [@Ceddia_2022]. Additionally,
 our package incorporates Scanbot's distinctive approach to tip shaping, which involves monitoring
 the tip's motion above a dual sample holder. This method is particularly beneficial in experiments
 where the sample's properties might make it challenging to achieve a high-quality scanning probe

@@ -8,23 +8,25 @@ tags:
 authors:
   - name: Julian Ceddia
     orcid: 0000-0003-3990-8852
-    affiliation: 1
+    affiliation: "1, 2"
     corresponding: true
   - name: Jack Hellerstedt
     orcid: 0000-0003-2282-8223
     equal-contrib: false
-    affiliation: 1
+    affiliation: "1, 2"
   - name: Benjamin Lowe
     orcid: 0000-0002-5157-7737
     equal-contrib: false
-    affiliation: 1
+    affiliation: "1, 2"
   - name: Agustin Schiffrin
     orcid: 0000-0003-1140-8485
     equal-contrib: false
-    affiliation: 1
+    affiliation: "1, 2"
 affiliations:
- - name: Monash University, Australia
+ - name: School of Physics & Astronomy, Monash University, Clayton, Victoria 3800, Australia
    index: 1
+ - name: ARC Centre of Excellence in Future Low-Energy Electronics Technologies, Monash University, Clayton, Victoria 3800, Australia
+   index: 2
 date: 13 March 2023
 bibliography: paper.bib
 
@@ -32,43 +34,41 @@ bibliography: paper.bib
 
 # Summary
 
-Scanning Tunnelling Microscopes (STM) are capable of capturing images of surfaces with atomic resolution.
-This is achieved by scanning an atomically sharp probe across the surface of a sample while monitoring an
-electric current. However, two common and time-consuming tasks in STM experiments are conditioning the
-probe (such as sharpening it) and identifying areas of interest on a sample. The quality of STM images
-heavily relies on the exact geometry and composition of the apex of the scanning probe. Blunt tips result
-in blurry images while contaminated tips can lead to noisy images due to interactions with the sample. To
-improve image quality, the probe can be conditioned using a process called "tip shaping," which involves
-refining the tip by plunging it into a metallic substrate. Maintaining a "good tip" is not guaranteed
-as scanning over debris or rough areas can alter the tip.
+Scanning Tunnelling Microscopes (STM) are capable of capturing images of surfaces with atomic-scale resolution.
+This is achieved by scanning an atomically sharp probe across the surface of the sample while monitoring an
+electric current. However, the quality of STM data relies heavily on the atomic-scale geometry and composition
+of the scanning probe apex, as well as the roughness and cleanliness of the scanned region. For instance, blunt tips
+result in blurry images while contaminated tips can lead to noisy images due to interactions with the sample. 
+As a result, optimal STM data acquisition commonly requires time-consuming tasks such as probe conditioning - i.e.
+sharpening via "tip-shaping", where the apex of the probe can be refined by poking it into a clean metal surface - and
+identification of areas of interest of the sample. Moreover, the quality of the probe can vary during a scan, especially 
+when scanning over debris or excessively rough areas, necessitating additional tip-shaping.
 
-Fortunately, these tasks can be automated, and Scanbot is a program that not only automates several STM
-data acquisition techniques but also fully automates tip shaping and sample surveying in STM experiments.
-Scanbot utilises a dual sample holder (DSH) (figure 1) to prepare a high-quality tip, where a sample of interest can
-be mounted alongside a clean metal surface, which is ideal for tip preparation. When the STM tip requires
-refinement, Scanbot moves it from the sample of interest to the clean metal surface on the DSH. This is
-accomplished using built-in motors to maneuver the STM tip while tracking its position through a camera
-feed. After refining the tip, it is moved back to the sample of interest, where a survey can be conducted.
-Figure 1 shows how the position of the STM tip is tracked while it is moved from a sample to a clean metal
-surface for tip refinement.
+Here, we present Scanbot, a program that fully automates common STM
+data acquisition techniques, as well as tip-shaping and sample surveying.
+Scanbot relies on a dual sample holder (DSH; figure 1), where a sample of interest is
+mounted alongside a clean reference metal surface, which is ideal for tip preparation. 
+Scanbot is able to analyse STM images and identify when the probe requires conditioning, subsequently moving it from the sample of interest to the 
+clean reference metal, where it will prepare a scanning probe capable of obtaining high-quality STM images.
+This is accomplished using built-in piezoceramic scanners to maneuver the STM tip while tracking its position through a camera
+feed; figure 1b). Once Scanbot determines that the probe has been conditioned adequately, it moves the tip back to the sample of interest and STM data acquisition resumes.
 
-![Tracking and maneuvering the STM probe above the dual sample holder.
-**a)** Schematic of the dual sample holder setup.
-A sample of interest can be mounted next to a clean metal surface (e.g. Au(111)) which is ideal for tip shaping.
-**b)** A view from the camera feed used to track the STM probe as it is moved from the sample to the clean metal
-where the tip can be refined. The red marker indicates the current position of the probe apex and the green marker
-indicates the target position above the clean metal. A video of this can be seen in Scanbot's [documentation](https://new-horizons-spm.github.io/scanbot/automation/).
+![Tracking and maneuvering the STM probe above the dual sample holder (DSH).
+**a)** Schematic of the STM tip over the dual sample holder setup.
+A sample of interest is mounted next to a clean reference metal substrate (e.g. Au(111)) which is ideal for tip shaping.
+**b)** Image from the camera feed used by Scanbot to track and maneuver the STM probe automatically from the sample to the clean reference metal,
+where it can be refined. The red (green) marker indicates the probe apex position (target position, respectively).
+See Scanbot [documentation](https://new-horizons-spm.github.io/scanbot/automation/) for a video example.
 \label{fig:1}](TipTracking.png)
 
-Figure 2 demonstrates Scanbot's ability to prepare a tip on a clean metal surface. By gently pushing the
-apex of the scanning probe into an atomically flat region of a metal surface, an imprint is left that
-reflects the geometry of the tip. This imprint can then be scanned, and the resulting image is similar to
-the auto-correlation function of the tip's apex. The quality of the tip can be assessed by measuring the area,
-symmetry, and center of mass of the imprint. If the imprint does not meet the desired criteria, a more
-aggressive tip shaping action is carried out, and the process is repeated until a high-quality tip is
+Figure 2 demonstrates Scanbot's ability to recondition a 'bad' tip on a clean reference metal surface. 
+Scanbot can gently impinge the scanning probe apex onto a clean, flat region of the metal surface, which results in an imprint associated
+with the geometry of the tip (figure 2a)). This imprint can then be scanned, and the resulting image is similar to
+the auto-correlation function of the tip's apex. The quality of the tip can be assessed by measuring the area and circularity of the imprint.
+If the imprint does not meet the desired criteria, a more aggressive tip shaping action is carried out, and the process is repeated until a high-quality tip is
 achieved.
 
-![Successive images (left to right) of the tip's imprint on a clean metal
+![Successive STM images (left to right) of the tip's imprint on a clean metal
 surface, each following a more agressive tip-shaping action in a different location. The area
 and circularity of each imprint reflects the geometry of the apex of the scanning probe. Thus
 the process is repeated until a desired geometry is achieved.\label{fig:2}](AutoTipShaping.png)
@@ -82,12 +82,12 @@ still requires manual preparation of the tip such that it can acquire clean imag
 Some researchers have employed the use of machine learning algorithms to analyse
 acquired images and determine when a probe needs refining [@Gordon_2020][@Rashidi_2018], then Reinforcement Learning (RL) agents can
 condition the probe accordingly [@Schiffrin_2020]. Although these approaches have significantly advanced
-automated STM experiments, they are often tailored to specific surfaces and STM equipment, making it
+automation in STM experiments, they are often tailored to specific surfaces and STM equipment, making it
 challenging to transfer directly to other labs studying different systems or working with different
-brands of STMs.
+STM systems.
 
 To overcome these limitations, we have developed Scanbot, a Python robot that is compatible with
-a broader range of STMs, specifically those compatible with the Nanonis V5 software [@Ceddia_2022]. Additionally,
+a broader range of STMs, specifically those compatible with the Nanonis V5 software [@Nanonis_2015][@Ceddia_2022]. Additionally,
 our package incorporates Scanbot's distinctive approach to tip shaping, which involves monitoring
 the tip's motion above a dual sample holder. This method is particularly beneficial in experiments
 where the sample's properties might make it challenging to achieve a high-quality scanning probe
@@ -95,8 +95,8 @@ without needing to manually switch out the sample for a clean metal on which the
 
 Scanbot has been developed in a modular fashion, which means its functionality can easily be expanded
 or improved through contributions from the open-source community. Furthermore, through the use of [hooks](https://new-horizons-spm.github.io/scanbot/hooks/),
-users can customise or replace key functionality that is likely to be system- or lab-specific, without 
-rewriting Scanbot's source code. This has the advantage of being able to pull the latest Scanbot updates wihtout
+users can customise or replace key funcionalities that are system- or lab-specific, without 
+rewriting Scanbot's source code. This has the advantage of being able to update Scanbot to the latest version without
 losing customised code. Such hooks can also be used to improve Scanbot's existing functionality or test potential new features. For instance,
 Scanbot's algorithmic approach to automated tip shaping might benefit the integration of an RL agent. This could be achieved by
 leveraging the hook [hk_tipShape](https://new-horizons-spm.github.io/scanbot/hooks/#hk_tipshape), where important parameters related to tip shaping can be adjusted based on images of the tip's imprint.

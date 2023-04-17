@@ -1,0 +1,4 @@
+scanbot.egg-info*
+*scanbot_config.ini
+*_pycache_*
+scanbot/zuliprc

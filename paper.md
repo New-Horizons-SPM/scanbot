@@ -63,7 +63,7 @@ See Scanbot [documentation](https://new-horizons-spm.github.io/scanbot/automatio
 
 Figure 2 demonstrates Scanbot's ability to recondition a 'bad' tip on a clean reference metal surface. 
 Scanbot can gently impinge the scanning probe apex onto a clean, flat region of the metal surface, which results in an imprint associated
-with the geometry of the tip (figure 2a)). This imprint can then be scanned, and the resulting image is similar to
+with the geometry of the tip. This imprint can then be scanned, and the resulting image is similar to
 the auto-correlation function of the tip's apex. The quality of the tip can be assessed by measuring the area and circularity of the imprint.
 If the imprint does not meet the desired criteria, a more aggressive tip shaping action is carried out, and the process is repeated until a high-quality tip is
 achieved.
@@ -83,7 +83,7 @@ Some researchers have employed the use of machine learning algorithms to analyse
 acquired images and determine when a probe needs refining [@Gordon_2020], [@Rashidi_2018], then Reinforcement Learning (RL) agents can
 condition the probe accordingly [@Schiffrin_2020]. Although these approaches have significantly advanced
 automation in STM experiments, they are often tailored to specific surfaces and STM equipment, making it
-challenging to transfer directly to other labs studying different systems or working with different
+challenging to transfer them directly to other labs studying different kinds of samples or working with different
 STM systems.
 
 To overcome these limitations, we have developed Scanbot, a Python robot that is compatible with

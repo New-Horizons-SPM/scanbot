@@ -1315,7 +1315,7 @@ class scanbot():
             self.survey2(user_args=[],_help=False,surveyParams=self.survey2Params)
             return
         
-    def autoTipShape(self,n,wh,symTarget,sizeTarget,zQA,ztip,sleepTime,tipShape_hk,message="",iamauto=False):
+    def autoTipShape(self,n,wh,symTarget,sizeTarget,zQA,ztip,rng,sleepTime,tipShape_hk,message="",iamauto=False):
         NTCP,connection_error = self.connect()                                  # Connect to nanonis via TCP
         if(connection_error):
             global_.running.clear()                                             # Free up the running flag
@@ -1339,9 +1339,12 @@ class scanbot():
             self.interface.sendReply("Tip lifts -zQA and -ztip must be < 0")
             return
         
+        if(rng == 1): rng = np.random.default_rng()
+        else: rng = 0
+        
         tipShapeProps[10]   = 1                                                 # Make sure feedback on after tip shape
         tipShapeProps[3]   = ztip                                               # Amount to dip the tip into the surface
-        tipShapeProps[7]    = -3*ztip                                           # Amount to withdraw the tip from the surface
+        tipShapeProps[7]   = -3*ztip                                            # Amount to withdraw the tip from the surface
         
         tipCheckerProps     = tipShaper.PropsGet()                              # These will be the tip shaper properties used to perform a light tip-shaping action which is scanned over to assess tip quality
         tipCheckerProps[1]  = 1                                                 # Turn on the change bias checkbox
@@ -1363,9 +1366,26 @@ class scanbot():
         
         attempt = 0                                                             # Keep track of number of attempts to tip shape
         tipQA   = False                                                         # Temp flag
-        xy = np.array([0,0])
-        while(attempt < n or n==-1):
-            scanModule.FrameSet(*xy, w=wh, h=wh)
+        
+        piezo = Piezo(NTCP)
+        range_x,range_y,_ = piezo.RangeGet()
+        dx = 3*wh
+        x = np.linspace(-1, 1,n) * (n-1)*dx/2
+        y = x
+        
+        snakedGrid = []
+        for j in y:
+            for i in x:
+                snakedGrid.append(np.array([i, j, wh, wh]))
+                if(i>range_x/2 or j>range_y/2):
+                    self.interface.sendReply("Error: Grid size exceeds scan area. Reduce -n",message=message)
+                    self.disconnect(NTCP)                                       # Close the TCP connection
+                    global_.running.clear()                                     # Free up the running flag
+                    return
+            x = np.array(list(reversed(x)))                                     # Snake the grid - better for drift
+            
+        for frame in snakedGrid:
+            scanModule.FrameSet(*frame)
             
             scanModule.Action(scan_action="start",scan_direction="up")          # Start an upward scan
             for numSeconds in range(sleepTime):                                 # Sleep at one second intervals so we can still stop the routine without lag if we need to
@@ -1385,7 +1405,6 @@ class scanbot():
             cleanImage = np.flipud(cleanImage)                                  # Flip because the scan direction is up
             if(not isClean):
                 scanModule.Action(scan_action='stop')
-                xy = xy + np.array([2*wh,0])                                    # Move the scan frame
                 self.interface.sendReply("Bad area, moving scan frame")
                 continue                                                        # Don't count the attempt if the area sucks
                 
@@ -1393,10 +1412,9 @@ class scanbot():
             
             tipCheckPos = utilities.getCleanCoordinate(cleanImage, lxy=wh)      # Do some processing to find a clean location to assess tip quality
             if(not len(tipCheckPos)):                                           # If no coordinate is returned because the area is bad...
-                xy = xy + np.array([2*wh,0])                                    # Move the scan frame
                 continue                                                        # Don't count the attempt if the area sucks
             
-            tipCheckPos += xy                                                   # Convert frame-relative coordinate to absolute coordinate
+            tipCheckPos += frame[0:2]                                           # Convert frame-relative coordinate to absolute coordinate
             folme.XYPosSet(*tipCheckPos,Wait_end_of_move=True)                  # Move the tip to a clean place
             
             self.tipShapeProps(*tipCheckerProps)                                # Set the tip shaping properties up for the very light action
@@ -1415,9 +1433,9 @@ class scanbot():
             # Probably do something here to periodically check scan area (as
             # above) in case the tip blew up and left the area a mess.
             
-            tipCheckPos -= xy                                                   # Convert absolute coodinate to frame-relative coordinate
+            tipCheckPos -= frame[0:2]                                           # Convert absolute coodinate to frame-relative coordinate
             symmetry,size = utilities.assessTip(tipImprint,wh,tipCheckPos)      # Assess the quality of the tip based on the imprint it leaves on the surface
-            
+            self.interface.sendReply("Imprint size: " + str(size) + "\nImprint symm: " + str(symmetry))
             # if(size < 0): contour not found, do something about that.
             
             if(symmetry > symTarget):
@@ -1425,9 +1443,15 @@ class scanbot():
                     tipQA = True                                                # Tip quality is good if it meets the target scores
                     break                                                       # Stop the routine if a good tip has been achieved
             
-            edgeOfFrame = xy - np.array([wh,0])/2
+            edgeOfFrame = frame[0:2] - np.array([wh,0])/2
             folme.XYPosSet(*edgeOfFrame,Wait_end_of_move=True)                  # Move the tip to the left edge of the scan frame
             
+            if(rng):
+                r  = rng.integers(low=1000, high=-ztip*1000e9, size=1)[0]
+                r /= -1000e9
+                tipShapeProps[3]   = r                                          # Amount to dip the tip into the surface
+                tipShapeProps[7]   = -3*r                                       # Amount to withdraw the tip from the surface
+                
             if(tipShape_hk):
                 try:
                     import hk_tipShape
@@ -1447,7 +1471,6 @@ class scanbot():
             time.sleep(1)
             if(self.checkEventFlags()): break                                   # Check event flags
             
-            xy = xy + np.array([2*wh,0])                                        # Move the scan frame
             attempt += 1
             
         scanModule.PropsSet(series_name=basename)                               # Put back the original basename

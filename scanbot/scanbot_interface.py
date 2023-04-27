@@ -508,6 +508,7 @@ class scanbot_interface(object):
                     '-size' : ['1.2',       lambda x: float(x), "(float) Max size of the desired tip imprint in units of nm2"],
                     '-zQA'  : ['-0.9e-9',   lambda x: float(x), "(float) z-lift when performing a light tip shape to asses quality of tip (m)"],
                     '-ztip' : ['-1.5e-9',   lambda x: float(x), "(float) z-lift when performing a tip shape to alter the tip (m)"],
+                    '-rng'  : ['1',         lambda x: int(x),   "(int) Flag to randomise -ztip from 1 nm to -ztip value. 1=Yes, 0=No"],
                     '-st'   : ['10',        lambda x: int(x),   "(int) Drift compensation time (s)"],
                     '-hk_tipShape' : ['0',  lambda x: int(x),   "(int) Flag to call the hook hk_tipShape. Use this hook to adjust the tip shaping parameters based on size/symmetry scores, or based on the image of the tip imprint itself. 0=Don't call, 1=Call"],}
         
@@ -739,7 +740,7 @@ class scanbot_interface(object):
     
         """
         if(not self.bot_handler):                                               # If we're not using zulip
-            print("Scanbot reaction: " + reaction)                              # Send reaction to console
+            # print("Scanbot reaction: " + reaction)                              # Send reaction to console
             return
         
         reactTo = message                                                       # If we're reacting to a specific zulip message
@@ -787,7 +788,7 @@ class scanbot_interface(object):
 ###############################################################################
 # Misc
 ###############################################################################
-    def stop(self,user_args,_help=False):
+    def stop(self,user_args=[],_help=False):
         arg_dict = {'-s' : ['1', lambda x: int(x), "(int) Stop scan in progress. 1=Yes"]}
         
         if(_help): return arg_dict
@@ -808,7 +809,7 @@ class scanbot_interface(object):
             if(args[0] == 1): self.scanbot.stop()
             
     def threadTask(self,func,override=False):
-        if(override): self.stop(args=[])
+        if(override): self.stop()
         if global_.running.is_set(): return "Error: something already running"
         global_.running.set()
         t = threading.Thread(target=func)
@@ -895,6 +896,7 @@ class scanbot_interface(object):
 ###############################################################################
 handler_class = scanbot_interface
 
+finish = False
 if('-z' in sys.argv):
     rcfile = ''
     try:
@@ -915,8 +917,9 @@ if('-z' in sys.argv):
         sys.exit()
     
     os.system("zulip-run-bot scanbot_interface.py --config=" + rcfile)
+    finish = True
     
-if('-c' in sys.argv):
+if('-c' in sys.argv and not finish):
     print("Console mode: type 'exit' to end scanbot")
     go = True
     handler_class = scanbot_interface(run_mode='c')
@@ -928,6 +931,39 @@ if('-c' in sys.argv):
     
     finish = True
 
+# if('-g' in sys.argv and not finish):
+#     import customtkinter as ctk
+#     from MainPanel import MainPanel as mp
+#     import ctypes
+    
+# class App(ctk.CTk):
+#     WIDTH = 512
+#     HEIGHT = 512
+#     def __init__(self):
+#         super().__init__()
+#         self.title("EPWE")
+#         self.protocol("WM_DELETE_WINDOW", self.on_closing)
+        
+#         dpi = self.winfo_fpixels('1i')
+#         try:
+#             scaleFactor = ctypes.windll.shcore.GetScaleFactorForDevice(0)/100   # Account for windows scale factor in display settings
+#         except:
+#             scaleFactor = 1                                                     # Might not work on mac - haven't tested
+        
+#         handler_class = scanbot_interface(run_mode='g')
+#         self.mainPanel = mp(self, handler_class, width=self.WIDTH, height=self.HEIGHT, dpi=dpi, scaleFactor=scaleFactor)
+#         self.geometry("%dx%d" % (self.WIDTH, 850))
+        
+#     def on_closing(self, event=0):
+#         self.mainPanel.quit()
+        
+# if('-g' in sys.argv and not finish):
+#     ctk.set_appearance_mode("Dark")                                                 # Modes: system (default), light, dark
+#     ctk.set_default_color_theme("blue")                                             # Themes: blue (default), dark-blue, green
+
+#     app = App()
+#     app.mainloop()
+    
 # if('-g' in sys.argv and not finish):
     # print("Booting in GUI mode...")
     # import tkinter as tk

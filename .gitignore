@@ -144,3 +144,4 @@ dmypy.json
 .pyre/
 *.txt
 *.ini
+*.mp4

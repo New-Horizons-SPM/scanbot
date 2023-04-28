@@ -23,6 +23,7 @@ To accomplish this, Scanbot uses the course motor to maneuver the STM tip while 
 it is moved back to the sample of interest, where a survey can be carried out.
 In the video below, Scanbot is tracking the STM head as it moves the tip from the sample to the clean metal on the dual sample holder.
 ![DSH](DSH.png)
+<br>
 ![type:video](DSHNav.mp4)
 
 <br>

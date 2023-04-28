@@ -12,4 +12,8 @@ nav:
     - Contact: 'contact.md'
     
 plugins:
-    - mkdocs-video
+    - mkdocs-video:
+        is_video: True
+        video_type: mp4
+        video_loop: True
+        

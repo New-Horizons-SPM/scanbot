@@ -27,9 +27,10 @@ class scanbot_interface(object):
 ###############################################################################
 # Constructor
 ###############################################################################
-    def __init__(self,run_mode=""):
+    def __init__(self,run_mode="",panel=""):
         print("Initialising app...")
         self.run_mode = run_mode
+        self.panel = panel
         self.scanbot = scanbot(self)
         self.loadConfig()
         self.initGlobals()
@@ -133,7 +134,7 @@ class scanbot_interface(object):
         if(initDict['notify_list']):
             self.notifyUserList = initDict['notify_list'].split(',')
         
-        self.bot_message = ""
+        self.bot_message = []
         self.zulipClient = []
         if(self.zuliprc):
             self.zulipClient = zulip.Client(config_file=self.zuliprc)
@@ -761,6 +762,9 @@ class scanbot_interface(object):
         path = Path(path)
         path = path.resolve()
         
+        if(self.run_mode == 'p'):
+            self.panel.updatePNG(path)
+            
         if(self.uploadMethod == 'zulip'):
             upload = self.bot_handler.upload_file_from_path(str(path))
             uploaded_file_reply = "[{}]({})".format(path.name, upload["uri"])

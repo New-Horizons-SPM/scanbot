@@ -17,6 +17,7 @@ dependencies = [
     "scipy",
     "opencv-python",
     "zulip",
+    "panel",
 ]
 
 [tool.setuptools]

@@ -25,6 +25,8 @@ import ntpath
 import numpy as np
 import nanonispyfit as napfit
 import matplotlib.pyplot as plt
+import matplotlib
+matplotlib.use('agg')
 import cv2
 
 import math
@@ -1631,7 +1633,7 @@ class scanbot():
         if filePath: pngFilename = ntpath.split(filePath)[1] + '.png'
         
         fig.savefig(pngFilename, dpi=dpi, bbox_inches='tight', pad_inches=0)
-        plt.close('all')
+        plt.close(fig)
         
         if(returnData): return pngFilename,scanData
         return pngFilename

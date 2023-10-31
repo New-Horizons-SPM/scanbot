@@ -213,7 +213,7 @@ class scanbot():
             if(self.checkEventFlags()): break                                   # Check event flags
         
         if(stitch == 1 and not np.isnan(stitchedSurvey).all()):
-            stitchFilepath = self.makePNG(stitchedSurvey,pngFilename = suffix + '.png',dpi=150*n, fit=False)
+            stitchFilepath = self.makePNG(stitchedSurvey,pngFilename = suffix + '_stitch.png',dpi=150*n, fit=False)
             self.interface.sendPNG(stitchFilepath,notify=False,message=message) # Send a png over zulip
         
         scan.PropsSet(series_name=basename)                                     # Put back the original basename
@@ -257,7 +257,7 @@ class scanbot():
                 if(self.checkEventFlags()): break                               # Check event flags
                 
                 s = suffix + "_y" + str(y) + "_x" + str(x)
-                callAutoTipShape = self.survey(bias,n,startAt,s,xy,dx,px,sleepTime,stitch,survey_hk,classifier_hk,autotip,reverse=reverse,iamauto=False,message=message)
+                callAutoTipShape = self.survey(bias,n,startAt,s,xy,dx,px,sleepTime,stitch,survey_hk,classifier_hk,autotip,reverse=reverse,iamauto=True,message=message)
                 reverse = not reverse
                 
                 if(self.checkEventFlags()): break                               # Check event flags

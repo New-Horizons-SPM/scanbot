@@ -421,8 +421,6 @@ class scanbot_interface(object):
         error,user_arg_dict = self.userArgs(arg_dict,user_args)
         if(error): return error + "\nRun ```help tip_shape``` if you're unsure."
         
-        # args = self.unpackArgs(user_arg_dict)
-        
         self.scanbot.tipShape()
         
     def tipShapeProps(self,user_args,_help=False):
@@ -459,7 +457,7 @@ class scanbot_interface(object):
         
         if(_help): return arg_dict
         
-        if(self.run_mode != 'c'): return "This function is only available in console mode."
+        if(self.run_mode != 'c' and self.run_mode != 'p'): return "This function is only available in console mode."
         
         error,user_arg_dict = self.userArgs(arg_dict,user_args)
         if(error): return error + "\nRun ```help auto_init``` if you're unsure."
@@ -492,7 +490,7 @@ class scanbot_interface(object):
         
         if(_help): return arg_dict
         
-        if(self.run_mode != 'c'): return "This function is only available in console mode."
+        if(self.run_mode != 'c' and self.run_mode != 'p'): return "This function is only available in console mode."
         
         error,user_arg_dict = self.userArgs(arg_dict,user_args)
         if(error): return error + "\nRun ```help move_tip_to_" + target + "``` if you're unsure."

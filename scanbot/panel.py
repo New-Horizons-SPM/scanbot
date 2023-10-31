@@ -18,23 +18,25 @@ from PIL import Image
 from pathlib import Path
 
 class ScanbotPanel(param.Parameterized):
-    template = 'fast'
     sidebarColumn = []
     function = {}
     running = ""
     prev_surveyForm  = {}
     prev_biasdepForm = {}
     prev_STMControlForm = {}
+    prev_AutomationForm = {}
     tempFolder = "temp/"
     
     def __init__(self):
-        pn.extension(template=self.template)
+        pn.extension(template="fast")
+        pn.config.template.title = "Scanbot"
         self.interface = scanbot_interface(run_mode='p',panel=self)
         self.initFunctions()
         Path(self.tempFolder).mkdir(exist_ok=True)
-    
+        
+        
     def initFunctions(self):
-        options = ['Configuration','Survey','Bias Dependent', 'STM Control']
+        options = ['Configuration','Survey','Bias Dependent', 'STM Control','Automation']
         # Connection
         self.functionWidget = pn.widgets.Select(name='Select', options=options)
         interactive = pn.bind(self.selectFunction,self.functionWidget)
@@ -46,7 +48,6 @@ class ScanbotPanel(param.Parameterized):
         
         self.mainGridSpec = pn.GridSpec(sizing_mode='stretch_both',mode='override')
         self.mainGridSpec.servable(target="main")
-        # self.mainGridSpec[0, :3] = pn.Spacer(styles=dict(background='#FF0000'))
         
     
     def selectFunction(self,name):
@@ -65,11 +66,82 @@ class ScanbotPanel(param.Parameterized):
         
         if(name == 'STM Control'):
             self.sidebarForm = self.getSTMControlForm()
+        
+        if(name == 'Automation'):
+            self.sidebarForm = self.getAutomationForm()
             
         for form in self.sidebarForm:
             if(len(form.keys())):
                 for f in form.values(): self.sidebarColumn.append(f)
     
+    def getAutomationForm(self):
+        if(self.prev_AutomationForm): return self.prev_AutomationForm
+        
+        form1 = {}
+        form1['-cameraPort'] = pn.widgets.Select(name='Camera port', options={"0":0,"1":1,"2":2,"3":3,"4":4},value=0)
+        form1['-demo']       = pn.widgets.Select(name='Demo/Live mode', options={"Live":0,"Demo":1},value=1)
+        
+        buttonInit = pn.widgets.Button(name='Initialise Tip Position', button_type='primary')
+        buttonInit.on_click(self.autoInit)
+        
+        form1['button1'] = pn.Row(buttonInit)
+        
+        form2 = {}
+        form2['-light']      = pn.widgets.Select(name='Control light with hk_light.py?', options={"No":0,"Yes":1},value=0)
+        form2['-cameraPort'] = pn.widgets.Select(name='Camera port', options={"0":0,"1":1,"2":2,"3":3,"4":4},value=0)
+        form2['-demo']       = pn.widgets.Select(name='Demo/Live mode', options={"Live":0,"Demo":1},value=1)
+        form2['-zStep']      = pn.widgets.TextInput(name='Steps at a time in Z+ direction', value="250")
+        form2['-zV']         = pn.widgets.TextInput(name='Piezo voltage when moving tip in Z+ (V)', value="150")
+        form2['-zF']         = pn.widgets.TextInput(name='Piezo frequency when moving tip in Z+ (Hz)', value="2000")
+        form2['-xStep']      = pn.widgets.TextInput(name='Steps at a time in X+/- direction', value="100")
+        form2['-xV']         = pn.widgets.TextInput(name='Piezo voltage when moving tip in X+/- (V)', value="80")
+        form2['-xF']         = pn.widgets.TextInput(name='Piezo frequency when moving tip in X+/- (Hz)', value="2000")
+        form2['-approach']   = pn.widgets.Select(name='Approach when tip reaches target?', options={"No":0,"Yes":1},value=0)
+        form2['-tipshape']   = pn.widgets.Select(name='Initiate auto tip shape on approach?', options={"No":0,"Yes":1},value=0)
+        form2['-return']     = pn.widgets.Select(name='Return to sample after auto tip shape?', options={"No":0,"Yes":1},value=0)
+        form2['-run']        = pn.widgets.Select(name='Run a survey upon return?', options={"No":"","Yes":"survey"},value="")
+        
+        buttonSample = pn.widgets.Button(name='Go to sample', button_type='primary')
+        buttonSample.on_click(self.goToSample)
+        
+        buttonMetal = pn.widgets.Button(name='Go to metal', button_type='primary')
+        buttonMetal.on_click(self.goToMetal)
+        
+        form2['button2'] = pn.Row(buttonSample,buttonMetal)
+        
+        return [form1,form2]
+    
+    def goToSample(self,event):
+        if(self.running):
+            print("Already running",self.running)
+            return
+        
+        self.prev_AutomationForm = self.sidebarForm.copy()
+        
+        args = self.unpack(self.sidebarForm[1])
+        print(self.interface.moveTipToSample(args))
+    
+    def goToMetal(self,event):
+        if(self.running):
+            print("Already running",self.running)
+            return
+        
+        self.prev_AutomationForm = self.sidebarForm.copy()
+        
+        args = self.unpack(self.sidebarForm[1])
+        print(self.interface.moveTipToClean(args))
+        
+    def autoInit(self,event):
+        if(self.running):
+            print("Already running",self.running)
+            return
+        
+        self.prev_AutomationForm = self.sidebarForm.copy()
+        
+        args = self.unpack(self.sidebarForm[0])
+        print("Args:",args)
+        self.interface.autoInit(args)
+        
     def getSTMControlForm(self):
         if(self.prev_STMControlForm): return self.prev_STMControlForm
         
@@ -202,13 +274,32 @@ class ScanbotPanel(param.Parameterized):
         
         form = {}
         options = list(np.arange(10)+1)
-        form['-n']     = pn.widgets.Select(name='Grid size (NxN)', options=options)
-        form['-xy']    = pn.widgets.TextInput(name='Scan size (m)', value="50e-9")
-        form['-dx']    = pn.widgets.TextInput(name='Scan spacing (m)', value="50e-9")
-        form['-px']    = pn.widgets.TextInput(name='Number of pixels', value="256")
+        form['-n']     = pn.widgets.Select(name='Survey fine grid size (NxN)', options=options)
+        form['-nx']    = pn.widgets.Select(name='Survey course grid size X', options=options)
+        form['-ny']    = pn.widgets.Select(name='Survey course grid size Y', options=options)
+        form['-i']     = pn.widgets.TextInput(name='Start index', value="0")
+        
+        form['-xy']    = pn.widgets.TextInput(name='Scan size (m)', value="5e-9")
+        form['-dx']    = pn.widgets.TextInput(name='Scan spacing (m)', value="5e-9")
+        form['-px']    = pn.widgets.TextInput(name='Number of pixels', value="128")
         form['-bias']  = pn.widgets.TextInput(name='Scan bias', value="1")
-        form['-s']     = pn.widgets.TextInput(name='Suffix', value='scanbot_survey')
-        form['-st']    = pn.widgets.TextInput(name='Drift compensation (s)', value="10")
+        
+        form['-s']     = pn.widgets.TextInput(name='Filename suffix', value='scanbot_survey')
+        form['-st']    = pn.widgets.TextInput(name='Drift compensation (s)', value="0.1")
+        
+        # Motor params
+        form['-zStep'] = pn.widgets.TextInput(name='Number of motor steps (Z+)', value="50")
+        form['-zV']    = pn.widgets.TextInput(name='Piezo voltage during Z+ motor steps (V)', value="100")
+        form['-zF']    = pn.widgets.TextInput(name='Piezo frequency during Z+ motor steps (Hz)', value="2000")
+        form['-xStep'] = pn.widgets.TextInput(name='Number of motor steps (X)', value="20")
+        form['-yStep'] = pn.widgets.TextInput(name='Number of motor steps (Y)', value="20")
+        form['-xyV']   = pn.widgets.TextInput(name='Piezo voltage during XY motor steps (V)', value="120")
+        form['-xyF']   = pn.widgets.TextInput(name='Piezo frequency during XY motor steps (Hz)', value="2000")
+        
+        # Hooks
+        form["-hk_survey"]     = pn.widgets.Select(name='Call hk_survey.py after each image?', options={"No":0,"Yes":1},value=0)
+        form["-hk_classifier"] = pn.widgets.Select(name='Call hk_classifier.py instead of default classifier?', options={"No":0,"Yes":1},value=0)
+        form["-autotip"]       = pn.widgets.Select(name='Auto tip shaping?', options={"No":0,"Yes":1},value=0)
         
         buttonStart = pn.widgets.Button(name='Start Survey', button_type='primary')
         buttonStart.on_click(self.startSurvey)
@@ -221,38 +312,57 @@ class ScanbotPanel(param.Parameterized):
         return [form]
     
     def updatePNG(self,path):
-        fig = plt.figure()
+        """
+        This function is called by sendPNG in scanbot_interface each time a PNG
+        is generated. This function handles incoming PNGs for all scanbot 
+        functions that are called via the holoviz panel interface.
+
+        Parameters
+        ----------
+        path : Path to the PNG
+
+        """
+        fig = plt.figure()                                                      # Backend figure
         ax = fig.add_subplot(111)
-        im  = Image.open(path)
-        img = np.array(im)
-        ax.imshow(img)
+        im  = Image.open(path)                                                  # Open the PNG file
+        img = np.array(im)                                                      # Convert it to numpy array
+        ax.imshow(img)                                                          # Show it on an axis
         ax.axis('off')
-        ax.set_position([0,0,1,1])
-        if(self.running == "Survey"):
-            n = int(self.sidebarForm[0]['-n'].value) - 1
-            ny,nx = self.surveyIDX
-            self.mainGridSpec[n-int(ny),n-int(nx)] = pn.pane.Matplotlib(fig)
+        ax.set_position([0,0,1,1])                                              # Make it take up the entire axis
+        if(self.running == "Survey"):                                           # When we're running a survey, the images are related to that survey
+            if("_stitch.png" in path.name):                                     # Skip the stitched survey PNGs
+               return
+           
+            n = int(self.sidebarForm[0]['-n'].value) - 1                        # Number of images in each survey (nxn)
+            NX = int(self.sidebarForm[0]['-nx'].value)                          # Number of surveys to do in X direction of course grid
+            NY = int(self.sidebarForm[0]['-ny'].value)                          # Number of surveys to do in Y direction of course grid
             
-            if(nx*ny == n**2):
-                self.running = ""
-                self.functionWidget.disabled_options = []
+            ny,nx = self.surveyIDX                                              # Keeping track of the index of the image we're up to in the survey
+            self.mainGridSpec[n-int(ny),n-int(nx)] = pn.pane.Matplotlib(fig)    # Plot the next image at this locatino in the gridspec
             
-            self.surveyIDX += np.array([0,1])
+            self.surveyIDX += np.array([0,1])                                   # Incremeent the image index
+            if(nx == n):                                                        # If we've reached the end of a column...
+                self.surveyIDX[0] += 1                                          # Incrememnt the row
+                self.surveyIDX[1]  = 0                                          # Reset the column number. Not quite correct because the survey snakes. Fix later
             
-            if(nx == n):
-                self.surveyIDX[0] += 1
-                self.surveyIDX[1]  = 0
+            if(nx*ny == n**2):                                                  # If that was the last image in a survey...
+                self.surveyCount += 1                                           # Incrememnt the survey number (this is for when multiple surveys are being carried out automatically)
+                self.surveyIDX = np.array([0,0])
+                if(self.surveyCount == NX*NY - 1):                              # If the final survey has been completed...
+                    self.running = ""                                           # Clear the running flag
+                    self.functionWidget.disabled_options = []                   # and re-enable the other options in the commands dropdown
                 
-        if(self.running == "BiasDep"):
-            self.biasDepImages.append(im.copy())
-            path1 = self.make_gif([im],"lastim.gif")
-            path2  = self.make_gif(self.biasDepImages)
-            self.mainGridSpec[0,0] = pn.pane.GIF(path1)
-            self.mainGridSpec[0,1] = pn.pane.GIF(path2)
+        if(self.running == "BiasDep"):                                          # Bias dependent images
+            self.biasDepImages.append(im.copy())                                # Running array of all the bias dep images - to be turned into a gif
+            path1 = self.make_gif([im],"lastim.gif")                            # Create a gif of the current image (easier this way for some reason)
+            path2  = self.make_gif(self.biasDepImages)                          # Create a gif of all previous images
+            self.mainGridSpec[0,0] = pn.pane.GIF(path1)                         # Show the latest image on the left
+            self.mainGridSpec[0,1] = pn.pane.GIF(path2)                         # Show a gif of all the completed bias dependent images on the right
             
-            self.biasDepIDX += 1
-            if(self.biasDepIDX == int(self.sidebarForm[0]['-n'].value)):
-                self.running = ""
+            self.biasDepIDX += 1                                                # Keep track of the image index we're up to
+            if(self.biasDepIDX == int(self.sidebarForm[0]['-n'].value)):        # If we've completed all our images
+                self.running = ""                                               # Clear the running flag
+                self.functionWidget.disabled_options = []                       # and re-enable the other options in the commands dropdown
             
         plt.close(fig)
         
@@ -277,13 +387,14 @@ class ScanbotPanel(param.Parameterized):
         self.functionWidget.disabled_options = disabled_options
         self.prev_surveyForm = self.sidebarForm.copy()
         
-        args = self.unpack(self.sidebarForm[0]) 
-        self.interface.survey(args)
+        args = self.unpack(self.sidebarForm[0])
+        self.interface.survey2(args)
         
         surveyForm = self.sidebarForm[0]
         n = int(surveyForm['-n'].value)
         
         self.surveyIDX = np.array([0,0])
+        self.surveyCount = 0
         
         self.mainGridSpec.objects = OrderedDict()
         for i in range(n):
@@ -296,6 +407,10 @@ class ScanbotPanel(param.Parameterized):
         if(self.running):
             print("Already running",self.running)
             return
+        
+        disabled_options = self.functionWidget.options.copy()
+        disabled_options.remove("Bias Dependent")
+        self.functionWidget.disabled_options = disabled_options
         
         self.prev_biasdepForm = self.sidebarForm.copy()
         

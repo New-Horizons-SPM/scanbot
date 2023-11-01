@@ -14,6 +14,16 @@ Scanbot can be interfaced through a terminal, via zulip and, now thanks to [holo
 ### Broswer
 Run ```python scanbot_interface.py -gui```
 
+You can enable Basic Auth by creating a .json file in ~/scanbot/scanbot/ that contains usernames and passwords. Then run scanbot as ```python scanbot_interface.py -gui -auth credentials.json```
+ 
+An example credentials file is shown below:
+```Python
+{
+    "user1": "my_password",
+    "user2": "my_password_2"
+}
+```
+
 ### Terminal
 Run ```python scanbot_interface.py -c```
 

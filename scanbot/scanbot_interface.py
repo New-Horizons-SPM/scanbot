@@ -315,10 +315,10 @@ class scanbot_interface(object):
     
     def biasDep(self,user_args,_help=False):
         arg_dict = {'-n'   : ['5',          lambda x: int(x),   "(int) Number of images to take b/w initial and final bias"],
-                    '-bdc' : ['-1',         lambda x: float(x), "(float) Bias of the drift correction images (V)"],
+                    '-bdc' : ['-1',         lambda x: float(x), "(float) Bias of the drift correction images (V). 0 = dc off"],
                     '-tdc' : ['0.3',        lambda x: float(x), "(float) Time per line for drift correction images (s)"],
                     '-tbdc': ['1',          lambda x: float(x), "(float) Backward direction speed multiplier for drift correct image. E.g. 1=same speed, 2=twice as fast, 0.5=half speed"],
-                    '-pxdc': ['128',        lambda x: int(x),   "(int) Number of pixels in drift correct images. 0=no drift correction"],
+                    '-pxdc': ['128',        lambda x: int(x),   "(int) Number of pixels in drift correct images."],
                     '-lxdc': ['0',          lambda x: int(x),   "(int) Number of lines in drift correct image. 0=keep same ratio as px:lx"],
                     '-bi'  : ['-1',         lambda x: float(x), "(float) Initial Bias (V)"],
                     '-bf'  : ['1',          lambda x: float(x), "(float) Final Bias (V)"],

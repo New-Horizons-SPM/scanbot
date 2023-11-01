@@ -188,6 +188,7 @@ class scanbot():
                     global_.running.clear()
                     callAutoTipShape = True
             
+            _,scanData,_ = scan.FrameDataGrab(self.channel, 1)                  # Grab the data related to our focused channel
             pngFilename,scanDataPlaneFit = self.makePNG(scanData, filePath,returnData=True,dpi=150) # Generate a png from the scan data
             self.interface.sendPNG(pngFilename,notify=True,message=message)     # Send a png over zulip
             
@@ -376,7 +377,7 @@ class scanbot():
             _, _, filePath = scanModule.WaitEndOfScan()
             if(not filePath): break
             
-            _,scanData,_ = scanModule.FrameDataGrab(14, 1)                      # 14 = z., 18 is Freq. shift
+            _,scanData,_ = scanModule.FrameDataGrab(self.channel, 1)            # 14 = z., 18 is Freq. shift
             pngFilename = self.makePNG(scanData, filePath)                      # Generate a png from the scan data
             GIF.append(scanData)
             
@@ -1509,7 +1510,7 @@ class scanbot():
         helpStr += "Buffer idx | Signal idx | Signal name\n"
         for idx,name in enumerate(signal_names):
             if(idx in channels):
-                helpStr += str(idx).ljust(11) + '| ' + str(signal_indexes[idx]).ljust(11) + ": " + name + "\n"
+                helpStr += str(idx).ljust(11) + '| ' + str(signal_indexes[idx]).ljust(11) + "| " + name + "\n"
         
         helpStr += "\n**Available channels:**\n"
         helpStr += "Buffer idx | Signal idx | Signal name\n"

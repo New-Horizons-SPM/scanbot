@@ -36,6 +36,8 @@ class ScanbotPanel(param.Parameterized):
         
         
     def initFunctions(self):
+        self.generalInit()
+    
         options = ['Configuration','Survey','Bias Dependent', 'STM Control','Automation']
         # Connection
         self.functionWidget = pn.widgets.Select(name='Select', options=options)
@@ -49,7 +51,32 @@ class ScanbotPanel(param.Parameterized):
         self.mainGridSpec = pn.GridSpec(sizing_mode='stretch_both',mode='override')
         self.mainGridSpec.servable(target="main")
         
-    
+    def generalInit(self):
+        channels = self.interface.plotChannel(user_args=[]).split('\n')
+        # print("channels:",'\n'.join(channels))
+        self.channelBuffer = {}
+        self.availableChannels = {"Select": -1}
+        flag = 0
+        for channel in channels:
+            if('Channels in scan buffer' in channel): flag = 0; continue
+            if('Available channels' in channel): flag = 1; continue
+            if('Buffer idx' in channel): continue
+        
+            c = [i.strip() for i in channel.split('|')]
+            if(len(c) < 3): continue
+            if(c[2] in self.channelBuffer.keys()): continue
+        
+            if(c[2] == 'Z (m)'):
+                self.interface.plotChannel(['-a=' + c[0]])
+                self.interface.plotChannel(['-c=' + c[0]])
+                self.focusChannel = c[2]
+                self.channelBuffer[c[2]] = c[0]
+                continue
+            
+            if(flag): self.availableChannels[c[2]] = c[0]
+            if(not flag): self.channelBuffer[c[2]] = c[0]
+            
+                
     def selectFunction(self,name):
         while(len(self.sidebarColumn) > 2):
             self.sidebarColumn.pop(-1)
@@ -218,6 +245,8 @@ class ScanbotPanel(param.Parameterized):
         form['Ports']         = pn.widgets.TextInput(name='Port list (space delimited)', value=' '.join(np.array(self.interface.portList).astype(str)))
         form['Upload Method'] = pn.widgets.Select(name='Upload method', options=self.interface.validUploadMethods,value=self.interface.uploadMethod)
         form['Path']          = pn.widgets.TextInput(name='Save path', value=self.interface.path)
+        form['Focus Channel'] = pn.widgets.Select(name='Focus channel', options=self.channelBuffer,value=self.channelBuffer[self.focusChannel])
+        form['Add Channel']   = pn.widgets.Select(name='Add channel to buffer', options=self.availableChannels)
         # form['Crash Safety']  = pn.widgets.TextInput(name='IP Address', value=self.interface.IP)self.interface.getCrashSafety([])
         
         submitButton = pn.widgets.Button(name='Update Configuration', button_type='primary')
@@ -226,14 +255,40 @@ class ScanbotPanel(param.Parameterized):
         form['buttons'] = pn.Row(submitButton)
         
         return [form]
-    
-    def updateConfig(self,event):
-        config = self.sidebarForm[0]
-        self.interface.setIP([config['IP'].value])
-        self.interface.setPortList(config['Ports'].value.split(' '))
-        self.interface.setUploadMethod(config['Upload Method'].value)
-        self.interface.setPath([config['Path'].value])
         
+    def updateConfig(self,event):
+        error = []
+        
+        config = self.sidebarForm[0]
+        message = self.interface.setIP([config['IP'].value])
+        if(message): error.append("Error updating IP Adress. " + message)
+        message = self.interface.setPortList(config['Ports'].value.split(' '))
+        if(message): error.append("Error updating ports. " + message)
+        message = self.interface.setUploadMethod([config['Upload Method'].value])
+        if(message): error.append("Error updating upload type. " + message)
+        message = self.interface.setPath([config['Path'].value])
+        if(message): error.append("Error updating path. " + message)
+        
+        
+        focusChannel_index = config['Focus Channel'].value
+        focusChannel_name  = [i for i in self.channelBuffer if self.channelBuffer[i]==focusChannel_index][0]
+        self.focusChannel = focusChannel_name
+        self.interface.plotChannel(['-c=' + focusChannel_index])
+        
+        addChannel_index = config['Add Channel'].value
+        addChannel_name  = [i for i in self.availableChannels if self.availableChannels[i]==addChannel_index][0]
+        if(int(addChannel_index) > -1):
+            self.interface.plotChannel(['-a=' + addChannel_index])
+            self.channelBuffer[addChannel_name] = addChannel_index
+            self.availableChannels.pop(addChannel_name)
+            self.selectFunction(name="Configuration")
+            
+        text = "Config updated!"
+        if(len(error)):
+            text = "\n".join(error)
+        
+        self.mainGridSpec.objects = OrderedDict()
+        self.mainGridSpec[0,0] = pn.widgets.StaticText(name='Scanbot', value=text)
         
     def getBiasDepForm(self):
         if(self.prev_biasdepForm):
@@ -249,9 +304,9 @@ class ScanbotPanel(param.Parameterized):
         form['-lx']    = pn.widgets.TextInput(name='Lines in data image (0 = same as pixels)', value="0")
         form['-tlf']   = pn.widgets.TextInput(name='Time per line during data acquisition (s)', value="0.5")
         form['-tb']    = pn.widgets.TextInput(name='Backwards time per line multiplier (s)', value="1")
-        form['-pxdc']  = pn.widgets.TextInput(name='Pixels in drift correction image (0 = off)', value="128")
+        form['-pxdc']  = pn.widgets.TextInput(name='Pixels in drift correction image', value="128")
         form['-lxdc']  = pn.widgets.TextInput(name='Lines in drift correction image (0 = same ratio as data)', value="0")
-        form['-bdc']   = pn.widgets.TextInput(name='Bias during drift correction (V)', value="0.5")
+        form['-bdc']   = pn.widgets.TextInput(name='Bias during drift correction (V).  (0 = off)', value="0.5")
         form['-tdc']   = pn.widgets.TextInput(name='Time per line during drift correction (s)', value="0.3")
         form['-tbdc']  = pn.widgets.TextInput(name='Backwards time per line multiplier (s)', value="1")
         form['-s']     = pn.widgets.TextInput(name='Suffix', value='scanbot_biasdep')
@@ -348,7 +403,7 @@ class ScanbotPanel(param.Parameterized):
             if(nx*ny == n**2):                                                  # If that was the last image in a survey...
                 self.surveyCount += 1                                           # Incrememnt the survey number (this is for when multiple surveys are being carried out automatically)
                 self.surveyIDX = np.array([0,0])
-                if(self.surveyCount == NX*NY - 1):                              # If the final survey has been completed...
+                if(self.surveyCount == NX*NY):                                  # If the final survey has been completed...
                     self.running = ""                                           # Clear the running flag
                     self.functionWidget.disabled_options = []                   # and re-enable the other options in the commands dropdown
                 
@@ -367,6 +422,20 @@ class ScanbotPanel(param.Parameterized):
         plt.close(fig)
         
     def make_gif(self,frames,path="biasdep.gif"):
+        """
+        Function to turn a list of images into a gif
+
+        Parameters
+        ----------
+        frames : list of images
+        path : save gif to this path
+
+        Returns
+        -------
+        TYPE
+            DESCRIPTION.
+
+        """
         frame_one = frames[0]
         frame_one.save(self.tempFolder + path, format="GIF", append_images=frames,
                    save_all=True, duration=500, loop=0)

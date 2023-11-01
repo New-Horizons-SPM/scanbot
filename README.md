@@ -1,5 +1,5 @@
 # V3 Update!
-Thanks to [holoviz Panel](https://panel.holoviz.org/), Scanbot now has a GUI. Clone the V3 branch, follow the normal installation, then run scanbot using ```panel serve panel.py --show```.
+Thanks to [holoviz Panel](https://panel.holoviz.org/), Scanbot now has a GUI. Clone the V3 branch, follow the normal installation, then run scanbot using ```python scanbot_interface.py -gui```.
 
 # Scanbot       [![DOI](https://zenodo.org/badge/487719232.svg)](https://zenodo.org/badge/latestdoi/487719232)
 

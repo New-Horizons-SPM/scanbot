@@ -934,6 +934,19 @@ if('-c' in sys.argv and not finish):
     finish = True
 
 if('-gui' in sys.argv and not finish):
-    os.system("panel serve panel.py --show")
+    auth = ""
+    if('-auth' in sys.argv):
+        authpath = ""
+        try:
+            authpath = sys.argv[sys.argv.index('-auth') + 1]
+            auth  = " --basic-auth"
+            auth += " " + authpath
+            auth += " --cookie-secret jsd83od02ss11"
+        except Exception as e:
+            print("Error: -auth not provided")
+            print(e)
+            sys.exit()
+        
+    os.system("panel serve panel.py --show" + auth)
     finish = True
     

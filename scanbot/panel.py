@@ -134,7 +134,10 @@ class ScanbotPanel(param.Parameterized):
         buttonMetal = pn.widgets.Button(name='Go to metal', button_type='primary')
         buttonMetal.on_click(self.goToMetal)
         
-        form2['button2'] = pn.Row(buttonSample,buttonMetal)
+        buttonStop = pn.widgets.Button(name='STOP', button_type='primary')
+        buttonStop.on_click(self.stop)
+        
+        form2['button2'] = pn.Row(buttonSample,buttonMetal,buttonStop)
         
         return [form1,form2]
     
@@ -146,22 +149,32 @@ class ScanbotPanel(param.Parameterized):
         self.prev_AutomationForm = self.sidebarForm.copy()
         
         args = self.unpack(self.sidebarForm[1])
-        print(self.interface.moveTipToSample(args))
+        self.interface.moveTipToSample(args)
+        
+        if(not self.interface.scanbot.autoInitSet):
+            message = "You need to initialise the tip's position first!"
+            self.alert(message)
     
     def goToMetal(self,event):
         if(self.running):
-            print("Already running",self.running)
+            print("Already running" + self.running)
             return
         
         self.prev_AutomationForm = self.sidebarForm.copy()
         
+        if(not self.interface.scanbot.autoInitSet):
+            message = "You need to initialise the tip's position first!"
+            self.alert(message)
+            
         args = self.unpack(self.sidebarForm[1])
-        print(self.interface.moveTipToClean(args))
+        message = self.interface.moveTipToClean(args)
         
     def autoInit(self,event):
         if(self.running):
             print("Already running",self.running)
             return
+        
+        self.alert("Follow the prompts in the camera window")
         
         self.prev_AutomationForm = self.sidebarForm.copy()
         
@@ -208,8 +221,34 @@ class ScanbotPanel(param.Parameterized):
         
         form2['buttons'] = pn.Row(buttonTipShape,buttonUpdate)
         
-        return [form1,form2]
+        form3 = {}
+        options = list(np.arange(10)+1)
+        form3['-n']     = pn.widgets.Select(name='Tip shaping grid size (NxN)',options=options, value=10)
+        form3['-wh']    = pn.widgets.TextInput(name='Scan size (m)', value="10e-9")
+        form3['-sym']   = pn.widgets.TextInput(name='Desired symmetry (0=asymmetric, 1=perfect circle)', value="0.6")
+        form3['-size']  = pn.widgets.TextInput(name='Maximum size (nm2)', value="3.5")
+        form3['-zQA']   = pn.widgets.TextInput(name='Tip depth when assessing imprint (m)', value="-0.9e-9")
+        form3['-ztip']  = pn.widgets.TextInput(name='Tip depth when reshaping the tip (m)', value="-5e-9")
+        form3['-rng']   = pn.widgets.Select(name='Randomise tip depth from 0 to above value when reshaping?', options={"Yes":1,"No":0},value=1)
+        form3['-st']    = pn.widgets.TextInput(name='Drift compensation time (s)', value="1")
+        form3['-hk_tipShape'] = pn.widgets.Select(name='Call the hook hk_tipshape?', options={"Yes":1,"No":0},value=0)
+        
+        buttonAutoTipShape = pn.widgets.Button(name='Auto Tip Shape', button_type='primary')
+        buttonAutoTipShape.on_click(self.autoTipShape)
+        
+        buttonStop = pn.widgets.Button(name='Stop', button_type='primary')
+        buttonStop.on_click(self.stop)
+        
+        form3['buttons'] = pn.Row(buttonAutoTipShape,buttonStop)
+        
+        return [form1,form2,form3]
     
+    def autoTipShape(self,event):
+        self.prev_STMControlForm = self.sidebarForm.copy()
+        
+        args = self.unpack(self.sidebarForm[2])
+        self.alert(self.interface.autoTipShape(args))
+        
     def tipShape(self,event):
         if(self.running):
             print("Already running",self.running)
@@ -219,15 +258,15 @@ class ScanbotPanel(param.Parameterized):
         
         args = self.unpack(self.sidebarForm[1])
         error = self.interface.tipShapeProps(args)
-        print(error)
+        self.alert(error)
         if(not error):
-            print(self.interface.tipShape([]))
+            self.alert(self.interface.tipShape([]))
     
     def updateTipShape(self,event):
         self.prev_STMControlForm = self.sidebarForm.copy()
         
         args = self.unpack(self.sidebarForm[1]) 
-        print(self.interface.tipShapeProps(args))
+        self.alert(self.interface.tipShapeProps(args))
     
     def moveArea(self,event):
         if(self.running):
@@ -237,7 +276,7 @@ class ScanbotPanel(param.Parameterized):
         self.prev_STMControlForm = self.sidebarForm.copy()
         
         args = self.unpack(self.sidebarForm[0]) 
-        print(self.interface.moveArea(args))
+        self.alert(self.interface.moveArea(args))
         
     def getConnectionForm(self):
         form = {}
@@ -502,4 +541,7 @@ class ScanbotPanel(param.Parameterized):
                 args.append(key + "=" + str(value.value))
         return args
     
+    def alert(self,message):
+        self.mainGridSpec.objects = OrderedDict()
+        self.mainGridSpec[0,0] = pn.widgets.StaticText(name='Scanbot', value=message)
 ScanbotPanel()

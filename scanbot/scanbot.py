@@ -1017,13 +1017,13 @@ class scanbot():
             
             self.interface.sendReply("Select target location for the tip. Press 'q' to cancel and enter track-only mode")
             target = utilities.markPoint(cap)
-            
+        
         if(len(target)):
-            target = target - tipPos
-            if(target[1] > 0 and not iamauto):
+            if(target[1] - tipPos[1] > 0 and not iamauto):
                 self.interface.sendReply("Error: cannot move tip lower than current position. Track-Only mode activated")
                 target = []
-        
+            
+        print("target",target)
         if(not len(target)): trackOnly = True
         
         success = True
@@ -1031,6 +1031,7 @@ class scanbot():
         previousPos = np.array([0,0])
         pk = []
         currentPos = tipPos.copy()
+        
         while(cap.isOpened()):
             if(not success):
                 self.interface.sendReply("Error moving area... tip crashed... stopping")
@@ -1042,12 +1043,12 @@ class scanbot():
         
             currentPos = utilities.trackTip(frame,currentPos)
             
-            print(currentPos)
+            # print(currentPos)
             
             ret, frame = cap.read()
             if(not ret): break
             rec = cv2.circle(frame, currentPos, radius=3, color=(0, 0, 255), thickness=-1)
-            if(len(target)): rec = cv2.circle(rec, target + tipPos, radius=3, color=(0, 255, 0), thickness=-1)
+            if(len(target)): rec = cv2.circle(rec, target, radius=3, color=(0, 255, 0), thickness=-1)
             
             if(not (currentPos == previousPos).all()):
                 pk.append([rec,currentPos,frame])
@@ -1061,15 +1062,21 @@ class scanbot():
             if(trackOnly): continue
             
             if(currentPos[1] > target[1]):                                      # First priority is to always keep the tip above this line
-                if(demo): continue
+                if(demo):
+                    print("Moving up")
+                    continue
                 success = self.moveArea(up=zStep, upV=zV, upF=zF, direction="X+", steps=0, dirV=xV, dirF=xF, zon=False, approach=False)
                 continue
             if(currentPos[0] < target[0]):
-                if(demo): continue
+                if(demo):
+                    print("Moving right")
+                    continue
                 success = self.moveArea(up=10, upV=zV, upF=zF, direction="X+", steps=xStep, dirV=xV, dirF=xF, zon=False, approach=False)
                 continue
             if(currentPos[0] > target[0]):
-                if(demo): continue
+                if(demo):
+                    print("Moving left")
+                    continue
                 success = self.moveArea(up=10, upV=zV, upF=zF, direction="X-", steps=xStep, dirV=xV, dirF=xF, zon=False, approach=False)
                 continue
             
@@ -1079,8 +1086,8 @@ class scanbot():
         
         cap.release()
         cv2.destroyAllWindows()
-        import pickle
-        pickle.dump(pk,open('test.pk','wb'))
+        # import pickle
+        # pickle.dump(pk,open('test.pk','wb'))
         if(iamauto):
             self.tipPos = currentPos
         
@@ -1288,7 +1295,7 @@ class scanbot():
         
         message = ""
         if(target == "clean" and tipshape == 1):
-            message = self.autoTipShape(n=-1, wh=10e-9, symTarget=0.9, sizeTarget=2.5, zQA=-85e-11, ztip=-2.5e-9, sleepTime=1, iamauto=True)
+            message = self.autoTipShape(n=50, wh=10e-9, symTarget=0.7, sizeTarget=3, zQA=-85e-11, ztip=-2.5e-9, sleepTime=1, iamauto=True, demo=demo)
             if(not message): message = ""
         
         if(not "Tip shaping successful" in message):
@@ -1318,7 +1325,7 @@ class scanbot():
             self.survey2(user_args=[],_help=False,surveyParams=self.survey2Params)
             return
         
-    def autoTipShape(self,n,wh,symTarget,sizeTarget,zQA,ztip,rng,sleepTime,tipShape_hk,message="",iamauto=False):
+    def autoTipShape(self,n,wh,symTarget,sizeTarget,zQA,ztip,rng=1,sleepTime=1,tipShape_hk="",message="",iamauto=False,demo=False):
         NTCP,connection_error = self.connect()                                  # Connect to nanonis via TCP
         if(connection_error):
             global_.running.clear()                                             # Free up the running flag
@@ -1438,6 +1445,11 @@ class scanbot():
             
             tipCheckPos -= frame[0:2]                                           # Convert absolute coodinate to frame-relative coordinate
             symmetry,size = utilities.assessTip(tipImprint,wh,tipCheckPos)      # Assess the quality of the tip based on the imprint it leaves on the surface
+            
+            if(demo):                                                           # If running in demo mode, use random values to assign scores
+                symmetry = rng.random()
+                size = 6*rng.random()
+                
             self.interface.sendReply("Imprint size: " + str(size) + "\nImprint symm: " + str(symmetry))
             # if(size < 0): contour not found, do something about that.
             

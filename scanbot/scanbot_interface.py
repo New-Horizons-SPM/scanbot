@@ -933,66 +933,7 @@ if('-c' in sys.argv and not finish):
     
     finish = True
 
-# if('-g' in sys.argv and not finish):
-#     import customtkinter as ctk
-#     from MainPanel import MainPanel as mp
-#     import ctypes
-    
-# class App(ctk.CTk):
-#     WIDTH = 512
-#     HEIGHT = 512
-#     def __init__(self):
-#         super().__init__()
-#         self.title("EPWE")
-#         self.protocol("WM_DELETE_WINDOW", self.on_closing)
-        
-#         dpi = self.winfo_fpixels('1i')
-#         try:
-#             scaleFactor = ctypes.windll.shcore.GetScaleFactorForDevice(0)/100   # Account for windows scale factor in display settings
-#         except:
-#             scaleFactor = 1                                                     # Might not work on mac - haven't tested
-        
-#         handler_class = scanbot_interface(run_mode='g')
-#         self.mainPanel = mp(self, handler_class, width=self.WIDTH, height=self.HEIGHT, dpi=dpi, scaleFactor=scaleFactor)
-#         self.geometry("%dx%d" % (self.WIDTH, 850))
-        
-#     def on_closing(self, event=0):
-#         self.mainPanel.quit()
-        
-# if('-g' in sys.argv and not finish):
-#     ctk.set_appearance_mode("Dark")                                                 # Modes: system (default), light, dark
-#     ctk.set_default_color_theme("blue")                                             # Themes: blue (default), dark-blue, green
-
-#     app = App()
-#     app.mainloop()
-    
-# if('-g' in sys.argv and not finish):
-    # print("Booting in GUI mode...")
-    # import tkinter as tk
-    # from tkinter import *
-    # from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
-    # import matplotlib.pyplot as plt
-    # import subprocess
-    
-    # master    = tk.Tk()
-    # dpi       = master.winfo_fpixels('1i')
-    
-    # # Set up canvas
-    # width = 512; height = 512
-    # # canvas = FigureCanvasTkAgg(master=master)
-    # # canvas.get_tk_widget().configure(width=width, height=height)
-    
-    # # # Figure
-    # # fig = plt.figure(figsize=(width/dpi,height/dpi),dpi=dpi)
-    # # ax  = fig.add_subplot(111)
-    # # canvas.figure = fig
-    # # canvas.draw()
-    # termf = Frame(master, height=height, width=width)
-    
-    # termf.pack(fill=BOTH, expand=YES)
-    # wid = termf.winfo_id()
-    # subprocess.run('cmd.exe -into %d -geometry 40x20 -sb &' % wid)
-    
-    # master.mainloop()
-    
+if('-gui' in sys.argv and not finish):
+    os.system("panel serve panel.py --show")
+    finish = True
     

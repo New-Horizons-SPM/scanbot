@@ -133,7 +133,7 @@ class scanbot_interface(object):
         if(initDict['notify_list']):
             self.notifyUserList = initDict['notify_list'].split(',')
         
-        self.bot_message = ""
+        self.bot_message = []
         self.zulipClient = []
         if(self.zuliprc):
             self.zulipClient = zulip.Client(config_file=self.zuliprc)
@@ -314,10 +314,10 @@ class scanbot_interface(object):
     
     def biasDep(self,user_args,_help=False):
         arg_dict = {'-n'   : ['5',          lambda x: int(x),   "(int) Number of images to take b/w initial and final bias"],
-                    '-bdc' : ['-1',         lambda x: float(x), "(float) Bias of the drift correction images (V)"],
+                    '-bdc' : ['-1',         lambda x: float(x), "(float) Bias of the drift correction images (V). 0 = dc off"],
                     '-tdc' : ['0.3',        lambda x: float(x), "(float) Time per line for drift correction images (s)"],
                     '-tbdc': ['1',          lambda x: float(x), "(float) Backward direction speed multiplier for drift correct image. E.g. 1=same speed, 2=twice as fast, 0.5=half speed"],
-                    '-pxdc': ['128',        lambda x: int(x),   "(int) Number of pixels in drift correct images. 0=no drift correction"],
+                    '-pxdc': ['128',        lambda x: int(x),   "(int) Number of pixels in drift correct images."],
                     '-lxdc': ['0',          lambda x: int(x),   "(int) Number of lines in drift correct image. 0=keep same ratio as px:lx"],
                     '-bi'  : ['-1',         lambda x: float(x), "(float) Initial Bias (V)"],
                     '-bf'  : ['1',          lambda x: float(x), "(float) Final Bias (V)"],
@@ -420,8 +420,6 @@ class scanbot_interface(object):
         error,user_arg_dict = self.userArgs(arg_dict,user_args)
         if(error): return error + "\nRun ```help tip_shape``` if you're unsure."
         
-        # args = self.unpackArgs(user_arg_dict)
-        
         self.scanbot.tipShape()
         
     def tipShapeProps(self,user_args,_help=False):
@@ -432,7 +430,7 @@ class scanbot_interface(object):
                     '-t1'     : ['-default',lambda x: float(x), "(float) Defines the time to ramp Z from current Z position to z1"],
                     '-b2'     : ['-default',lambda x: float(x), "(float) Bias voltage applied just after the first Z ramping"],
                     '-t2'     : ['-default',lambda x: float(x), "(float) Time to wait after applying the Bias Lift value b2"],
-                    '-z3'     : ['-default',lambda x: float(x), "(float) Height the tip is going to ramp for the second time (m) i.e. +5nm"],
+                    '-z2'     : ['-default',lambda x: float(x), "(float) Height the tip is going to ramp for the second time (m) i.e. +5nm"],
                     '-t3'     : ['-default',lambda x: float(x), "(float) Time to ramp Z in the second ramping [s]."],
                     '-wait'   : ['-default',lambda x: float(x), "(float) Time to wait after restoring the initial Bias voltage"],
                     '-fb'     : ['-default',lambda x: int(x),   "(int) Restore the initial Z-Controller status. 0: off. 1: on"]}
@@ -930,67 +928,3 @@ if('-c' in sys.argv and not finish):
         handler_class.handle_message(message)
     
     finish = True
-
-# if('-g' in sys.argv and not finish):
-#     import customtkinter as ctk
-#     from MainPanel import MainPanel as mp
-#     import ctypes
-    
-# class App(ctk.CTk):
-#     WIDTH = 512
-#     HEIGHT = 512
-#     def __init__(self):
-#         super().__init__()
-#         self.title("EPWE")
-#         self.protocol("WM_DELETE_WINDOW", self.on_closing)
-        
-#         dpi = self.winfo_fpixels('1i')
-#         try:
-#             scaleFactor = ctypes.windll.shcore.GetScaleFactorForDevice(0)/100   # Account for windows scale factor in display settings
-#         except:
-#             scaleFactor = 1                                                     # Might not work on mac - haven't tested
-        
-#         handler_class = scanbot_interface(run_mode='g')
-#         self.mainPanel = mp(self, handler_class, width=self.WIDTH, height=self.HEIGHT, dpi=dpi, scaleFactor=scaleFactor)
-#         self.geometry("%dx%d" % (self.WIDTH, 850))
-        
-#     def on_closing(self, event=0):
-#         self.mainPanel.quit()
-        
-# if('-g' in sys.argv and not finish):
-#     ctk.set_appearance_mode("Dark")                                                 # Modes: system (default), light, dark
-#     ctk.set_default_color_theme("blue")                                             # Themes: blue (default), dark-blue, green
-
-#     app = App()
-#     app.mainloop()
-    
-# if('-g' in sys.argv and not finish):
-    # print("Booting in GUI mode...")
-    # import tkinter as tk
-    # from tkinter import *
-    # from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
-    # import matplotlib.pyplot as plt
-    # import subprocess
-    
-    # master    = tk.Tk()
-    # dpi       = master.winfo_fpixels('1i')
-    
-    # # Set up canvas
-    # width = 512; height = 512
-    # # canvas = FigureCanvasTkAgg(master=master)
-    # # canvas.get_tk_widget().configure(width=width, height=height)
-    
-    # # # Figure
-    # # fig = plt.figure(figsize=(width/dpi,height/dpi),dpi=dpi)
-    # # ax  = fig.add_subplot(111)
-    # # canvas.figure = fig
-    # # canvas.draw()
-    # termf = Frame(master, height=height, width=width)
-    
-    # termf.pack(fill=BOTH, expand=YES)
-    # wid = termf.winfo_id()
-    # subprocess.run('cmd.exe -into %d -geometry 40x20 -sb &' % wid)
-    
-    # master.mainloop()
-    
-    

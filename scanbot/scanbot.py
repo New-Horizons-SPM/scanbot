@@ -25,6 +25,8 @@ import ntpath
 import numpy as np
 import nanonispyfit as napfit
 import matplotlib.pyplot as plt
+import matplotlib
+matplotlib.use('agg')
 import cv2
 
 import math
@@ -64,6 +66,15 @@ class scanbot():
 # Data Acquisition
 ###############################################################################
     def plot(self,channel=-1):
+        """
+        Return a plot of the currect scan frame
+
+        Parameters
+        ----------
+        channel : Channel in the buffer to plot. -1 means plot the channel 
+                  currently in focus.
+
+        """
         NTCP,connection_error = self.connect()                                  # Connect to nanonis via TCP
         if(connection_error): return connection_error                           # Return error message if there was a problem connecting        
         
@@ -88,6 +99,37 @@ class scanbot():
         self.disconnect(NTCP)                                                   # Close the TCP connection
             
     def survey(self,bias,n,startAt,suffix,xy,dx,px,sleepTime,stitch,survey_hk,classifier_hk,autotip,ox=0,oy=0,message="",enhance=False,reverse=False,iamauto=False):
+        """
+        This function carries out an autonomous survey within the scannable 
+        area.
+
+        Parameters
+        ----------
+        bias : Image bias (V)
+        n : Size of the grid of images (nxn)
+        startAt : Image index to start the survey at. (0 = first image)
+        suffix : Suffix appended to the .sxm filename for images acquired
+        xy : Width and height of the scan frame (m)
+        dx : Distance between scans in the grid (m)
+        px : Number of pixels and lines in each scan
+        sleepTime : Restart each scan after this amount of time to wait for
+                    drift to settle (s)
+        stitch : Save a stitched version of the survey after completing.
+        survey_hk : Call to hk_survey.py after each image completed. See 
+                    documentation.
+        classifier_hk : Call to hk_classifier after each scan. Used when auto
+                        shaping. See documentation for details.
+        autotip : Analayse scan frames and automatically navigate the tip to 
+                  a clean reference metal for tip shaping.
+        ox : Absolute x-centre coordinate for the survey grid (m)
+        oy : Absolute y-centre coordinate for the survey grid (m)
+        message : (Zulip use only)
+        enhance : (Not used in this version)
+        reverse : Reverse the direction of the survey (start from the end)
+        iamauto : Flag when this function was called autonomously
+
+        """
+        
         NTCP,connection_error = self.connect()                                  # Connect to nanonis via TCP
         if(connection_error):
             global_.running.clear()                                             # Free up the running flag
@@ -186,6 +228,7 @@ class scanbot():
                     global_.running.clear()
                     callAutoTipShape = True
             
+            _,scanData,_ = scan.FrameDataGrab(self.channel, 1)                  # Grab the data related to our focused channel
             pngFilename,scanDataPlaneFit = self.makePNG(scanData, filePath,returnData=True,dpi=150) # Generate a png from the scan data
             self.interface.sendPNG(pngFilename,notify=True,message=message)     # Send a png over zulip
             
@@ -211,7 +254,7 @@ class scanbot():
             if(self.checkEventFlags()): break                                   # Check event flags
         
         if(stitch == 1 and not np.isnan(stitchedSurvey).all()):
-            stitchFilepath = self.makePNG(stitchedSurvey,pngFilename = suffix + '.png',dpi=150*n, fit=False)
+            stitchFilepath = self.makePNG(stitchedSurvey,pngFilename = suffix + '_stitch.png',dpi=150*n, fit=False)
             self.interface.sendPNG(stitchFilepath,notify=False,message=message) # Send a png over zulip
         
         scan.PropsSet(series_name=basename)                                     # Put back the original basename
@@ -230,6 +273,11 @@ class scanbot():
         
     def survey2(self,bias,n,startAt,suffix,xy,dx,px,sleepTime,stitch,survey_hk,classifier_hk,autotip, # Survey params
                      nx,ny,xStep,yStep,zStep,xyV,zV,xyF,zF,message=""):          # Move area params
+        """
+        This function acquires many surveys with a call to move_area between
+        each one.
+        
+        """
         
         self.survey2Params = [bias,n,startAt,suffix,xy,dx,px,sleepTime,stitch,survey_hk,classifier_hk,autotip, # Survey2 params
                               nx,ny,xStep,yStep,zStep,xyV,zV,xyF,zF]
@@ -255,7 +303,7 @@ class scanbot():
                 if(self.checkEventFlags()): break                               # Check event flags
                 
                 s = suffix + "_y" + str(y) + "_x" + str(x)
-                callAutoTipShape = self.survey(bias,n,startAt,s,xy,dx,px,sleepTime,stitch,survey_hk,classifier_hk,autotip,reverse=reverse,iamauto=False,message=message)
+                callAutoTipShape = self.survey(bias,n,startAt,s,xy,dx,px,sleepTime,stitch,survey_hk,classifier_hk,autotip,reverse=reverse,iamauto=True,message=message)
                 reverse = not reverse
                 
                 if(self.checkEventFlags()): break                               # Check event flags
@@ -294,6 +342,37 @@ class scanbot():
             self.interface.moveTipToClean(user_args=user_args)
     
     def biasDep(self,nb,dcbias,tdc,dcSpeedRatio,pxdc,lxdc,bi,bf,px,lx,tlf,speedRatio,suffix,message=""):
+        """
+        This function initiates a set of bias dependent scans with the option 
+        of performing drift correction.
+        
+        When drift correction is turned on, every second scan is taken at a 
+        constant bias and used to determine a new scan frame position to 
+        accommodate for drift.
+        
+        Parameters
+        ----------
+        nb : Number of biases to scan area
+        dcbias : Bias of the drift correction scan frame. Set to 0 to turn off
+        tdc : Scan speed during drift correction frame (time per line (s))
+        dcSpeedRatio : Backward speed ratio for drift correction frame.
+        pxdc : Number of pixels in the drift correction frame
+        lxdc : Number of lines in the drift correction frame. 0 keeps the same 
+               ratio as the bias dependent images.
+        bi : Initial scan bias (V)
+        bf : Final scan bias (V)
+        px : Number of pixels in the bias dependent images (multiple of 16)
+        lx : Number of lines in the bias dependent images
+        tlf : Scan speed (time per line (s))
+        speedRatio : Backward scan speed ratio
+        suffix : Suffix appended to the filenames of the set of bias dep images
+        message : (Zulip use only)
+
+        Returns
+        -------
+        Error message if something went wrong
+
+        """
         NTCP,connection_error = self.connect()                                  # Connect to nanonis via TCP
         if(connection_error):
             global_.running.clear()                                             # Free up the running flag
@@ -374,7 +453,7 @@ class scanbot():
             _, _, filePath = scanModule.WaitEndOfScan()
             if(not filePath): break
             
-            _,scanData,_ = scanModule.FrameDataGrab(14, 1)                      # 14 = z., 18 is Freq. shift
+            _,scanData,_ = scanModule.FrameDataGrab(self.channel, 1)            # 14 = z., 18 is Freq. shift
             pngFilename = self.makePNG(scanData, filePath)                      # Generate a png from the scan data
             GIF.append(scanData)
             
@@ -828,13 +907,36 @@ class scanbot():
 # Tip Actions
 ###############################################################################
     def moveArea(self,up,upV,upF,direction,steps,dirV,dirF,zon,approach=True,message=""):
+        """
+        This function blindly moves the tip. The tip can never be moved down.
+        The tip is first moved in Z+ before moving in any other direction.
+
+        Parameters
+        ----------
+        up  : Number of motor steps to take in Z+
+        upV : Piezo voltage during Z+ movement (V)
+        upF : Piezo frequency during Z+ movement (Hz)
+        direction : Direction to move after Z+. Can be X+, X-, Y+, Y-
+        steps : Number of motor steps to move in -direction
+        dirV : Piezo voltage when moving in -direction (V)
+        dirF : Piezo frequency when moving in -direction (Hz)
+        zon : Flag to turn the controller on after approaching (if approaching)
+        approach : Flag to begin an approach after moving.
+        message : (Zulip use only)
+
+        Returns
+        -------
+        True if moved successfully.
+        False if error or crash detected.
+
+        """
         NTCP,connection_error = self.connect()                                  # Connect to nanonis via TCP
         if(connection_error): return connection_error                           # Return error message if there was a problem connecting        
         
         # Safety checks
         if(up < 10):
-            self.disconnect(NTCP)
-            self.interface.sendReply("-up must be > 10",message=message)
+            # self.disconnect(NTCP)
+            # self.interface.sendReply("-up must be > 10",message=message)
             return False
         
         if(upV > self.zMaxV):
@@ -974,8 +1076,21 @@ class scanbot():
     
     def moveTip(self,lightOnOff,cameraPort,trackOnly,xStep,zStep,xV,zV,xF,zF,demo,target=[],tipPos=[],iamauto=False):
         """
-        In development
-
+        This function moves the tip to a desired target location while tracking
+        it's position using the camera feed. In order for a tip to be moved to 
+        a target, the target z-coordinate must be above the tip's current 
+        coordinate (the tip can never be moved down for safety). Scanbot will 
+        make sure the tip's z-coordinate is above the target coordinate before 
+        moving along the X direction.
+        
+        This function can be called by the user directly, where they will be 
+        prompted to mark the tip's current location as well as the target 
+        location.
+        
+        It is also called by Scanbot during autonomous operation. The tip's 
+        initial position must be set using the autoInit function before this 
+        works.
+        
         Parameters
         ----------
         lightOnOff : Flag to call hook hk_light. If set, a python script 
@@ -984,7 +1099,17 @@ class scanbot():
         cameraPort : usually if you have a desktop windows machine with one 
                      camera plugged in, set this to 0. laptops with built-in 
                      cameras will probably be 1
+        trackOnly  : Used for testing only.
+        xStep      : Motor steps in x-direction when moving the tip in X+ or X-
+        zStep      : Motor steps in Z+ when moving the tip up in Z+.
+        xV         : Piezo voltage during xStep (V)
+        zV         : Piezo voltage during zStep (V)
+        xF         : Piezo frequency during xStep (Hz)
+        zF         : Piezo frequency during zStep (Hz)
         demo       : demo mode (temporary)
+        target     : Target position (used in autonomous mode)
+        tipPos     : Current tip position (used in autonomous mode)
+        iamauto    : Flag for when this function was called in autonomous mode
 
         """
         if(lightOnOff):                                                         # If we want to turn the light on
@@ -1014,13 +1139,13 @@ class scanbot():
             
             self.interface.sendReply("Select target location for the tip. Press 'q' to cancel and enter track-only mode")
             target = utilities.markPoint(cap)
-            
+        
         if(len(target)):
-            target = target - tipPos
-            if(target[1] > 0 and not iamauto):
+            if(target[1] - tipPos[1] > 0 and not iamauto):
                 self.interface.sendReply("Error: cannot move tip lower than current position. Track-Only mode activated")
                 target = []
-        
+            
+        print("target",target)
         if(not len(target)): trackOnly = True
         
         success = True
@@ -1028,6 +1153,7 @@ class scanbot():
         previousPos = np.array([0,0])
         pk = []
         currentPos = tipPos.copy()
+        
         while(cap.isOpened()):
             if(not success):
                 self.interface.sendReply("Error moving area... tip crashed... stopping")
@@ -1039,12 +1165,12 @@ class scanbot():
         
             currentPos = utilities.trackTip(frame,currentPos)
             
-            print(currentPos)
+            # print(currentPos)
             
             ret, frame = cap.read()
             if(not ret): break
             rec = cv2.circle(frame, currentPos, radius=3, color=(0, 0, 255), thickness=-1)
-            if(len(target)): rec = cv2.circle(rec, target + tipPos, radius=3, color=(0, 255, 0), thickness=-1)
+            if(len(target)): rec = cv2.circle(rec, target, radius=3, color=(0, 255, 0), thickness=-1)
             
             if(not (currentPos == previousPos).all()):
                 pk.append([rec,currentPos,frame])
@@ -1058,15 +1184,21 @@ class scanbot():
             if(trackOnly): continue
             
             if(currentPos[1] > target[1]):                                      # First priority is to always keep the tip above this line
-                if(demo): continue
+                if(demo):
+                    print("Moving up")
+                    continue
                 success = self.moveArea(up=zStep, upV=zV, upF=zF, direction="X+", steps=0, dirV=xV, dirF=xF, zon=False, approach=False)
                 continue
             if(currentPos[0] < target[0]):
-                if(demo): continue
+                if(demo):
+                    print("Moving right")
+                    continue
                 success = self.moveArea(up=10, upV=zV, upF=zF, direction="X+", steps=xStep, dirV=xV, dirF=xF, zon=False, approach=False)
                 continue
             if(currentPos[0] > target[0]):
-                if(demo): continue
+                if(demo):
+                    print("Moving left")
+                    continue
                 success = self.moveArea(up=10, upV=zV, upF=zF, direction="X-", steps=xStep, dirV=xV, dirF=xF, zon=False, approach=False)
                 continue
             
@@ -1076,8 +1208,8 @@ class scanbot():
         
         cap.release()
         cv2.destroyAllWindows()
-        import pickle
-        pickle.dump(pk,open('test.pk','wb'))
+        # import pickle
+        # pickle.dump(pk,open('test.pk','wb'))
         if(iamauto):
             self.tipPos = currentPos
         
@@ -1097,6 +1229,12 @@ class scanbot():
         return
         
     def tipShape(self):
+        """
+        This function executes a tip shape based on parameters currently set in
+        nanonis. Change the tip shaping parameters using the tip_shape_props 
+        Scanbot command or by simply changing them in nanonis.
+
+        """
         NTCP,connection_error = self.connect()                                  # Connect to nanonis via TCP
         if(connection_error): return connection_error                           # Return error message if there was a problem connecting
         
@@ -1111,6 +1249,24 @@ class scanbot():
         self.interface.reactToMessage("dagger")
         
     def tipShapeProps(self,sod,cb,b1,z1,t1,b2,t2,z3,t3,wait,fb):
+        """
+        This function configures the tip shaping properties.
+
+        Parameters
+        ----------
+        sod   : Switch-off delay (ms)
+        cb    : Change bias flag
+        b1    : Change bias value (V) (if cb is set to True)
+        z1    : Initial tip lift. Should be negative (i.e. -1e-9) (nm)
+        t1    : Duration z1 is performed (s)
+        b2    : Bias applied after t1 (V)
+        t2    : Duration b2 is applied (s)
+        z3    : Final tip lift. Should be positive (m)
+        t3    : Duration z3 is performed (s)
+        wait  : Don't return until finished
+        fb    : Flag to turn feedback back on after t3
+
+        """
         NTCP,connection_error = self.connect()                                  # Connect to nanonis via TCP
         if(connection_error): return connection_error                           # Return error message if there was a problem connecting
          
@@ -1155,6 +1311,26 @@ class scanbot():
 # Auto STM
 ###############################################################################
     def autoInit(self,lightOnOff,cameraPort,demo,message=""):
+        """
+        This function initialises the tip, 'sample', and 'clean metal' 
+        locations. It must be run before any commands that track and maneuver 
+        the tip autonomously.
+
+        Parameters
+        ----------
+        lightOnOff : Call to the hk_light hook which is designed to turn the 
+                     STM light on/off if required.
+        cameraPort : Usually 0 if there's only one camera connected. 1 for 
+                     laptops that have built-in cameras already.
+        demo       : Run this in demo mode which uses a recording instead of a 
+                     live camera feed.
+        message    : (Zulip use only)
+
+        Returns
+        -------
+        String if an error occurred.
+
+        """
         if(lightOnOff):                                                         # If we want to turn the light on
             try:
                 from hk_light import turn_on
@@ -1285,7 +1461,7 @@ class scanbot():
         
         message = ""
         if(target == "clean" and tipshape == 1):
-            message = self.autoTipShape(n=-1, wh=10e-9, symTarget=0.9, sizeTarget=2.5, zQA=-85e-11, ztip=-2.5e-9, sleepTime=1, iamauto=True)
+            message = self.autoTipShape(n=50, wh=10e-9, symTarget=0.7, sizeTarget=3, zQA=-85e-11, ztip=-2.5e-9, sleepTime=1, iamauto=True, demo=demo)
             if(not message): message = ""
         
         if(not "Tip shaping successful" in message):
@@ -1315,7 +1491,78 @@ class scanbot():
             self.survey2(user_args=[],_help=False,surveyParams=self.survey2Params)
             return
         
-    def autoTipShape(self,n,wh,symTarget,sizeTarget,zQA,ztip,rng,sleepTime,tipShape_hk,message="",iamauto=False):
+    def autoTipShape(self,n,wh,symTarget,sizeTarget,zQA,ztip,rng=1,sleepTime=1,tipShape_hk="",message="",iamauto=False,demo=False):
+        """
+        This function initiates autonomous tip shaping. The process is as 
+        follows:
+            
+            step 1: A small scan is initiated. The scan is monitored every
+                    second to determine whether the area is flat/clean enough
+                    for a tip shape. If the area is not clean enough, the scan 
+                    is stopped, the scan frame is moved to the next position 
+                    and the scan is restarted.
+            
+            step 2: Upon completing an image of a flat area, a small tip-
+                    shaping action is performed. Then, the same region is 
+                    scanned, acquiring an image of the imprint left by the tip 
+                    apex.
+            
+            step 3: The imprint is analysed and a contour is drawn around the 
+                    tip's imprint. The shape of the imprint is given two 
+                    scores; one for the tip's size in units of nm2, and one 
+                    for the tip's symmetry which is the calculated circularity.
+                    Ideally, the tip imprint is as small as possible, with 
+                    perfect symmetry. This would correspond to a size close to 
+                    zero and a symmetry of 1. Practically, if the tip's 
+                    symmetry score is > 0.75, the tip is great for imaging.
+                    A 'good' size of the tip's imprint depends on the 
+                    substrate. Imprints are typically larger on Au(111) than on
+                    Ag(111), for example.
+                    
+                    If both size and symmetry targets are met, the process 
+                    stops here.
+                    
+            
+            step 4  If either of the size and symmetry targets are not met, a
+                    more agressive tip-shaping action is performed. The scan 
+                    frame is then moved to the next position and the process
+                    returns to step 1.
+
+        Parameters
+        ----------
+        n :          Set up an nxn grid of images/tip shaping positions. The 
+                     Maximum number of attempts is nxn
+           
+        wh         : Width and height of the square scan frame (m)
+        symTarget  : Target symmetry score. 0=asymmetric, 1=perfect circle
+        sizeTarget : Target size of the tip (nm2). The imprint must be smaller
+                     than this number to end the process.
+        zQA        : Tip lift when performing a light tip-shaping action to 
+                     leave an imprint to be imaged (m)
+        ztip       : Tip lift during the more agressive tip shape. If rng is 
+                     set, this value is used as the maximum (m)
+        rng        : Flag to turn on random number generator to determine tip
+                     lift during the aggressive tip shape. The tip lift will be
+                     between 0 and ztip.
+        sleepTime  : Restart the scan after this amount of time to account for 
+                     drift after moving the scan frame (s)
+        tipShape_hk : Call to hk_tipShape.py after each imprint is obtained.
+                      This hook is designed to overwrite the tip shaping params
+                      based on the imprint of the tip. See documentation for 
+                      more details.
+        message     : (Zulip use only)
+        iamauto     : Flag for when this process was called by Scanbot during
+                      STM automation
+        demo        : Flag for when operating in demo mode - assigns random 
+                      numbers to size and symmetry scores. Useful when testing 
+                      with the nanonis simulator.
+
+        Returns
+        -------
+        message     : String commenting on the number of attempts, success, or
+                      failure.
+
+        """
         NTCP,connection_error = self.connect()                                  # Connect to nanonis via TCP
         if(connection_error):
             global_.running.clear()                                             # Free up the running flag
@@ -1435,6 +1682,11 @@ class scanbot():
             
             tipCheckPos -= frame[0:2]                                           # Convert absolute coodinate to frame-relative coordinate
             symmetry,size = utilities.assessTip(tipImprint,wh,tipCheckPos)      # Assess the quality of the tip based on the imprint it leaves on the surface
+            
+            if(demo):                                                           # If running in demo mode, use random values to assign scores
+                symmetry = rng.random()
+                size = 6*rng.random()
+                
             self.interface.sendReply("Imprint size: " + str(size) + "\nImprint symm: " + str(symmetry))
             # if(size < 0): contour not found, do something about that.
             
@@ -1492,6 +1744,28 @@ class scanbot():
 # Config
 ###############################################################################
     def plotChannel(self,c=-1,a=-1,r=-1):
+        """
+        This function handles reading and configuring the signals in Nanonis. 
+        The selected channel is what Scanbot uses when sending plots back to 
+        the user. Any channel in the scan buffer can be selected using the -c 
+        option. Available channels that are not in the scan buffer can be added
+        using the -a argument. These signals will be saved to the sxm file when
+        the scan completes. Channels in the scan buffer can be removed with the
+        -r argument.
+
+        Parameters
+        ----------
+        c : Index of a signal in the buffer to take focus. -1 = no change
+        a : Index of a signal to be added to the buffer
+        r : Index of a signal to be removed from the buffer
+
+        Returns
+        -------
+        helpStr : String containing the status of the selected channel, 
+                  channels in the scan buffer, and available channels.
+        errmsg  : Error message if there was an error
+
+        """
         NTCP,connection_error = self.connect()                                  # Connect to nanonis via TCP
         if(connection_error): return connection_error                           # Return error message if there was a problem connecting        
         
@@ -1507,7 +1781,7 @@ class scanbot():
         helpStr += "Buffer idx | Signal idx | Signal name\n"
         for idx,name in enumerate(signal_names):
             if(idx in channels):
-                helpStr += str(idx).ljust(11) + '| ' + str(signal_indexes[idx]).ljust(11) + ": " + name + "\n"
+                helpStr += str(idx).ljust(11) + '| ' + str(signal_indexes[idx]).ljust(11) + "| " + name + "\n"
         
         helpStr += "\n**Available channels:**\n"
         helpStr += "Buffer idx | Signal idx | Signal name\n"
@@ -1547,6 +1821,10 @@ class scanbot():
 # Misc
 ###############################################################################
     def stop(self):
+        """
+        This function stops Scanbot from whatever it's currently doing
+
+        """
         NTCP,connection_error = self.connect()                                  # Connect to nanonis via TCP
         if(connection_error): return connection_error                           # Return error message if there was a problem connecting        
         
@@ -1559,6 +1837,14 @@ class scanbot():
 # Utilities
 ###############################################################################
     def tipShapePropsGet(self):
+        """
+        This function returns the current tip-shaping parameters.
+
+        Returns
+        -------
+        getStr : Readable string containing all the tip-shaping parameters
+
+        """
         NTCP,connection_error = self.connect()                                  # Connect to nanonis via TCP
         if(connection_error): return connection_error                           # Return error message if there was a problem connecting
          
@@ -1588,6 +1874,25 @@ class scanbot():
         return getStr
     
     def tipInFrame(self,tipPos,scanFrame):
+        """
+        This function checks if the tip is within the scan frame
+
+        Parameters
+        ----------
+        tipPos : Absolute tip position
+        scanFrame : Scan frame parameters (list).
+                    [0] x-position (scan frame centre)
+                    [1] y-position (scan frame centre)
+                    [2] width
+                    [3] height
+                    [4] scan frame angle
+
+        Returns
+        -------
+        bool : True if the tip is within the scan frame
+               False if the tip is outside the scan frame
+
+        """
         x,y,w,h,angle = scanFrame
         angle = angle*math.pi/180
         tipX,tipY = utilities.rotate([x,y],tipPos,angle)
@@ -1597,7 +1902,26 @@ class scanbot():
         if(tipY < bottomLeft[1] or tipY > topRight[1]): return False
         return True
     
-    def rampBias(self,NTCP,bias,dbdt=1,db=50e-3,zhold=True):                    # Ramp the tip bias from current value to final value at a rate of db/dt
+    def rampBias(self,NTCP,bias,dbdt=1,db=50e-3,zhold=True):
+        """
+        This function ramps the tip/sample bias from the current value to a
+        new value.
+
+        Parameters
+        ----------
+        NTCP  : Handle to NanonisTCP connection
+        bias  : Bias to ramp to
+        dbdt  : Rate of change during ramp (V/s)
+        db    : Incrememnt/decrement amount during ramp (V)
+        zhold : True: turn off the z-controller during ramp
+                False: Leave the z-controller alone (on stays on, off stays off)
+
+        Returns
+        -------
+        None.
+
+        """
+    
         if(bias == 0): return
         biasModule = Bias(NTCP)                                                 # Nanonis Bias module
         zController = ZController(NTCP)                                         # Nanonis ZController module
@@ -1617,6 +1941,25 @@ class scanbot():
         if(zhold): zController.OnOffSet(True)                                   # Turn the controller back on if we need to
         
     def makePNG(self,scanData,filePath='',pngFilename='im.png',returnData=False,fit=True,dpi=150):
+        """
+        This function generates a .png file from scanData. It replaces nan's 
+        with the mean value of scanData.
+
+        Parameters
+        ----------
+        scanData    : Data to turn into a .png
+        filePath    : Save the png here
+        pngFilename : .png filename
+        returnData  : True: return the processed scanData
+        fit         : Subtract a plane fit from scanData before generating the .png
+        dpi         : Image dpi
+
+        Returns
+        -------
+        pngFilename : filename of the png
+        scanData    : Processed input data. Only returned if returnData=True.
+
+        """
         fig, ax = plt.subplots(1,1)
         
         mask = np.isnan(scanData)                                               # Mask the Nan's
@@ -1631,12 +1974,30 @@ class scanbot():
         if filePath: pngFilename = ntpath.split(filePath)[1] + '.png'
         
         fig.savefig(pngFilename, dpi=dpi, bbox_inches='tight', pad_inches=0)
-        plt.close('all')
+        plt.close(fig)
         
         if(returnData): return pngFilename,scanData
         return pngFilename
     
     def getMetaData(self,filePath):
+        """
+        Return the metadata about a scan
+
+        Parameters
+        ----------
+        filePath : Not used
+
+        Returns
+        -------
+        meta data : [0] scan frame x-coordinate of centre
+                    [1] scan frame y-coordinate of centre
+                    [2] scan frame width
+                    [3] scan frame h
+                    [4] scan frame angle
+                    [5] scan frame number of pixels
+                    [6] scan frame number of lines
+
+        """
         NTCP,connection_error = self.connect()                                  # Connect to nanonis via TCP
         if(connection_error): return "getMetaData: " + connection_error
         
@@ -1649,6 +2010,19 @@ class scanbot():
         return [x,y,w,h,angle,pixels,lines]
         
     def checkEventFlags(self,message = ""):
+        """
+        This function is used when scanbot commands are threaded tasks. Global
+        pause and running flags are used to pause and stop threaded tasks.
+
+        Parameters
+        ----------
+        message : (zulip only)
+
+        Returns
+        -------
+        True if the thread should be stopped
+
+        """
         if(not global_.running.is_set()):
             self.interface.reactToMessage("stop_button")
             return 1                                                            # Running flag
@@ -1675,6 +2049,25 @@ class scanbot():
             self.disconnect(NTCP)
             
     def safeCurrentCheck(self,NTCP,message=""):
+        """
+        Check that the tip-sample current is below the safe threshold (i.e. 
+        if the tip is not crashed). If a crash is detected, the tip is 
+        retracted until the current falls below the safe threshold.
+        
+        The safe current threshold and piezo parameters can be set in the 
+        configuration file or through the Scanbot command set_crash_safety.
+
+        Parameters
+        ----------
+        NTCP : Connection handle to NanonisTCP
+        message : (Zulip use only)
+
+        Returns
+        -------
+        True if the tip is safe
+        False if a crash was detected and the tip was retracted.
+
+        """
         motor         = Motor(NTCP)                                             # Nanonis Motor module
         zController   = ZController(NTCP)                                       # Nanonis Z-Controller module
         currentModule = Current(NTCP)                                           # Nanonis Current module
@@ -1727,6 +2120,20 @@ class scanbot():
 # Nanonis TCP Connection
 ###############################################################################
     def connect(self,creepIP=None,creepPORT=None):
+        """
+        This function creats a nanonisTCP connection and returns the handle
+
+        Parameters
+        ----------
+        creepIP : (not used in this version)
+        creepPORT : (Not used in this version)
+
+        Returns
+        -------
+        connection : [0] nanonisTCP connection handle if successful. 0 if not
+                     [1] Error message if there was an error. 0 if not
+
+        """
         IP   = creepIP
         PORT = creepPORT
         try:                                                                    # Try to connect to nanonis via TCP
@@ -1739,6 +2146,14 @@ class scanbot():
             return [0,"No ports available"]                                     # If no ports are available send this message
     
     def disconnect(self,NTCP):
+        """
+        Release the nanonisTCP connection and free up the port
+
+        Parameters
+        ----------
+        NTCP : Connection handle
+
+        """
         NTCP.close_connection()                                                 # Close the TCP connection
         self.interface.portList.append(NTCP.PORT)                               # Free up the port - put it back in the list of available ports
         time.sleep(0.2)                                                         # Give nanonis a bit of time to close the connection before attempting to reconnect using the same port (from experience)

@@ -35,6 +35,18 @@ import global_
 
 import utilities
 
+try: import hk_classifier
+except: pass
+
+try: import hk_tipShape
+except: pass
+
+try: from hk_light import turn_on
+except: pass
+
+try: import pickle
+except: pass
+
 class scanbot():
     channel      = 14                                                           # Default plot channel. Change this using plot_channel command
     
@@ -214,8 +226,7 @@ class scanbot():
                 classification = utilities.classify(scanData,filePath,classificationHistory) # Obtain image classification
                 if(classifier_hk):
                     try:
-                        from hk_classifier import run
-                        classification = run(scanData,filePath,classificationHistory) # Overwrite classification with the one from the hook
+                        classification = hk_classifier.run(scanData,filePath,classificationHistory) # Overwrite classification with the one from the hook
                     except Exception as e:
                         self.interface.sendReply("Warning: Call to survey hook hk_classifier.py failed:")
                         self.interface.sendReply(str(e))
@@ -1114,7 +1125,6 @@ class scanbot():
         """
         if(lightOnOff):                                                         # If we want to turn the light on
             try:
-                from hk_light import turn_on
                 turn_on()                                                       # Call the hook to do so. Hook should return null if successful, otherwise it should throw an Exception
             except Exception as e:
                 self.interface.sendReply("Error calling hook hk_light.py to turn on light")
@@ -1441,7 +1451,7 @@ class scanbot():
         global_.running.clear()                                                 # Free up the running flag
         return
     
-    def moveTipToTarget(self,lightOnOff, cameraPort, xStep, zStep, xV, zV, xF, zF, approach, demo, tipshape, retrn, run, target):
+    def moveTipToTarget(self,lightOnOff, cameraPort, xStep, zStep, xV, zV, xF, zF, approach, demo, tipshape, tipShape_hk, retrn, run, target, autoTipParams=[]):
         if(not self.autoInitSet):
             self.interface.sendReply("Error, run the auto_init command to initialise tip, sample, and clean metal locations")
             global_.running.clear()                                             # Free up the running flag
@@ -1461,7 +1471,7 @@ class scanbot():
         
         message = ""
         if(target == "clean" and tipshape == 1):
-            message = self.autoTipShape(n=50, wh=10e-9, symTarget=0.7, sizeTarget=3, zQA=-85e-11, ztip=-2.5e-9, sleepTime=1, iamauto=True, demo=demo)
+            message = self.autoTipShape(n=20, wh=10e-9, symTarget=0.7, sizeTarget=3, zQA=-85e-11, ztip=-2.5e-9, sleepTime=1, iamauto=True, demo=demo, tipShape_hk=tipShape_hk)
             if(not message): message = ""
         
         if(not "Tip shaping successful" in message):
@@ -1491,7 +1501,7 @@ class scanbot():
             self.survey2(user_args=[],_help=False,surveyParams=self.survey2Params)
             return
         
-    def autoTipShape(self,n,wh,symTarget,sizeTarget,zQA,ztip,rng=1,sleepTime=1,tipShape_hk="",message="",iamauto=False,demo=False):
+    def autoTipShape(self,n,wh,symTarget,sizeTarget,zQA,ztip,rng=1,sleepTime=1,demo=False,tipShape_hk="",message="",iamauto=False):
         """
         This function initiates autonomous tip shaping. The process is as 
         follows:
@@ -1589,6 +1599,8 @@ class scanbot():
         if(rng == 1): rng = np.random.default_rng()
         else: rng = 0
         
+        hk_tipShapeHistory = []                                                 # Variable used to pass in and out of hk_tipShape
+        
         tipShapeProps[10]   = 1                                                 # Make sure feedback on after tip shape
         tipShapeProps[3]   = ztip                                               # Amount to dip the tip into the surface
         tipShapeProps[7]   = -3*ztip                                            # Amount to withdraw the tip from the surface
@@ -1630,6 +1642,10 @@ class scanbot():
                     global_.running.clear()                                     # Free up the running flag
                     return
             x = np.array(list(reversed(x)))                                     # Snake the grid - better for drift
+        
+        if(demo):
+            demoData = pickle.load(open("../Dev/autoTipShape.pk",'rb'))         # Load in dummy data for demo mode. This is just a few images of various tip imprints
+            demoIDX = 0                                                         # Keep track of demo data file
             
         for frame in snakedGrid:
             scanModule.FrameSet(*frame)
@@ -1654,7 +1670,7 @@ class scanbot():
                 scanModule.Action(scan_action='stop')
                 self.interface.sendReply("Bad area, moving scan frame")
                 continue                                                        # Don't count the attempt if the area sucks
-                
+            
             if(not filePath): break                                             # If the scan was stopped before finishing, stop program
             
             tipCheckPos = utilities.getCleanCoordinate(cleanImage, lxy=wh)      # Do some processing to find a clean location to assess tip quality
@@ -1680,14 +1696,21 @@ class scanbot():
             # Probably do something here to periodically check scan area (as
             # above) in case the tip blew up and left the area a mess.
             
+            if(demo):
+                tipImprint = demoData[demoIDX]                                  # If we're in demo mode, replace the image with some dummy data
+                demoIDX += 1                                                    # Incrememnt the index to cycle through the dummy data
+                if(demoIDX == len(tipImprint)):
+                    demoIDX = 0                                                 # Loop back to the start - happens when size and symm scores are too tight for dummy data
+                    
             tipCheckPos -= frame[0:2]                                           # Convert absolute coodinate to frame-relative coordinate
-            symmetry,size = utilities.assessTip(tipImprint,wh,tipCheckPos)      # Assess the quality of the tip based on the imprint it leaves on the surface
+            symmetry,size,contour = utilities.assessTip(tipImprint,wh,tipCheckPos,True) # Assess the quality of the tip based on the imprint it leaves on the surface
             
-            if(demo):                                                           # If running in demo mode, use random values to assign scores
-                symmetry = rng.random()
-                size = 6*rng.random()
+            imprintFilename = "imprint_size--" + str(int(size*100)/100) + "_symm--" + str(int(symmetry*100)/100) + ".png"
+            imprintPNG = self.makePNG(tipImprint,pngFilename=imprintFilename)
+            self.interface.sendPNG(imprintPNG)
                 
             self.interface.sendReply("Imprint size: " + str(size) + "\nImprint symm: " + str(symmetry))
+            
             # if(size < 0): contour not found, do something about that.
             
             if(symmetry > symTarget):
@@ -1706,8 +1729,9 @@ class scanbot():
                 
             if(tipShape_hk):
                 try:
-                    import hk_tipShape
-                    temp_tipShapeProps = hk_tipShape.run(cleanImage,tipImprint,tipShapeProps.copy(),size,symmetry)
+                    actual = [size,symmetry]
+                    target = [sizeTarget,symTarget]
+                    temp_tipShapeProps,hk_tipShapeHistory = hk_tipShape.run(cleanImage,tipImprint,tipShapeProps.copy(),target,actual,hk_tipShapeHistory)
                     if(not type(temp_tipShapeProps) == type(None)):
                         if(not len(temp_tipShapeProps) == len(tipShapeProps)):
                             self.interface.sendReply("Warning: tipShapeProps returned from hk_tipShape.py does not contain expected number of parameters. See documentation for nanonisTCP.TipShaper. This will probably cause an error.")
@@ -1732,6 +1756,12 @@ class scanbot():
         message = "Tip shaping failed"
         if(tipQA): message = "Tip shaping successful"
         self.interface.sendReply(message + " after " + str(attempt+1) + " attempts")
+        
+        try:                                                                    # Will fail if no images of the tip imprint were taken before process stopped
+            imprintFilename = "imprint_size--" + str(int(size*100)/100) + "_symm--" + str(int(symmetry*100)/100) + "_final.png"
+            imprintPNG = self.makePNG(tipImprint,pngFilename=imprintFilename)
+            self.interface.sendPNG(imprintPNG)
+        except: pass
         
         self.disconnect(NTCP)                                                   # Close the TCP connection
         

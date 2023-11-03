@@ -145,3 +145,4 @@ dmypy.json
 *.txt
 *.ini
 *.mp4
+*.pk

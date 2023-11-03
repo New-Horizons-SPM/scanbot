@@ -416,7 +416,7 @@ def findTipChanges(scanData):
 ###############################################################################
 # Analyse STM Images
 ###############################################################################
-def assessTip(scanData,lxy,xy):
+def assessTip(scanData,lxy,xy,returnContour=False):
     """
     Assess the quality of the tip based on the imprint it left on the surface
     after a very light tip shaping action.
@@ -432,6 +432,7 @@ def assessTip(scanData,lxy,xy):
     -------
     symScore : score out of 10 for symmetry
     size     : size of the imprint area (nm2)
+    contour  : Image of the imprint with a contour drawn on it
 
     """
     lowpass  = ndimage.gaussian_filter(scanData, 20)                            # Lowpass filter the scandata
@@ -449,9 +450,10 @@ def assessTip(scanData,lxy,xy):
     contours = sorted(contours, key=cv2.contourArea)                            # Sort all the contours by ascending area. This will help when we have concentric contours that we need to deal with
     
     dxy = lxy/scanData.shape[0]
-    xy += np.array([lxy,lxy])/2
-    xy /= dxy
-    xy  = xy.astype(np.int)
+    # xy += np.array([lxy,lxy])/2
+    # xy /= dxy
+    # xy  = xy.astype(np.int)
+    xy = np.flip(np.unravel_index(np.argmax(np.flipud(highpass)),highpass.shape)) # Take the location of the brightest contour in the image
     
     size = -1
     symScore = 1
@@ -466,10 +468,11 @@ def assessTip(scanData,lxy,xy):
             size = cv2.contourArea(c)*dxy*dxy*1e18
             perimeter = cv2.arcLength(c,True)*dxy*1e9
             symScore = (4*np.pi*size)/(perimeter**2)
-            # cv2.drawContours(cnt, contours, idx, 255, 0)                          # Draw filled contour in mask
+            cv2.drawContours(scanData, contours, idx, 2*np.max(scanData), 1)    # Draw contour over original scanData
             break
     
-    return symScore,size
+    if(not returnContour): return symScore,size
+    return symScore, size, scanData
     
 def getCleanCoordinate(scanData,lxy):
     """

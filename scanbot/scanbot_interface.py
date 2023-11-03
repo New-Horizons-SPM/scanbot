@@ -485,6 +485,7 @@ class scanbot_interface(object):
                     '-approach'   : ['1',   lambda x: int(x),   "(int) Approach when tip reaches target. 0=No,1=Yes"],
                     '-demo'       : ['0',   lambda x: int(x),   "(int) Load in an mp4 recording of the tip moving instead of using live feed"],
                     '-tipshape'   : ['0',   lambda x: int(x),   "(int) Flag to initiate auto_tip_shape on approach (applies to move_tip_to_clean only)"],
+                    '-hk_tipShape': ['0',   lambda x: int(x),   "(int) Flag to call hk_tipShape when auto tip shaping. 1=Yes, 0=No"],
                     '-return'     : ['0',   lambda x: int(x),   "(int) Return to sample after tipshaping (applies to move_tip_to_clean when -tipshape=1)"],
                     '-run'        : ['',    lambda x: str(x),   "(str) Name of the command to run upon appraching sample (applies when -return=1). Can be one of 'survey' or 'survey2'."]}
         
@@ -509,6 +510,7 @@ class scanbot_interface(object):
                     '-ztip' : ['-1.5e-9',   lambda x: float(x), "(float) z-lift when performing a tip shape to alter the tip (m)"],
                     '-rng'  : ['1',         lambda x: int(x),   "(int) Flag to randomise -ztip from 1 nm to -ztip value. 1=Yes, 0=No"],
                     '-st'   : ['10',        lambda x: int(x),   "(int) Drift compensation time (s)"],
+                    '-demo' : ['0',         lambda x: int(x),   "(int) Flag to call in demo mode (1=demo, 0=live)"],
                     '-hk_tipShape' : ['0',  lambda x: int(x),   "(int) Flag to call the hook hk_tipShape. Use this hook to adjust the tip shaping parameters based on size/symmetry scores, or based on the image of the tip imprint itself. 0=Don't call, 1=Call"],}
         
         if(_help): return arg_dict

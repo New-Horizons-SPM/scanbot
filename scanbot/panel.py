@@ -124,7 +124,8 @@ class ScanbotPanel(param.Parameterized):
         form2['-xV']         = pn.widgets.TextInput(name='Piezo voltage when moving tip in X+/- (V)', value="80")
         form2['-xF']         = pn.widgets.TextInput(name='Piezo frequency when moving tip in X+/- (Hz)', value="2000")
         form2['-approach']   = pn.widgets.Select(name='Approach when tip reaches target?', options={"No":0,"Yes":1},value=0)
-        form2['-tipshape']   = pn.widgets.Select(name='Initiate auto tip shape on approach?', options={"No":0,"Yes":1},value=0)
+        form2['-tipshape']   = pn.widgets.Select(name='Initiate auto tip shape on approach? (Move to metal only)', options={"No":0,"Yes":1},value=0)
+        form2['-hk_tipShape']= pn.widgets.Select(name='Call hk_tipShape.py when auto tip shaping?', options={"No":0,"Yes":1},value=0)
         form2['-return']     = pn.widgets.Select(name='Return to sample after auto tip shape?', options={"No":0,"Yes":1},value=0)
         form2['-run']        = pn.widgets.Select(name='Run a survey upon return?', options={"No":"","Yes":"survey"},value="")
         
@@ -225,12 +226,13 @@ class ScanbotPanel(param.Parameterized):
         options = list(np.arange(10)+1)
         form3['-n']     = pn.widgets.Select(name='Tip shaping grid size (NxN)',options=options, value=10)
         form3['-wh']    = pn.widgets.TextInput(name='Scan size (m)', value="10e-9")
-        form3['-sym']   = pn.widgets.TextInput(name='Desired symmetry (0=asymmetric, 1=perfect circle)', value="0.6")
-        form3['-size']  = pn.widgets.TextInput(name='Maximum size (nm2)', value="3.5")
+        form3['-sym']   = pn.widgets.TextInput(name='Desired symmetry (0=asymmetric, 1=perfect circle)', value="0.8")
+        form3['-size']  = pn.widgets.TextInput(name='Maximum size (nm2)', value="3.2")
         form3['-zQA']   = pn.widgets.TextInput(name='Tip depth when assessing imprint (m)', value="-0.9e-9")
         form3['-ztip']  = pn.widgets.TextInput(name='Tip depth when reshaping the tip (m)', value="-5e-9")
         form3['-rng']   = pn.widgets.Select(name='Randomise tip depth from 0 to above value when reshaping?', options={"Yes":1,"No":0},value=1)
         form3['-st']    = pn.widgets.TextInput(name='Drift compensation time (s)', value="1")
+        form3['-demo']  = pn.widgets.Select(name='Demo mode?', options={"Yes":1,"No":0},value=0)
         form3['-hk_tipShape'] = pn.widgets.Select(name='Call the hook hk_tipshape?', options={"Yes":1,"No":0},value=0)
         
         buttonAutoTipShape = pn.widgets.Button(name='Auto Tip Shape', button_type='primary')
@@ -244,10 +246,19 @@ class ScanbotPanel(param.Parameterized):
         return [form1,form2,form3]
     
     def autoTipShape(self,event):
+        self.running = "AutoTipShape"
         self.prev_STMControlForm = self.sidebarForm.copy()
         
+        disabled_options = self.functionWidget.options.copy()
+        disabled_options.remove("STM Control")
+        self.functionWidget.disabled_options = disabled_options
+        
         args = self.unpack(self.sidebarForm[2])
-        self.alert(self.interface.autoTipShape(args))
+        self.interface.autoTipShape(args)
+        
+        self.mainGridSpec.objects = OrderedDict()
+        self.mainGridSpec[0,1] = pn.Spacer(styles=dict(background='grey'))
+        self.mainGridSpec[0,0] = pn.Spacer(styles=dict(background='red'))
         
     def tipShape(self,event):
         if(self.running):
@@ -457,6 +468,18 @@ class ScanbotPanel(param.Parameterized):
             if(self.biasDepIDX == int(self.sidebarForm[0]['-n'].value)):        # If we've completed all our images
                 self.running = ""                                               # Clear the running flag
                 self.functionWidget.disabled_options = []                       # and re-enable the other options in the commands dropdown
+        
+        if("imprint_size--" in path.name):
+            if("_final.png" in path.name and self.running == "AutoTipShape"):
+                self.running = ""                                               # Clear the running flag
+                self.functionWidget.disabled_options = []                       # and re-enable the other options in the commands dropdown
+            else:
+                size = path.name.split("size--")[1].split("_")[0]
+                symm = path.name.split("symm--")[1].split(".png")[0]
+                text = "Imprint size = " + size + " nm2, Imprint circularity = " + symm
+                
+                self.mainGridSpec[0,0] = pn.pane.Matplotlib(fig)                    # Plot the next image at this location in the gridspec
+                self.mainGridSpec[0,1] = pn.widgets.StaticText(name='Scanbot', value=text)
             
         plt.close(fig)
         

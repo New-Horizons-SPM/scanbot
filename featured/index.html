@@ -1,0 +1,251 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="utf-8">
+        <meta http-equiv="X-UA-Compatible" content="IE=edge">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        
+        <meta name="author" content="Julian Ceddia">
+        
+        <link rel="shortcut icon" href="../img/favicon.ico">
+        <title>Featured - Scanbot</title>
+        <link href="../css/bootstrap.min.css" rel="stylesheet">
+        <link href="../css/font-awesome.min.css" rel="stylesheet">
+        <link href="../css/base.css" rel="stylesheet">
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/10.5.0/styles/github.min.css">
+
+        <script src="../js/jquery-1.10.2.min.js" defer></script>
+        <script src="../js/bootstrap.min.js" defer></script>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/10.5.0/highlight.min.js"></script>
+        <script>hljs.initHighlightingOnLoad();</script> 
+    </head>
+
+    <body>
+        <div class="navbar fixed-top navbar-expand-lg navbar-dark bg-primary">
+            <div class="container">
+                <a class="navbar-brand" href="..">Scanbot</a>
+                <!-- Expander button -->
+                <button type="button" class="navbar-toggler" data-toggle="collapse" data-target="#navbar-collapse">
+                    <span class="navbar-toggler-icon"></span>
+                </button>
+
+                <!-- Expanded navigation -->
+                <div id="navbar-collapse" class="navbar-collapse collapse">
+                        <!-- Main navigation -->
+                        <ul class="nav navbar-nav">
+                            <li class="navitem">
+                                <a href=".." class="nav-link">Home</a>
+                            </li>
+                            <li class="navitem active">
+                                <a href="./" class="nav-link">Featured</a>
+                            </li>
+                            <li class="navitem">
+                                <a href="../configuration/" class="nav-link">Configuration</a>
+                            </li>
+                            <li class="navitem">
+                                <a href="../commands/" class="nav-link">Commands</a>
+                            </li>
+                            <li class="navitem">
+                                <a href="../automation/" class="nav-link">Automation</a>
+                            </li>
+                            <li class="navitem">
+                                <a href="../hooks/" class="nav-link">Hooks</a>
+                            </li>
+                            <li class="navitem">
+                                <a href="../about/" class="nav-link">About</a>
+                            </li>
+                            <li class="navitem">
+                                <a href="../contact/" class="nav-link">Contact</a>
+                            </li>
+                        </ul>
+
+                    <ul class="nav navbar-nav ml-auto">
+                            <li class="nav-item">
+                                <a rel="prev" href=".." class="nav-link">
+                                    <i class="fa fa-arrow-left"></i> Previous
+                                </a>
+                            </li>
+                            <li class="nav-item">
+                                <a rel="next" href="../configuration/" class="nav-link">
+                                    Next <i class="fa fa-arrow-right"></i>
+                                </a>
+                            </li>
+                            <li class="nav-item">
+                                <a href="https://github.com/New-Horizons-SPM/scanbot/edit/master/docs/featured.md" class="nav-link"><i class="fa fa-github"></i> Edit on GitHub</a>
+                            </li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <div class="container">
+            <div class="row">
+                    <div class="col-md-3"><div class="navbar-light navbar-expand-md bs-sidebar hidden-print affix" role="complementary">
+    <div class="navbar-header">
+        <button type="button" class="navbar-toggler collapsed" data-toggle="collapse" data-target="#toc-collapse" title="Table of Contents">
+            <span class="fa fa-angle-down"></span>
+        </button>
+    </div>
+
+    
+    <div id="toc-collapse" class="navbar-collapse collapse card bg-secondary">
+        <ul class="nav flex-column">
+            
+            <li class="nav-item" data-level="1"><a href="#featured" class="nav-link">Featured</a>
+              <ul class="nav flex-column">
+            <li class="nav-item" data-level="2"><a href="#scanbot-meets-chatgpt" class="nav-link">Scanbot meets ChatGPT</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+              </ul>
+            </li>
+        </ul>
+    </div>
+</div></div>
+                    <div class="col-md-9" role="main">
+
+<h1 id="featured">Featured</h1>
+<p><br></p>
+<h2 id="scanbot-meets-chatgpt">Scanbot meets ChatGPT</h2>
+<p><br>
+When preparing a new tip, Scanbot lightly crashes the apex into the surface and analyses an image of the imprint left behind to determine whether the tip is suitable for imaging.
+In the example hk_tipShape below, the OpenAI API is used to send the size (in units of nm2) and circularity of the tip's imprint to ChatGPT. ChatGPT is instructed to respond with a suggestion for
+what tip-shaping parameters to try next. This has been surprisingly effective for the little effort it takes!
+See <a href="./hooks">here</a> for more details about how hooks work with Scanbot.</p>
+<p><img alt="ChatGPT" src="../ChatGPT.png" /></p>
+<h3 id="hk_tipshapepy">hk_tipShape.py</h3>
+<pre><code class="language-Python">import openai
+
+def run(cleanImage, tipImprint, tipShapeProps, target, actual, history):
+    &quot;&quot;&quot;
+    This hook calls the ChatGPT API to seek guidance on how aggressive the next 
+    tip shape should be. In this example, only the crash depth is considered, 
+    but you can see how easily other parameters, such as bias or tip pulsing 
+    can be considered too.
+
+    Parameters
+    ----------
+    cleanImage : Image of the substrate before the tip shape (Not used in this example)
+    tipImprint : Image of the imprint after a light tip shape (Not used in this example)
+    tipShapeProps : Tip shaping parameters.
+    target : Target size and circularity of the imprint [0]=size, [1]=symm
+    actual : Actual size and circularity of the imprint [0]=size, [1]=symm
+    history : An in-out variable to keep track of past calls to this function.
+              (In this example, history keeps a running record of the dialogue
+               to ChatGPT)
+
+    Returns
+    -------
+    tipShapeProps : Tip-shaping properties modified by this routine
+    history : An in-out variable to keep track of past calls to this function.
+              (In this example, history keeps a running record of the dialogue
+               to ChatGPT)
+    &quot;&quot;&quot;
+
+    openai.organization = &quot;org-ty5pA0i9NIRV1ZF0Trweflf1&quot;                        # OpenAI
+    openai.api_key = &quot;xx-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx&quot;      # Your OpenAI API key (see OpenAI API documentation for how to create a key)
+
+    messages = history                                                          # Running dialogue with ChatGPT
+    if(not len(messages)):                                                      # This must be the first time this hook was called
+        # Give a prompt to ChatGPT to explain to it what it's role is...
+        systemPrompt  = &quot;You are helping to condition an STM probe by deciding what tip shaping parameters should be used based on the size (in units of nm2) and circularity &quot;
+        systemPrompt += &quot;of the tip's imprint on a clean metal surface after it is intentionally crashed very delicately into the surface. I will provide you with the imprint's &quot;
+        systemPrompt += &quot;size and circularity. You will provide me with a response that states how far I should then crash the tip into &quot;
+        systemPrompt += &quot;the clean metal in order to reshape it. This iterative process will continue until the desired size and circularity are met. &quot;
+        systemPrompt += &quot;The maximum crash depth should never exceed 12 nm. Keep in mind that 12 nm is considered very aggressive. &quot;
+        systemPrompt += &quot;Your responses must be limited to a singular number in units of nm.&quot;
+
+        # Sending a message like this first seems to improve future replies
+        size = str(actual[0])
+        symm = str(actual[1])
+        firstMessage  = &quot;size=&quot; + size + &quot;, &quot;
+        firstMessage += &quot;circularity=&quot; + symm + &quot;. &quot;
+
+        targetSize = str(target[0])
+        targetSymm = str(target[1])
+        firstMessage += &quot;Desired maximum size = &quot; + targetSize + &quot;, &quot;
+        firstMessage += &quot;Desired minimum circularity = &quot; + targetSymm + &quot;. &quot;
+
+        firstMessage += &quot;Format your replies exactly as follows (note the lack of expressed units): &lt;suggested crash depth&gt;&quot;
+
+        messages.append({&quot;role&quot;: &quot;system&quot;, &quot;content&quot;: systemPrompt})
+        messages.append({&quot;role&quot;: &quot;user&quot;, &quot;content&quot;: firstMessage})
+    else:
+        # Build a message from the &quot;user&quot;
+        role    = &quot;user&quot;
+        content = &quot;size=&quot; + str(actual[0]) + &quot;circularity=&quot; + str(actual[0])
+        messages.append({&quot;role&quot;: role, &quot;content&quot;: content})                     # Send a message containing the measured size and symmetry of the imprint.
+
+    completion = openai.ChatCompletion.create(                                  # Send the message, along with the full message dialogue history and recieve response
+      model=&quot;gpt-4&quot;,
+      messages=messages
+    )
+
+    messages.append(completion.choices[0].message)                              # Append the latest message to the running dialogue history
+    history = messages                                                          # Pass out the message history so it can be passed back in on the next call
+
+    z1 = float(completion.choices[0].message[&quot;content&quot;]) * -1e-9                # Tip shape depth determined by ChatGPT
+    z2 = -2*z1                                                                  # Tip lift is double the depth
+    tipShapeProps[3] = z1                                                       # Amount to plunge the tip into the surface (m)
+    tipShapeProps[7] = z2                                                       # Amount to pull tip out of the surface (m)
+
+    print(&quot;ChatGPT says tip shape z1 = &quot; + str(z1*1e9) + &quot; nm&quot;)
+
+    return tipShapeProps,history                                                # Return the updated tip shaping properties and running history 
+</code></pre></div>
+            </div>
+        </div>
+
+        <footer class="col-md-12">
+            <hr>
+            <p>Documentation built with <a href="https://www.mkdocs.org/">MkDocs</a>.</p>
+        </footer>
+        <script>
+            var base_url = "..",
+                shortcuts = {"help": 191, "next": 78, "previous": 80, "search": 83};
+        </script>
+        <script src="../js/base.js" defer></script>
+
+        <div class="modal" id="mkdocs_keyboard_modal" tabindex="-1" role="dialog" aria-labelledby="keyboardModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h4 class="modal-title" id="keyboardModalLabel">Keyboard Shortcuts</h4>
+                <button type="button" class="close" data-dismiss="modal"><span aria-hidden="true">&times;</span><span class="sr-only">Close</span></button>
+            </div>
+            <div class="modal-body">
+              <table class="table">
+                <thead>
+                  <tr>
+                    <th style="width: 20%;">Keys</th>
+                    <th>Action</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td class="help shortcut"><kbd>?</kbd></td>
+                    <td>Open this help</td>
+                  </tr>
+                  <tr>
+                    <td class="next shortcut"><kbd>n</kbd></td>
+                    <td>Next page</td>
+                  </tr>
+                  <tr>
+                    <td class="prev shortcut"><kbd>p</kbd></td>
+                    <td>Previous page</td>
+                  </tr>
+                  <tr>
+                    <td class="search shortcut"><kbd>s</kbd></td>
+                    <td>Search</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            <div class="modal-footer">
+            </div>
+        </div>
+    </div>
+</div>
+
+    </body>
+</html>

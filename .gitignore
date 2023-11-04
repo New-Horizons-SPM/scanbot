@@ -1,3 +1,4 @@
+hk_*
 ## image files
 
 ## OSX files
@@ -142,3 +143,4 @@ dmypy.json
 *.txt
 *.ini
 *.mp4
+*.pk

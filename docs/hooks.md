@@ -92,25 +92,34 @@ Its purpose is to adjust the tip shaping parameters based on either the image of
     1. Image of the region prior to making the imprint
     2. Image of the tip's imprint
     3. 1D array containing all the tip shaping properties. See [nanonisTCP.TipShaper](https://github.com/New-Horizons-SPM/nanonisTCP).
-    4. Size score (nm2) assigned by Scanbot.
-    5. Circularity score (0=very bad, 1=perfect circle) assigned by Scanbot
+    4. Array containing target size (nm2 - smaller = better) and circularity (0 = asymmetric, 1 = perfect circle) scores of the imprint.
+    5. Array containing actual size and circularity scores assigned by Scanbot
+    6. history: a variable to pass anything out at the end of the function, which will be passed back in on the next iteration. This is a way to keep track of what's happened in previous attempts.
 * Outputs:
-    1. (Optional) 1D array containing the desired tip shaping parameters.
+    1. 1D array containing the modified tip shaping parameters.
+    2. History variable that contains anything you would like to keep track of. This will be passed back into the hook on the next iteration.
 * Error handling: None
 
 Structure: hk_tipShape.py must contain the funtion ```run```. An example is show below:
 ```Python
-def run(cleanImage, tipImprint, tipShapeProps, size, sym):
+def run(cleanImage, tipImprint, tipShapeProps, target, actual, history):
     # Code to filter tipImprint
     
-    # API call to RL Agent to determine appropriate tip shaping parameters
+    # API call to RL Agent passing in tipImprint and history to determine next tip-shaping parameters.
     
     # Adjust relevant tip shaping parameters
     tipShapeProps[3] = agent.z1     # Amount to plunge the tip into the surface (m)
     tipShapeProps[5] = agent.bias   # Bias applied while the tip is in the suface (V)
     tipShapeProps[7] = agent.z2     # Amount to pull tip out of the surface (m)
     
-    return tipShapeProps            # Return the updated tip shaping properties
+    record = {"z1": agent.z1,       # Make a record of this tip-shaping attempt
+              "bias": agent.bias,
+              "z2": agent.z2,
+              "imprint": agent.imprint)
+    
+    history.append(record)          # Append it to the running history so it can be taken into account on the next iteration
+    
+    return tipShapeProps, history   # Return the updated tip shaping properties
 ```
 
 ## hk_commands

@@ -4,6 +4,7 @@ site_author: Julian Ceddia
 
 nav:
     - Home: 'index.md'
+    - Featured: 'featured.md'
     - Configuration: 'configuration.md'
     - Commands: 'commands.md'
     - Automation: 'automation.md'

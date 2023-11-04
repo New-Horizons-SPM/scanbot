@@ -2,6 +2,8 @@
 
 Scanbot is a collection of several automated STM and nc-AFM data acquisition commands compatible with Nanonis V5 SPM control software.
 
+## Featured
+[Scanbot meets ChatGPT](./featured)
 
 ## Installation
 1.  Install the [nanonisTCP interface](https://github.com/New-Horizons-SPM/nanonisTCP)

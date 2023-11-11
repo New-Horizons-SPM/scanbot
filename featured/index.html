@@ -173,7 +173,7 @@ def run(cleanImage, tipImprint, tipShapeProps, target, actual, history):
     else:
         # Build a message from the &quot;user&quot;
         role    = &quot;user&quot;
-        content = &quot;size=&quot; + str(actual[0]) + &quot;circularity=&quot; + str(actual[0])
+        content = &quot;size=&quot; + str(actual[0]) + &quot;circularity=&quot; + str(actual[1])
         messages.append({&quot;role&quot;: role, &quot;content&quot;: content})                     # Send a message containing the measured size and symmetry of the imprint.
 
     completion = openai.ChatCompletion.create(                                  # Send the message, along with the full message dialogue history and recieve response

@@ -11,7 +11,7 @@ See [here](../hooks) for more details about how hooks work with Scanbot.
 
 ### hk_tipShape.py
 ```Python
-import openai
+import openai # This example is compatible with openai version 0.27.4
 
 def run(cleanImage, tipImprint, tipShapeProps, target, actual, history):
     """

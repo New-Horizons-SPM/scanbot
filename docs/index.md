@@ -11,7 +11,7 @@ Scanbot is a collection of several automated STM and nc-AFM data acquisition com
 2. Clone [this repository](https://github.com/New-Horizons-SPM/scanbot), navigate to the root directory, and run ```pip install .```
 
 ## Setup and Run
-Scanbot can be interfaced through a terminal, via zulip and, now thanks to [holoviz Panel](https://panel.holoviz.org/), in a [browser](../gui)!
+Scanbot can be interfaced through a terminal, via zulip and, now thanks to [holoviz Panel](https://panel.holoviz.org/), in a [browser](./gui)!
 
 ### Broswer
 Run ```python scanbot_interface.py -gui```

@@ -35,17 +35,21 @@ and begin acquiring a new survey. If the tip becomes unstable during a survey, S
 ![survey](survey.png)
 
 ### In Development
-At present, the tip shaping criteria overlook the spectroscopic performance of the STM tip. Here, it is possible to leverage the well-known Shockley surface states of
-(111) metal surfaces, using them as a benchmark to compare STS obtained by the tip on a clean metal surface. As a result, an additional criterion could ensure that
-the spectra obtained using the tip on a clean metal surface closely corresponds to the anticipated Shockley surface state.
-Thanks to [Wang, et al.](https://pubs.acs.org/doi/pdf/10.1021/acs.jpca.0c10731), the groundwork for this has already been done so integrating this feature into Scanbot should be trivial!
-In addition to this, automated STS commands are also in development.
+At present, Scanbot examines STM images captured during surveys to assess the need for tip reshaping. However, its current algorithmic method is limited to identifying tip 
+instability, but it lacks the capability to detect bluntness or duplication of the tip. Addressing this limitation is a priority. Enhancing the algorithm or adopting a 
+sophisticated image classification system would significantly improve Scanbot's ability to accurately determine when the tip necessitates refinement.
 
 There are several indicators that determine how aggressive the tip shaping action should be when refining the scanning probe.
 Thus, the algorithmic approach used by Scanbot for tip shaping could benefit greatly from the integration of a machine learning agent.
 Although the algorithmic approach is straightforward, it may take some time to achieve the desired tip shape. Fortunately, the algorithmic
 method can serve as a stepping stone to machine learning, as it generates a quantitative measurement of the tip's condition before and after a known tip-shaping maneuver.
 Through the operation of Scanbot, these measurements will be used to build a training dataset that can be used to train an AI agent to perform the task more efficiently.
+
+At present, the tip shaping criteria overlook the spectroscopic performance of the STM tip. Here, it is possible to leverage the well-known Shockley surface states of
+(111) metal surfaces, using them as a benchmark to compare STS obtained by the tip on a clean metal surface. As a result, an additional criterion could ensure that
+the spectra obtained using the tip on a clean metal surface closely corresponds to the anticipated Shockley surface state.
+Thanks to [Wang, et al.](https://pubs.acs.org/doi/pdf/10.1021/acs.jpca.0c10731), the groundwork for this has already been done so integrating this feature into Scanbot should be trivial!
+In addition to this, automated STS commands are also in development.
 
 <br>
 

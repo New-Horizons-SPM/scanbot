@@ -136,7 +136,7 @@ This action tells Scanbot to [automatically acquire a tip](../automation/#tip-pr
 ## STM Automation
 
 This function allows Scanbot to take control of the STM course piezos and move the tip between the sample and clean metal locations. It also lets Scanbot automatically initiate tip shaping and sample surveying.
-The process is described in more details [here](..automation/#intended-usage). Below are the parameters to configure:
+The process is described in more details [here](../automation/#intended-usage). Below are the parameters to configure:
 
 | Parameter                                                 | Description                                                                                                                                                                                                                                     |
 |-----------------------------------------------------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|

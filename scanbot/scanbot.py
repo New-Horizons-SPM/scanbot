@@ -1600,6 +1600,7 @@ class scanbot():
         else: rng = 0
         
         hk_tipShapeHistory = []                                                 # Variable used to pass in and out of hk_tipShape
+        hk_tipQA = False                                                        # Initialise the tipQA to False for the first go
         
         tipShapeProps[10]   = 1                                                 # Make sure feedback on after tip shape
         tipShapeProps[3]   = ztip                                               # Amount to dip the tip into the surface
@@ -1716,7 +1717,10 @@ class scanbot():
             if(symmetry > symTarget):
                 if(size < sizeTarget and size > 0):
                     tipQA = True                                                # Tip quality is good if it meets the target scores
-                    break                                                       # Stop the routine if a good tip has been achieved
+                    if(tipShape_hk and not hk_tipQA):
+                        tipQA = False
+            
+            if(tipQA): break                                                    # Stop the routine if a good tip has been achieved
             
             edgeOfFrame = frame[0:2] - np.array([wh,0])/2
             folme.XYPosSet(*edgeOfFrame,Wait_end_of_move=True)                  # Move the tip to the left edge of the scan frame
@@ -1731,11 +1735,12 @@ class scanbot():
                 try:
                     actual = [size,symmetry]
                     target = [sizeTarget,symTarget]
-                    temp_tipShapeProps,hk_tipShapeHistory = hk_tipShape.run(cleanImage,tipImprint,tipShapeProps.copy(),target,actual,hk_tipShapeHistory)
+                    temp_tipShapeProps,hk_tipShapeHistory, hk_tipQA = hk_tipShape.run(NTCP, cleanImage,tipImprint,tipShapeProps.copy(),target,actual,hk_tipShapeHistory)
                     if(not type(temp_tipShapeProps) == type(None)):
                         if(not len(temp_tipShapeProps) == len(tipShapeProps)):
                             self.interface.sendReply("Warning: tipShapeProps returned from hk_tipShape.py does not contain expected number of parameters. See documentation for nanonisTCP.TipShaper. This will probably cause an error.")
                         tipShapeProps = temp_tipShapeProps
+                    
                 except Exception as e:
                     self.interface.sendReply("Error calling hk_tipShape...")
                     self.interface.sendReply(str(e))

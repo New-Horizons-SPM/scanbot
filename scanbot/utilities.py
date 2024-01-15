@@ -52,8 +52,10 @@ def getFrameOffset(im1,im2,dxy=[1,1],theta=0):
     [ox,oy] : offset in x and y
 
     """
-    im1_diff = np.diff(im1,axis=0)                                              # Differentiate along x
-    im2_diff = np.diff(im2,axis=0)                                              # Differentiate along x
+    im1 = ndimage.gaussian_filter(im1, 0.5)
+    im2 = ndimage.gaussian_filter(im2, 0.5)
+    im1_diff = np.diff(im1,axis=1)                                              # Differentiate along x
+    im2_diff = np.diff(im2,axis=1)                                              # Differentiate along x
         
     xcor = sp.correlate2d(im1_diff,im2_diff, boundary='symm', mode='same')
     y,x  = np.unravel_index(xcor.argmax(), xcor.shape)
@@ -69,7 +71,7 @@ def getFrameOffset(im1,im2,dxy=[1,1],theta=0):
     theta *= math.pi/180                                                        # Convert to radians
     ox,oy = rotate([0,0],[ox,oy],theta)
     
-    return np.array([ox,oy])
+    return np.array([ox,oy]), xcor, im1_diff, im2_diff
 
 def rotate(origin, point, angle):
     """

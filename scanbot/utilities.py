@@ -71,7 +71,7 @@ def getFrameOffset(im1,im2,dxy=[1,1],theta=0):
     theta *= math.pi/180                                                        # Convert to radians
     ox,oy = rotate([0,0],[ox,oy],theta)
     
-    return np.array([ox,oy]), xcor, im1_diff, im2_diff
+    return np.array([ox,oy])
 
 def rotate(origin, point, angle):
     """

@@ -63,7 +63,7 @@ def getFrameOffset(im1,im2,dxy=[1,1],theta=0):
     ni = np.array(xcor.shape)
     oy,ox = np.array([y,x]).astype(int) - (ni/2).astype(int)
     
-    ox += x%2                                                                   # Add in this offset because differentiating results in odd number of px 
+    oy += y%2                                                                   # Add in this offset because differentiating results in odd number of px
     
     ox *= dxy[0]
     oy *= -dxy[1]

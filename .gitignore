@@ -12,8 +12,6 @@ hk_*
 zuliprc
 ## whitelist file of authors communicators with scanbot
 whitelist.txt
-## json firebase credentials
-*.json
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

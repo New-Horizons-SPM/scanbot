@@ -1,5 +1,11 @@
-# V3 Update!
-Thanks to [holoviz Panel](https://panel.holoviz.org/), Scanbot now has a GUI. Clone the V3 branch, follow the normal installation, then run scanbot using ```python scanbot_interface.py -gui```.
+# V4 Update!
+Scanbot has (mostly) been implemented in react. Clone the V4 branch, follow the normal installation, then the additional steps below:
+1. Install node.js from [here](https://nodejs.org/en) or if you're using anaconda, run ```conda install conda-forge::nodejs```
+2. Navigate to ```/scanbot/scanbot``` and ```run npm install```
+3. Start the server:
+    Navigate to ```/scanbot/server/``` and run ```python server.py```
+4. Start the web app:
+    Navigate to ```/scanbot/scanbot``` and run npm start
 
 # Scanbot       [![DOI](https://zenodo.org/badge/487719232.svg)](https://zenodo.org/badge/latestdoi/487719232)
 

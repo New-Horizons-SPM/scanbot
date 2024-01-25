@@ -3,7 +3,6 @@
 ## Hooks
 hk_*
 ## image files
-*.png
 
 ## OSX files
 .DS_Store

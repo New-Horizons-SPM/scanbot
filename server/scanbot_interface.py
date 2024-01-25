@@ -13,6 +13,8 @@ import os
 import sys
 import subprocess
 from pathlib import Path
+import shutil
+import time
 
 import ipaddress
 
@@ -259,7 +261,7 @@ class scanbot_interface(object):
                     '-dx'   : ['-default', lambda x: float(x), "(float) Scan grid spacing (m). Default is -xy"],
                     '-px'   : ['-default', lambda x: int(x),   "(int) Number of pixels"],
                     '-st'   : ['10',       lambda x: float(x), "(float) Drift compensation time (s)"],
-                    '-stitch':['1',        lambda x: float(x), "(int) Return the stitched survey after completion. 1: Yes, else No"],
+                    '-stitch':['0',        lambda x: float(x), "(int) Return the stitched survey after completion. 1: Yes, else No"],
                     '-hk_survey': ['0',    lambda x: int(x),   "(int) Flag to call a custom python script after each image. Script must be ~/scanbot/scanbot/hk_survey.py. 0=Don't call, 1=Call"],
                     '-hk_classifier': ['0',lambda x: int(x),   "(int) Flag to call a custom classifier after each image. Script must be ~/scanbot/scanbot/hk_classifier.py. Only called if -autotip=1. 0=Don't call, 1=Call"],
                     '-autotip': ['0',      lambda x: int(x),   "(int) Automatic tip shaping. 0=off, 1=on"]}
@@ -285,7 +287,7 @@ class scanbot_interface(object):
                     '-dx'   : ['-default', lambda x: float(x), "(float) Scan grid spacing (m)"],
                     '-px'   : ['-default', lambda x: int(x),   "(int) Number of pixels"],
                     '-st'   : ['10',       lambda x: float(x), "(float) Drift compensation time (s)"],
-                    '-stitch':['1',        lambda x: float(x), "(int) Return the stitched survey after completion. 1: Yes, else No"],
+                    '-stitch':['0',        lambda x: float(x), "(int) Return the stitched survey after completion. 1: Yes, else No"],
                     '-hk_survey': ['0',    lambda x: int(x),   "(int) Flag to call a custom python script after each image. Script must be ~/scanbot/scanbot/hk_survey.py. 0=Don't call, 1=Call"],
                     '-hk_classifier': ['0',lambda x: int(x),   "(int) Flag to call a custom classifier after each image. Script must be ~/scanbot/scanbot/hk_classifier.py. Only called if -autotip=1. 0=Don't call, 1=Call"],
                     '-autotip': ['0',      lambda x: int(x),   "(int) Automatic tip shaping. 0=off, 1=on"],
@@ -309,6 +311,9 @@ class scanbot_interface(object):
             if(error): return error + "\nRun ```help survey2``` if you're unsure."
             
             args = self.unpackArgs(user_arg_dict)
+            if(self.run_mode == 'react'):   # React interface passes scan size and spacing in units of nm. convert to m
+                args[4] *= 1e-9
+                args[5] *= 1e-9
         
         func = lambda : self.scanbot.survey2(*args,message=self.bot_message.copy())
         return self.threadTask(func)
@@ -453,16 +458,21 @@ class scanbot_interface(object):
     def autoInit(self,user_args,_help=False):
         arg_dict = {'-light'      : ['0',   lambda x: int(x),   "(int) Flag to turn the light on/off before/after initialisation. This uses hk_light.turn_on() and hk_light.turn_off() functions. 0=Don't, 1=Do"],
                     '-cameraPort' : ['0',   lambda x: int(x),   "(int) cv2 camera port - usually 0 for desktops or 1 for laptops with an inbuilt camera."],
-                    '-demo'       : ['0',   lambda x: int(x),   "(int) Load in an mp4 recording of the tip moving instead of using live feed"]}
+                    '-demo'       : ['0',   lambda x: int(x),   "(int) Load in an mp4 recording of the tip moving instead of using live feed"],}
         
         if(_help): return arg_dict
         
-        if(self.run_mode != 'c' and self.run_mode != 'p'): return "This function is only available in console mode."
+        if(self.run_mode != 'c' and self.run_mode != 'p' and self.run_mode != 'react'): return "This function is not available."
+        
+        arg_dict['-reactInit'] = ['0', lambda x: int(x), "(int) User-hidden flag when running in react mode. 1=running from react - use data in ./autoInit/"]
         
         error,user_arg_dict = self.userArgs(arg_dict,user_args)
         if(error): return error + "\nRun ```help auto_init``` if you're unsure."
         
         args = self.unpackArgs(user_arg_dict)
+        
+        if(self.run_mode == 'react'):
+            return self.scanbot.autoInit(*args,message=self.bot_message.copy())
         
         func = lambda : self.scanbot.autoInit(*args,message=self.bot_message.copy())
         return self.threadTask(func)
@@ -491,7 +501,7 @@ class scanbot_interface(object):
         
         if(_help): return arg_dict
         
-        if(self.run_mode != 'c' and self.run_mode != 'p'): return "This function is only available in console mode."
+        if(self.run_mode != 'c' and self.run_mode != 'p' and self.run_mode != 'react'): return "This function is only available in console mode."
         
         error,user_arg_dict = self.userArgs(arg_dict,user_args)
         if(error): return error + "\nRun ```help move_tip_to_" + target + "``` if you're unsure."
@@ -764,6 +774,11 @@ class scanbot_interface(object):
         
         if(self.run_mode == 'p'):
             self.panel.updatePNG(path)
+        
+        if(self.run_mode == 'react'):
+            timestamp = time.time()
+            Path('./temp').mkdir(parents=True, exist_ok=True)
+            shutil.copy(path,'./temp/' + str(timestamp) + '_' + pngFilename)
             
         if(self.uploadMethod == 'zulip'):
             upload = self.bot_handler.upload_file_from_path(str(path))
@@ -798,7 +813,7 @@ class scanbot_interface(object):
         if(_help): return arg_dict
         
         error,user_arg_dict = self.userArgs(arg_dict,user_args)
-        if(error): return error + "\nRun ```help plot``` if you're unsure."
+        if(error): return error + "\nRun ```help stop``` if you're unsure."
         
         args = self.unpackArgs(user_arg_dict)
         
@@ -892,9 +907,13 @@ class scanbot_interface(object):
             self.sendReply("Error uploading file to cloud with command\nscp " +
                            filename + " " + self.cloudPath + "\n\n" + str(e))
     
-    def _quit(self,arg_dict):
+    def _quit(self,arg_dict=[]):
         sys.exit()
-        
+
+    def restart(self,run_mode):
+        self.stop(user_args=[])
+        self.__init__(run_mode=run_mode)
+
 ###############################################################################
 # Run
 ###############################################################################
@@ -927,6 +946,17 @@ if('-c' in sys.argv and not finish):
     print("Console mode: type 'exit' to end scanbot")
     go = True
     handler_class = scanbot_interface(run_mode='c')
+    while(go):
+        message = input("User: ")
+        if(message == 'exit'):
+            break
+        handler_class.handle_message(message)
+    
+    finish = True
+
+if('-react' in sys.argv and not finish):
+    go = True
+    handler_class = scanbot_interface(run_mode='react')
     while(go):
         message = input("User: ")
         if(message == 'exit'):

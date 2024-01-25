@@ -1,0 +1,41 @@
+.control-container {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100vh; /* Full height of the viewport */
+    background-color: #282c34;
+    position: relative;
+}
+
+.control-content {
+    text-align: center; /* Center content */
+    padding: 20px;
+    border: 1px solid #ddd; /* Subtle border */
+    border-radius: 8px; /* Rounded corners */
+    background-color: #fff; /* White background for the content area */
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1); /* Light shadow for depth */
+    max-width: 600px; /* Maximum width of the content */
+    width: 100%; /* Full width */
+}
+
+.control-content img, .control-content video {
+    max-width: 100%; /* Make image and video responsive */
+    height: auto;
+    border-radius: 4px; /* Slightly rounded corners for the media */
+    margin-bottom: 20px; /* Spacing between media and button */
+}
+
+.init-button {
+    background-color: #61dafb; /* React blue */
+    color: white;
+    border: none;
+    padding: 10px 20px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 16px;
+    transition: background-color 0.3s ease;
+}
+
+.init-button:hover {
+    background-color: #21a1f1; /* Darker shade on hover */
+}

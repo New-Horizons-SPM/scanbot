@@ -400,17 +400,15 @@ class scanbot():
         
         scanFrame = scanModule.FrameGet()                                       # [x,y,w,h,theta]
         
-        if(tlf == '-default'): _,_,tlf,_,_,_ = scanModule.SpeedGet()            # Get the default time per line if it's not provided
+        if(tlf == '-default' or tlf == 0): _,_,tlf,_,_,_ = scanModule.SpeedGet()# Get the default time per line if it's not provided
         
-        print(px,lx,pxdc,lxdc)
-        if(px == '-default'): px = scanModule.BufferGet()[2]                    # Get the default number of pixels from nanonis
+        if(px == '-default' or px == 0): px = scanModule.BufferGet()[2]         # Get the default number of pixels from nanonis
         px = int(np.ceil(px/16)*16)                                             # Ensure the number of pixels is divisible by 16 (nanonis requirement)
         if(lx == 0): lx = px                                                    # Default lx=px if lx not provided
         
         pxdc = int(np.ceil(pxdc/16)*16)                                         # Ensure the number of pixels for the drift correct frame is divisible by 16 (nanonis requirement)
         if(lxdc == 0): lxdc = int((pxdc*lx)/px)                                 # Keep the same ratio as px:lx if lxdc not provided
         
-        print(px,lx,pxdc,lxdc)
         if(px < 16 or lx < 0 or pxdc < 16 or lxdc < 0): 
             self.interface.sendReply("Error: Check -px, -lx, -pxdc, and -lxdc",message=message)
             global_.running.clear()                                             # Free up the running flag
@@ -434,6 +432,7 @@ class scanbot():
                 
                 print("Ramping bias to " + str(dcbias) + " and taking drift correction image.")
                 self.rampBias(NTCP, dcbias)
+                if(self.checkEventFlags()): break                               # Check event flags
                 time.sleep(0.25)
                 
                 basename_dc = tempBasename + str(int(dcbias*100)/100) + "V-DC_"
@@ -441,9 +440,11 @@ class scanbot():
                 scanModule.Action('start',scan_direction='up')
                 _, _, filePath = scanModule.WaitEndOfScan()
                 if(not filePath): break                                         # If the scan was stopped manually before, stop here
+                if(self.checkEventFlags()): break                               # Check event flags
+
                 _,driftCorrection,_ = scanModule.FrameDataGrab(14, 1)
                 
-                if(np.sum(initialDC) == 0): initialDC = driftCorrection         # On the first run through, we will compare the initial drift correction frame with itself, so ox,oy = 0,0
+                if(np.sum(initialDC) == 0): initialDC = driftCorrection.copy()  # On the first run through, we will compare the initial drift correction frame with itself, so ox,oy = 0,0
                 ox,oy = utilities.getFrameOffset(initialDC,driftCorrection,dxy,theta=-scanFrame[4]) # Frame offset for drift correction. passing negative scan angle because nanonis is backwards
                 print("Frame offset correction offset: " + str([ox,oy]))
                 
@@ -453,6 +454,7 @@ class scanbot():
                 
             print("Ramping to next image bias: " + str(int(100*bias)/100) + " V")
             self.rampBias(NTCP, bias)                                           # Ramp to the next image bias
+            if(self.checkEventFlags()): break                                   # Check event flags
             
             scanModule.BufferSet(pixels=px,lines=lx)
             scanModule.SpeedSet(fwd_line_time=tlf,speed_ratio=speedRatio)
@@ -463,6 +465,7 @@ class scanbot():
             scanModule.Action('start',scan_direction='down')
             _, _, filePath = scanModule.WaitEndOfScan()
             if(not filePath): break
+            if(self.checkEventFlags()): break                                   # Check event flags
             
             _,scanData,_ = scanModule.FrameDataGrab(self.channel, 1)            # 14 = z., 18 is Freq. shift
             pngFilename = self.makePNG(scanData, filePath)                      # Generate a png from the scan data
@@ -1320,7 +1323,7 @@ class scanbot():
 ###############################################################################
 # Auto STM
 ###############################################################################
-    def autoInit(self,lightOnOff,cameraPort,demo,message=""):
+    def autoInit(self,lightOnOff,cameraPort,demo,reactMode,message=""):
         """
         This function initialises the tip, 'sample', and 'clean metal' 
         locations. It must be run before any commands that track and maneuver 
@@ -1341,6 +1344,27 @@ class scanbot():
         String if an error occurred.
 
         """
+        if(reactMode):
+            try:
+                autoinitDict = pickle.load(open('./autoInit/autoinit.pk','rb'))
+                self.tipPos         = autoinitDict['tipLocation']
+                self.samplePos      = autoinitDict['sampleLocation']
+                self.cleanMetalPos  = autoinitDict['metalLocation']
+                self.initialFrame   = autoinitDict['initialFrame'][:, :, ::-1] # Convert image to BGR from RGB because cv2 does BGR?
+                tipInFrame          = autoinitDict['tipInFrame'][:, :, ::-1] 
+
+                self.autoInitSet    = True
+
+                rec = cv2.circle(tipInFrame.astype(np.uint8), self.tipPos, radius=3, color=(0, 0, 255), thickness=-1)
+                rec = cv2.circle(rec, self.samplePos, radius=3, color=(0, 255, 0), thickness=-1)
+                rec = cv2.circle(rec, self.cleanMetalPos, radius=3, color=(0, 255, 0), thickness=-1)
+                cv2.imwrite('./autoInit/initialisation.png',rec)
+                return
+            
+            except Exception as e:
+                print("Error!",e)
+                return str(e)
+            
         if(lightOnOff):                                                         # If we want to turn the light on
             try:
                 from hk_light import turn_on
@@ -2003,7 +2027,7 @@ class scanbot():
         if(fit): scanData = napfit.plane_fit_2d(scanData)                       # Flatten the image
         vmin, vmax = napfit.filter_sigma(scanData)                              # cmap saturation
         
-        ax.imshow(scanData, cmap='Blues_r', vmin=vmin, vmax=vmax)               # Plot
+        ax.imshow(scanData, cmap='inferno', vmin=vmin, vmax=vmax)               # Plot
         ax.axis('off')
         
         if filePath: pngFilename = ntpath.split(filePath)[1] + '.png'

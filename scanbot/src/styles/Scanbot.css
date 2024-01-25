@@ -1,0 +1,77 @@
+.scanbot-container {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.scanbot {
+  text-align: center;
+  background-color: #282c34;
+  flex: 1;
+}
+
+.scanbot-body {
+  background-color: #282c34;
+  align-items: center;
+  justify-content: center;
+}
+
+.scanbot-header {
+  background-color: #282c34;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  font-size: calc(10px + 2vmin);
+  color: white;
+}
+
+/* Card Row */
+
+.card-row {
+  display: flex;
+  justify-content: space-around;
+  margin: 20px;
+  margin-left: 10%;
+  width: 80%;
+}
+
+.configuration-card {
+  background-image: url('../img/config.png');
+  background-color: rgb(220,228,230);
+}
+
+.data-acquisition-card {
+  background-image: url('../img/data-acq.png');
+}
+
+.documentation-card {
+  background-image: url('../img/documentation.png');
+}
+
+.survey-card {
+  background-image: url('../img/survey.png');
+  background-size: 100%;
+}
+
+.bias-dep-card {
+  background-image: url('../img/bias-dep.png');
+  background-size: 60%;
+}
+
+.bias-dep-card:hover {
+  background-image: url('../img/bias-dep.gif');
+  background-size: 60%;
+}
+
+.stm-control-card {
+  background-image: url('../img/automation.png');
+  background-size: 70%;
+}
+
+@media (max-width: 900px) { /* Adjust the pixel value as needed */
+  .card-row {
+      flex-direction: column; /* Stack the project cards in a column */
+      align-items: center; /* Center the cards in the container */
+  }
+}

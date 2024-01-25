@@ -1,0 +1,42 @@
+.survey-container {
+    display: flex;
+    height: 100%;
+    width: 100%;
+    overflow-y: hidden;
+    position: relative;
+}
+
+.sidebar-container {
+    width: 20%; /* Adjust as needed */
+    min-width: 20em;
+    height: 100vh;
+    overflow-x: hidden;
+    overflow-y: hidden;
+}
+
+.survey-main-content {
+    margin: 0 auto;
+}
+
+.survey-image-grid {
+    width: 900px;
+    border: 3px;
+    border-style: dashed;
+    border-color: green;
+}
+
+.bias-dep-main-content {
+    display: flex;
+    justify-content: center; /* Align images in the center */
+    align-items: center; /* Align images vertically */
+    margin: 0 auto;
+    width: 100%;
+    border: 3px;
+    border-style: dashed;
+    border-color: green;
+}
+
+.bias-dep-main-content img {
+    width: 50%; /* Adjust the width as needed */
+    height: auto; /* Maintain aspect ratio */
+    margin: 10px; /* Optional: adds some space between images */}

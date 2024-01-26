@@ -731,7 +731,15 @@ class scanbot_interface(object):
             if(not replyTo): replyTo = self.bot_message                         # If we're just replying to the last message sent by user
             self.bot_handler.send_reply(replyTo, reply)                         # Send the message
             return
-        
+        if(self.zulipClient):
+            self.zulipClient.send_message(
+                {
+                    "type": "stream",
+                    "to": "scanbot",
+                    "topic": "live-stream",
+                    "content": reply,
+                }
+            )
         print(reply)                                                            # Print reply to console
         
     def reactToMessage(self,reaction,message=""):
@@ -774,12 +782,24 @@ class scanbot_interface(object):
             timestamp = time.time()
             Path('./temp').mkdir(parents=True, exist_ok=True)
             shutil.copy(path,'./temp/' + str(timestamp) + '_' + pngFilename)
-            
+        
         if(self.uploadMethod == 'zulip'):
-            upload = self.bot_handler.upload_file_from_path(str(path))
-            uploaded_file_reply = "[{}]({})".format(path.name, upload["uri"])
-            self.sendReply(notifyString + pngFilename,message)
-            self.sendReply(uploaded_file_reply,message)
+            # upload = self.bot_handler.upload_file_from_path(str(path))
+            # uploaded_file_reply = "[{}]({})".format(path.name, upload["uri"])
+            # self.sendReply(notifyString + pngFilename,message)
+            # self.sendReply(uploaded_file_reply,message)
+            result = ""
+            with open(str(path), "rb") as fp:
+                result = self.zulipClient.upload_file(fp)
+            if(result):
+                self.zulipClient.send_message(
+                    {
+                        "type": "stream",
+                        "to": "scanbot",
+                        "topic": "live-stream",
+                        "content": "[" + str(path) + "]({})".format(result["uri"]),
+                    }
+                )
             os.remove(path)
             
         if(self.uploadMethod == 'firebase'):

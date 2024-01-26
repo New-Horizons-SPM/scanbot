@@ -39,14 +39,43 @@
                             <li class="navitem">
                                 <a href="featured/" class="nav-link">Featured</a>
                             </li>
-                            <li class="navitem">
-                                <a href="configuration/" class="nav-link">Configuration</a>
+                            <li class="dropdown">
+                                <a href="#" class="nav-link dropdown-toggle" data-toggle="dropdown">Configuration <b class="caret"></b></a>
+                                <ul class="dropdown-menu">
+                                    
+<li>
+    <a href="web-app/#configuration" class="dropdown-item">Web App</a>
+</li>
+                                    
+<li>
+    <a href="configuration/" class="dropdown-item">Browser</a>
+</li>
+                                    
+<li>
+    <a href="configuration/" class="dropdown-item">Terminal</a>
+</li>
+                                    
+<li>
+    <a href="configuration/" class="dropdown-item">Zulip</a>
+</li>
+                                </ul>
                             </li>
-                            <li class="navitem">
-                                <a href="gui/" class="nav-link">GUI</a>
-                            </li>
-                            <li class="navitem">
-                                <a href="commands/" class="nav-link">Commands</a>
+                            <li class="dropdown">
+                                <a href="#" class="nav-link dropdown-toggle" data-toggle="dropdown">User Guide <b class="caret"></b></a>
+                                <ul class="dropdown-menu">
+                                    
+<li>
+    <a href="web-app/" class="dropdown-item">Web App</a>
+</li>
+                                    
+<li>
+    <a href="gui/" class="dropdown-item">Browser</a>
+</li>
+                                    
+<li>
+    <a href="commands/" class="dropdown-item">Terminal/Zulip</a>
+</li>
+                                </ul>
                             </li>
                             <li class="navitem">
                                 <a href="automation/" class="nav-link">Automation</a>
@@ -134,7 +163,10 @@
 <h1 id="scanbot">Scanbot       <a href="https://zenodo.org/badge/latestdoi/487719232"><img alt="DOI" src="https://zenodo.org/badge/487719232.svg" /></a></h1>
 <p>Scanbot is a collection of several automated STM and nc-AFM data acquisition commands compatible with Nanonis V5 SPM control software.</p>
 <h2 id="featured">Featured</h2>
-<p><a href="./featured">Scanbot meets ChatGPT</a></p>
+<ul>
+<li><a href="./featured/#web-app">React Implementation of Scanbot</a><br></li>
+<li><a href="./featured/#scanbot-meets-chatgpt">Scanbot meets ChatGPT</a></li>
+</ul>
 <h2 id="installation">Installation</h2>
 <ol>
 <li>
@@ -145,19 +177,47 @@
 </li>
 </ol>
 <h2 id="setup-and-run">Setup and Run</h2>
-<p>Scanbot can be interfaced through a terminal, via zulip and, now thanks to <a href="https://panel.holoviz.org/">holoviz Panel</a>, in a <a href="./gui">browser</a>!</p>
-<h3 id="broswer">Broswer</h3>
-<p>Run <code>python scanbot_interface.py -gui</code></p>
-<p>You can enable Basic Auth by creating a .json file in ~/scanbot/scanbot/ that contains usernames and passwords. Then run scanbot as <code>python scanbot_interface.py -gui -auth credentials.json</code></p>
-<p>An example credentials file is shown below:</p>
-<pre><code class="language-Python">{
-    &quot;user1&quot;: &quot;my_password&quot;,
-    &quot;user2&quot;: &quot;my_password_2&quot;
-}
-</code></pre>
-<h3 id="terminal">Terminal</h3>
-<p>Run <code>python scanbot_interface.py -c</code></p>
-<h3 id="zulip">Zulip</h3>
+<p>Scanbot can be run in the following ways:</p>
+<ol>
+<li>
+<p><details>
+    <summary>Web App (V4+ - NEW!)</summary>
+    Scanbot hast (mostly) been implemented using <a href="https://react.dev/">React</a></p>
+<ol>
+<li>Install node.js from <a href="https://nodejs.org/en">here</a> or if you're using anaconda, run conda install conda-forge::nodejs</li>
+<li>Navigate to <code>~/scanbot/scanbot</code> and <code>run npm install</code></li>
+<li>Start the server: navigate to <code>~/scanbot/server/</code> and run <code>python server.py</code></li>
+<li>Start the web app: navigate to <code>~/scanbot/scanbot/</code> and run <code>npm start</code></li>
+</ol>
+<p><br></p>
+<p><strong>Documentation available <a href="./web-app">here</a></strong>
+  </details></p>
+</li>
+<li>
+<p><details>
+    <summary>Broswer (V3+)</summary>
+    Thanks to <a href="https://panel.holoviz.org/">holoviz Panel</a>, Scanbot runs in a browser from V3 onwards.
+    <br><br>
+    Run <code>python scanbot_interface.py -gui</code>
+    <br><br>
+    <strong>Documentation available <a href="./gui">here</a></strong>
+  </details></p>
+</li>
+<li>
+<p><details>
+    <summary>Terminal (V1+)</summary>
+    Running Scanbot from a terminal:
+    <br><br>
+    Run <code>python scanbot_interface.py -c</code></p>
+<p><br>
+For a full list of Scanbot commands, see <a href="./commands">commands</a>. Alternatively run the <code>help</code> command or, for help with a specific command, run <code>help &lt;command_name&gt;</code>.
+  </details></p>
+</li>
+<li>
+<p><details>
+    <summary>Zulip (V1+)</summary>
+    Running via zulip is the most flexible implementation of Scanbot. You can send commands and receive data in real time via chat streams.
+    <br><br></p>
 <ol>
 <li>
 <p>Install zulip and zulip_bots</p>
@@ -175,11 +235,15 @@
 <li>
 <p>Run <code>python scanbot_interface.py -z</code></p>
 </li>
-<li>Run commands by sending messages to the Zulip bot</li>
+<li>Run <a href="./commands">commands</a> by sending messages to the Zulip bot</li>
+</ol>
+<p><br>
+For a full list of Scanbot commands, see <a href="./commands">commands</a>. Alternatively run the <code>help</code> command or, for help with a specific command, run <code>help &lt;command_name&gt;</code>.
+  </details></p>
+</li>
 </ol>
 <h2 id="usage">Usage</h2>
-<p>For a full list of Scanbot commands, see <a href="./commands">commands</a>. Alternatively run the <code>help</code> command or, for help with a specific command, run <code>help &lt;command_name&gt;</code>.
-For example work-flow automation, see <a href="./automation/#intended-usage">Intended Usage</a>. To implement your own Scanbot commands, see <a href="./hooks/#hk_commands">hk_commads</a>.</p>
+<p>For example automation work-flow, see <a href="./automation/#intended-usage">Intended Usage</a>. To write your own custom Scanbot commands, see <a href="./hooks/#hk_commands">hk_commads</a>.</p>
 <h3 id="configuration">Configuration</h3>
 <p>The scanbot_config.ini configuration file can store things like the default IP adress, default TCP Ports, etc. Save it in the project's root directory.
 See <a href="configuration/">configuration</a> for more details.
@@ -280,5 +344,5 @@ Alternatively, scan through our <a href="https://github.com/New-Horizons-SPM/sca
 
 <!--
 MkDocs version : 1.4.2
-Build Date UTC : 2023-11-26 23:33:50.985462+00:00
+Build Date UTC : 2024-01-26 05:29:15.234537+00:00
 -->

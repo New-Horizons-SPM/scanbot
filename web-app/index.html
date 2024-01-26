@@ -7,15 +7,15 @@
         
         <meta name="author" content="Julian Ceddia">
         
-        <link rel="shortcut icon" href="/img/favicon.ico">
-        <title>Scanbot</title>
-        <link href="/css/bootstrap.min.css" rel="stylesheet">
-        <link href="/css/font-awesome.min.css" rel="stylesheet">
-        <link href="/css/base.css" rel="stylesheet">
+        <link rel="shortcut icon" href="../img/favicon.ico">
+        <title>Web App - Scanbot</title>
+        <link href="../css/bootstrap.min.css" rel="stylesheet">
+        <link href="../css/font-awesome.min.css" rel="stylesheet">
+        <link href="../css/base.css" rel="stylesheet">
         <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/10.5.0/styles/github.min.css">
 
-        <script src="/js/jquery-1.10.2.min.js" defer></script>
-        <script src="/js/bootstrap.min.js" defer></script>
+        <script src="../js/jquery-1.10.2.min.js" defer></script>
+        <script src="../js/bootstrap.min.js" defer></script>
         <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/10.5.0/highlight.min.js"></script>
         <script>hljs.initHighlightingOnLoad();</script> 
     </head>
@@ -23,7 +23,7 @@
     <body>
         <div class="navbar fixed-top navbar-expand-lg navbar-dark bg-primary">
             <div class="container">
-                <a class="navbar-brand" href="/.">Scanbot</a>
+                <a class="navbar-brand" href="..">Scanbot</a>
                 <!-- Expander button -->
                 <button type="button" class="navbar-toggler" data-toggle="collapse" data-target="#navbar-collapse">
                     <span class="navbar-toggler-icon"></span>
@@ -34,66 +34,76 @@
                         <!-- Main navigation -->
                         <ul class="nav navbar-nav">
                             <li class="navitem">
-                                <a href="/." class="nav-link">Home</a>
+                                <a href=".." class="nav-link">Home</a>
                             </li>
                             <li class="navitem">
-                                <a href="/featured/" class="nav-link">Featured</a>
+                                <a href="../featured/" class="nav-link">Featured</a>
                             </li>
                             <li class="dropdown">
                                 <a href="#" class="nav-link dropdown-toggle" data-toggle="dropdown">Configuration <b class="caret"></b></a>
                                 <ul class="dropdown-menu">
                                     
 <li>
-    <a href="/web-app/#configuration" class="dropdown-item">Web App</a>
+    <a href="#configuration" class="dropdown-item">Web App</a>
 </li>
                                     
 <li>
-    <a href="/configuration/" class="dropdown-item">Browser</a>
+    <a href="../configuration/" class="dropdown-item">Browser</a>
 </li>
                                     
 <li>
-    <a href="/configuration/" class="dropdown-item">Terminal</a>
+    <a href="../configuration/" class="dropdown-item">Terminal</a>
 </li>
                                     
 <li>
-    <a href="/configuration/" class="dropdown-item">Zulip</a>
+    <a href="../configuration/" class="dropdown-item">Zulip</a>
 </li>
                                 </ul>
                             </li>
-                            <li class="dropdown">
+                            <li class="dropdown active">
                                 <a href="#" class="nav-link dropdown-toggle" data-toggle="dropdown">User Guide <b class="caret"></b></a>
                                 <ul class="dropdown-menu">
                                     
 <li>
-    <a href="/web-app/" class="dropdown-item">Web App</a>
+    <a href="./" class="dropdown-item active">Web App</a>
 </li>
                                     
 <li>
-    <a href="/gui/" class="dropdown-item">Browser</a>
+    <a href="../gui/" class="dropdown-item">Browser</a>
 </li>
                                     
 <li>
-    <a href="/commands/" class="dropdown-item">Terminal/Zulip</a>
+    <a href="../commands/" class="dropdown-item">Terminal/Zulip</a>
 </li>
                                 </ul>
                             </li>
                             <li class="navitem">
-                                <a href="/automation/" class="nav-link">Automation</a>
+                                <a href="../automation/" class="nav-link">Automation</a>
                             </li>
                             <li class="navitem">
-                                <a href="/hooks/" class="nav-link">Hooks</a>
+                                <a href="../hooks/" class="nav-link">Hooks</a>
                             </li>
                             <li class="navitem">
-                                <a href="/about/" class="nav-link">About</a>
+                                <a href="../about/" class="nav-link">About</a>
                             </li>
                             <li class="navitem">
-                                <a href="/contact/" class="nav-link">Contact</a>
+                                <a href="../contact/" class="nav-link">Contact</a>
                             </li>
                         </ul>
 
                     <ul class="nav navbar-nav ml-auto">
                             <li class="nav-item">
-                                <a href="https://github.com/New-Horizons-SPM/scanbot" class="nav-link"><i class="fa fa-github"></i> GitHub</a>
+                                <a rel="prev" href="../configuration/" class="nav-link">
+                                    <i class="fa fa-arrow-left"></i> Previous
+                                </a>
+                            </li>
+                            <li class="nav-item">
+                                <a rel="next" href="../gui/" class="nav-link">
+                                    Next <i class="fa fa-arrow-right"></i>
+                                </a>
+                            </li>
+                            <li class="nav-item">
+                                <a href="https://github.com/New-Horizons-SPM/scanbot/edit/master/docs/web-app.md" class="nav-link"><i class="fa fa-github"></i> Edit on GitHub</a>
                             </li>
                     </ul>
                 </div>
@@ -102,15 +112,28 @@
 
         <div class="container">
             <div class="row">
-
-    <div class="row-fluid">
-      <div id="main-content" class="span12">
-        <h1 id="404-page-not-found" style="text-align: center">404</h1>
-        <p style="text-align: center"><strong>Page not found</strong></p>
-      </div>
+                    <div class="col-md-3"><div class="navbar-light navbar-expand-md bs-sidebar hidden-print affix" role="complementary">
+    <div class="navbar-header">
+        <button type="button" class="navbar-toggler collapsed" data-toggle="collapse" data-target="#toc-collapse" title="Table of Contents">
+            <span class="fa fa-angle-down"></span>
+        </button>
     </div>
 
+    
+    <div id="toc-collapse" class="navbar-collapse collapse card bg-secondary">
+        <ul class="nav flex-column">
+            
+            <li class="nav-item" data-level="2"><a href="#coming-soon" class="nav-link">Coming Soon</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+        </ul>
+    </div>
+</div></div>
+                    <div class="col-md-9" role="main">
 
+<h2 id="coming-soon">Coming Soon</h2>
+<p>Documentation coming soon.</p></div>
             </div>
         </div>
 
@@ -119,10 +142,10 @@
             <p>Documentation built with <a href="https://www.mkdocs.org/">MkDocs</a>.</p>
         </footer>
         <script>
-            var base_url = "/",
+            var base_url = "..",
                 shortcuts = {"help": 191, "next": 78, "previous": 80, "search": 83};
         </script>
-        <script src="/js/base.js" defer></script>
+        <script src="../js/base.js" defer></script>
 
         <div class="modal" id="mkdocs_keyboard_modal" tabindex="-1" role="dialog" aria-labelledby="keyboardModalLabel" aria-hidden="true">
     <div class="modal-dialog">

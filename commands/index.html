@@ -8,7 +8,7 @@
         <meta name="author" content="Julian Ceddia">
         
         <link rel="shortcut icon" href="../img/favicon.ico">
-        <title>Commands - Scanbot</title>
+        <title>Terminal/Zulip - Scanbot</title>
         <link href="../css/bootstrap.min.css" rel="stylesheet">
         <link href="../css/font-awesome.min.css" rel="stylesheet">
         <link href="../css/base.css" rel="stylesheet">
@@ -39,14 +39,43 @@
                             <li class="navitem">
                                 <a href="../featured/" class="nav-link">Featured</a>
                             </li>
-                            <li class="navitem">
-                                <a href="../configuration/" class="nav-link">Configuration</a>
+                            <li class="dropdown">
+                                <a href="#" class="nav-link dropdown-toggle" data-toggle="dropdown">Configuration <b class="caret"></b></a>
+                                <ul class="dropdown-menu">
+                                    
+<li>
+    <a href="../web-app/#configuration" class="dropdown-item">Web App</a>
+</li>
+                                    
+<li>
+    <a href="../configuration/" class="dropdown-item">Browser</a>
+</li>
+                                    
+<li>
+    <a href="../configuration/" class="dropdown-item">Terminal</a>
+</li>
+                                    
+<li>
+    <a href="../configuration/" class="dropdown-item">Zulip</a>
+</li>
+                                </ul>
                             </li>
-                            <li class="navitem">
-                                <a href="../gui/" class="nav-link">GUI</a>
-                            </li>
-                            <li class="navitem active">
-                                <a href="./" class="nav-link">Commands</a>
+                            <li class="dropdown active">
+                                <a href="#" class="nav-link dropdown-toggle" data-toggle="dropdown">User Guide <b class="caret"></b></a>
+                                <ul class="dropdown-menu">
+                                    
+<li>
+    <a href="../web-app/" class="dropdown-item">Web App</a>
+</li>
+                                    
+<li>
+    <a href="../gui/" class="dropdown-item">Browser</a>
+</li>
+                                    
+<li>
+    <a href="./" class="dropdown-item active">Terminal/Zulip</a>
+</li>
+                                </ul>
                             </li>
                             <li class="navitem">
                                 <a href="../automation/" class="nav-link">Automation</a>
@@ -124,7 +153,8 @@
                     <div class="col-md-9" role="main">
 
 <h1 id="commands">Commands</h1>
-<p>For a list of available commands on the fly, run <code>help</code>, or for help with a specific command, run <code>help &lt;command_name&gt;</code>
+<p>This page documents the available commands and how to use them when running Scanbot via Zulip or in a terminal.
+For a list of available commands on the fly, run <code>help</code>, or for help with a specific command, run <code>help &lt;command_name&gt;</code>
 <br></p>
 <h2 id="scanbot-configuration">Scanbot Configuration</h2>
 <table>

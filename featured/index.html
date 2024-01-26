@@ -39,14 +39,43 @@
                             <li class="navitem active">
                                 <a href="./" class="nav-link">Featured</a>
                             </li>
-                            <li class="navitem">
-                                <a href="../configuration/" class="nav-link">Configuration</a>
+                            <li class="dropdown">
+                                <a href="#" class="nav-link dropdown-toggle" data-toggle="dropdown">Configuration <b class="caret"></b></a>
+                                <ul class="dropdown-menu">
+                                    
+<li>
+    <a href="../web-app/#configuration" class="dropdown-item">Web App</a>
+</li>
+                                    
+<li>
+    <a href="../configuration/" class="dropdown-item">Browser</a>
+</li>
+                                    
+<li>
+    <a href="../configuration/" class="dropdown-item">Terminal</a>
+</li>
+                                    
+<li>
+    <a href="../configuration/" class="dropdown-item">Zulip</a>
+</li>
+                                </ul>
                             </li>
-                            <li class="navitem">
-                                <a href="../gui/" class="nav-link">GUI</a>
-                            </li>
-                            <li class="navitem">
-                                <a href="../commands/" class="nav-link">Commands</a>
+                            <li class="dropdown">
+                                <a href="#" class="nav-link dropdown-toggle" data-toggle="dropdown">User Guide <b class="caret"></b></a>
+                                <ul class="dropdown-menu">
+                                    
+<li>
+    <a href="../web-app/" class="dropdown-item">Web App</a>
+</li>
+                                    
+<li>
+    <a href="../gui/" class="dropdown-item">Browser</a>
+</li>
+                                    
+<li>
+    <a href="../commands/" class="dropdown-item">Terminal/Zulip</a>
+</li>
+                                </ul>
                             </li>
                             <li class="navitem">
                                 <a href="../automation/" class="nav-link">Automation</a>
@@ -96,6 +125,10 @@
             
             <li class="nav-item" data-level="1"><a href="#featured" class="nav-link">Featured</a>
               <ul class="nav flex-column">
+            <li class="nav-item" data-level="2"><a href="#web-app" class="nav-link">Web App</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
             <li class="nav-item" data-level="2"><a href="#scanbot-meets-chatgpt" class="nav-link">Scanbot meets ChatGPT</a>
               <ul class="nav flex-column">
               </ul>
@@ -109,6 +142,10 @@
 
 <h1 id="featured">Featured</h1>
 <p><br></p>
+<h2 id="web-app">Web App</h2>
+<p>Scanbot has a fancy new front-end developed in React.js. Full documentation <a href="../web-app">here</a>
+<img alt="WebApp" src="../appim/top-level.png" />
+<br></p>
 <h2 id="scanbot-meets-chatgpt">Scanbot meets ChatGPT</h2>
 <p><br>
 When preparing a new tip, Scanbot lightly crashes the apex into the surface and analyses an image of the imprint left behind to determine whether the tip is suitable for imaging.

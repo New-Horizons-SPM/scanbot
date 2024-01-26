@@ -3,6 +3,8 @@ hk_*
 ## image files
 *.png
 
+##js
+/scanbot/node_modules
 ## OSX files
 .DS_Store
 

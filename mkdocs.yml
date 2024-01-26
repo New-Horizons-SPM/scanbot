@@ -5,9 +5,15 @@ site_author: Julian Ceddia
 nav:
     - Home: 'index.md'
     - Featured: 'featured.md'
-    - Configuration: 'configuration.md'
-    - GUI: 'gui.md'
-    - Commands: 'commands.md'
+    - 'Configuration':
+        - Web App: 'web-app/#configuration'
+        - Browser: 'configuration.md'
+        - Terminal: 'configuration.md'
+        - Zulip: 'configuration.md'
+    - 'User Guide':
+        - Web App: 'web-app.md'
+        - Browser: 'gui.md'
+        - Terminal/Zulip: 'commands.md'
     - Automation: 'automation.md'
     - Hooks: 'hooks.md'
     - About: 'about.md'

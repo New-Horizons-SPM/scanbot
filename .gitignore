@@ -1,5 +1,9 @@
 hk_*
-## image files
+## node
+/scanbot/node_modules
+
+##
+/server
 
 ## OSX files
 .DS_Store

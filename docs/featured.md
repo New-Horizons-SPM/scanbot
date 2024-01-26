@@ -1,5 +1,9 @@
 # Featured
 <br>
+## Web App
+Scanbot has a fancy new front-end developed in React.js. Full documentation [here](../web-app)
+![WebApp](./appim/top-level.png)
+<br>
 ## Scanbot meets ChatGPT
 <br>
 When preparing a new tip, Scanbot lightly crashes the apex into the surface and analyses an image of the imprint left behind to determine whether the tip is suitable for imaging.

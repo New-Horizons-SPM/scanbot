@@ -3,7 +3,8 @@
 Scanbot is a collection of several automated STM and nc-AFM data acquisition commands compatible with Nanonis V5 SPM control software.
 
 ## Featured
-[Scanbot meets ChatGPT](./featured)
+* [React Implementation of Scanbot](./featured/#web-app)<br>
+* [Scanbot meets ChatGPT](./featured/#scanbot-meets-chatgpt)
 
 ## Installation
 1.  Install the [nanonisTCP interface](https://github.com/New-Horizons-SPM/nanonisTCP)
@@ -11,43 +12,67 @@ Scanbot is a collection of several automated STM and nc-AFM data acquisition com
 2. Clone [this repository](https://github.com/New-Horizons-SPM/scanbot), navigate to the root directory, and run ```pip install .```
 
 ## Setup and Run
-Scanbot can be interfaced through a terminal, via zulip and, now thanks to [holoviz Panel](https://panel.holoviz.org/), in a [browser](./gui)!
+Scanbot can be run in the following ways:
 
-### Broswer
-Run ```python scanbot_interface.py -gui```
+1. <details>
+    <summary>Web App (V4+ - NEW!)</summary>
+    Scanbot hast (mostly) been implemented using [React](https://react.dev/)
 
-You can enable Basic Auth by creating a .json file in ~/scanbot/scanbot/ that contains usernames and passwords. Then run scanbot as ```python scanbot_interface.py -gui -auth credentials.json```
- 
-An example credentials file is shown below:
-```Python
-{
-    "user1": "my_password",
-    "user2": "my_password_2"
-}
-```
+    1. Install node.js from [here](https://nodejs.org/en) or if you're using anaconda, run conda install conda-forge::nodejs
+    2. Navigate to ```~/scanbot/scanbot``` and ```run npm install```
+    3. Start the server: navigate to ```~/scanbot/server/``` and run ```python server.py```
+    4. Start the web app: navigate to ```~/scanbot/scanbot/``` and run ```npm start```
 
-### Terminal
-Run ```python scanbot_interface.py -c```
+    <br>
 
-### Zulip
-1. Install zulip and zulip_bots
-    
-    ```pip install zulip```<br>
-    ```pip install zulip_bots```
-    
-2. [Create a zulip bot](https://zulip.com/help/add-a-bot-or-integration) and download the zuliprc file
+    <strong>Documentation available [here](./web-app)</strong>
+  </details>
 
-3. Add the following lines to scanbot_config.ini:
-    
-    ```zuliprc=<path_to_zuliprc>```<br>
-    ```upload_method=zulip```
+2. <details>
+    <summary>Broswer (V3+)</summary>
+    Thanks to [holoviz Panel](https://panel.holoviz.org/), Scanbot runs in a browser from V3 onwards.
+    <br><br>
+    Run ```python scanbot_interface.py -gui```
+    <br><br>
+    <strong>Documentation available [here](./gui)</strong>
+  </details>
 
-4. Run ```python scanbot_interface.py -z```
-5. Run commands by sending messages to the Zulip bot
+3. <details>
+    <summary>Terminal (V1+)</summary>
+    Running Scanbot from a terminal:
+    <br><br>
+    Run ```python scanbot_interface.py -c```
+
+    <br>
+    For a full list of Scanbot commands, see [commands](./commands). Alternatively run the ```help``` command or, for help with a specific command, run ```help <command_name>```.
+  </details>
+
+4. <details>
+    <summary>Zulip (V1+)</summary>
+    Running via zulip is the most flexible implementation of Scanbot. You can send commands and receive data in real time via chat streams.
+    <br><br>
+    1. Install zulip and zulip_bots
+        
+        ```pip install zulip```<br>
+        ```pip install zulip_bots```
+        
+    2. [Create a zulip bot](https://zulip.com/help/add-a-bot-or-integration) and download the zuliprc file
+
+    3. Add the following lines to scanbot_config.ini:
+        
+        ```zuliprc=<path_to_zuliprc>```<br>
+        ```upload_method=zulip```
+
+    4. Run ```python scanbot_interface.py -z```
+    5. Run [commands](./commands) by sending messages to the Zulip bot
+
+    <br>
+    For a full list of Scanbot commands, see [commands](./commands). Alternatively run the ```help``` command or, for help with a specific command, run ```help <command_name>```.
+  </details>
 
 ## Usage
-For a full list of Scanbot commands, see [commands](./commands). Alternatively run the ```help``` command or, for help with a specific command, run ```help <command_name>```.
-For example work-flow automation, see [Intended Usage](./automation/#intended-usage). To implement your own Scanbot commands, see [hk_commads](./hooks/#hk_commands).
+
+For example automation work-flow, see [Intended Usage](./automation/#intended-usage). To write your own custom Scanbot commands, see [hk_commads](./hooks/#hk_commands).
 
 ### Configuration
 The scanbot_config.ini configuration file can store things like the default IP adress, default TCP Ports, etc. Save it in the project's root directory.

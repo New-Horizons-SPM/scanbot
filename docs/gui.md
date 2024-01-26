@@ -1,4 +1,4 @@
-# Scanbot GUI
+# Scanbot Browser Mode
 
 Thanks to [holoviz Panel](https://panel.holoviz.org/), Scanbot now has a GUI that runs in a browser.
 This is still under active development, so not all of Scanbot's functionality is accessible from the GUI yet. 

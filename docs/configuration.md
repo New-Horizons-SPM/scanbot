@@ -1,5 +1,6 @@
 # Configuration
-scanbot_config.ini is the Scanbot configuration file that is loaded from ~/scanbot on startup.
+When running Scanbot in browser, terminal, or Zulip modes, you must create the scanbot_config.ini configuration file which gets loaded from ~/scanbot on startup.
+<strong>When running Scanbot as web app, see [here](../web-app/#configuration)</strong>.
 
 ## TCP Connection
 For communicating with Nanonis V5 software, you must configure the TCP settings.
@@ -21,17 +22,16 @@ If using firebase, set the ```firebase_storage_bucket=<bucket>``` field. Then th
 For Zulip users, this Firebase link would be sent in lieu of a PNG file.
 4. ```upload_method=no_upload``` prevents Scanbot from converting and saving the images it takes. **This is the default setting.**
 
-Alternatively, Scanbot can [SCP](https://en.wikipedia.org/wiki/Secure_copy_protocol) data to a server by setting the following two fields:
+Alternatively, Scanbot can [SCP](https://en.wikipedia.org/wiki/Secure_copy_protocol) data to a server by setting the following field:
 
 ```
-scp=true                    # Flag to turn feature on and off
 scp_path=<user@host:path>   # ssh key must be set up for this to work
 ```
 
 ## Nanonis Configuration
 The following optional fields relate to Nanonis configuration
 ```
-topo_basename=<.sxm basename>   # base filename used when saving .sxm files. Defaults 
+topo_basename=<.sxm basename>   # base filename used when saving .sxm files. Defaults to whatever is in Nanonis if not provided. 
 temp_calibration_curve=<path>   # Path to the temperature calibration curve so Scanbot can read STM temperature.
 ```
 

@@ -5,6 +5,7 @@
 hk_*
 
 ## image files
+/server/autoinit
 /server/temp
 
 ## OSX files

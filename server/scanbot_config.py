@@ -17,7 +17,7 @@ class scanbot_config():
                         'ip'                        : ['IP Address',                    'IP address of the pc controlling nanonis',                                         'tcp',      '127.0.0.1'],
                         'topo_basename'             : ['Topo basename',                 'Basename for .sxm files. Leave blank to use current value in nanonis',             'nanonis',  ''],
                         'scp_path'                  : ['SCP Path',                      'SCP generated pngs to user@clouddatabase:path. Leave blank to turn off',           'external', ''],
-                        'safe_current'              : ['Crash Current',                 'When the current goes above this threhold the tip is considered crashed',          'safety',   '5e-9'],
+                        'safe_current'              : ['Crash Current (A)',             'When the current goes above this threhold the tip is considered crashed',          'safety',   '5e-9'],
                         'safe_retract_V'            : ['Crash Retract Voltage (V)',     'Voltage (V) applied to the Z piezo when retracting tip if a crash is detected',    'safety',   '200'],
                         'safe_retract_F'            : ['Crash Retract Frequency (Hz)',  'Frequency (Hz) applied to the Z piezo when retracting tip if a crash is detected', 'safety',   '1500'],
                         'piezo_z_max_V'             : ['Max Z Piezo Voltage (V)',       'Maximum voltage that Scanbot can apply to the Z piezo',                            'safety',   '200'],

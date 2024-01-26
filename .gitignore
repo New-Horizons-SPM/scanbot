@@ -1,8 +1,11 @@
 ##node
 /scanbot/node_modules
+
 ## Hooks
 hk_*
+
 ## image files
+/server/temp
 
 ## OSX files
 .DS_Store

@@ -257,7 +257,7 @@ class scanbot():
                 col = ((row)%2)*((n-1) - idx%n) + ((row+1)%2)*idx%n
                 stitchedSurvey[(n-1-row)*lines:(n-1-row)*lines+lines,px*col:px*col+px] = scanData
             
-            if(self.interface.sendToCloud == 1):
+            if(self.interface.cloudPath):
                 metaData = self.getMetaData(filePath)
                 pklFile = utilities.pklDict(scanData,filePath,*metaData,comments="scanbot")
                 self.interface.uploadToCloud(pklFile)                           # Send data to cloud database

@@ -60,7 +60,6 @@ class scanbot_interface(object):
                     'notify_list'               : '',                           # Comma delimited zulip users to @notify when sending data
                     'temp_calibration_curve'    : '',                           # Path to temp calibration curve (see nanonis Temperature modules)
                     'topo_basename'             : '',                           # basename for topographic images
-                    'scp'                       : '0',                          # Flag to send data to the cloud
                     'scp_path'                  : '',                           # user@clouddatabase:path
                     'safe_current'              : '5e-9',                       # When the current goes above this threhold the tip is considered crashed. Used when controlling the course piezos
                     'safe_retract_V'            : '200',                        # Voltage applied to the 'Z' piezo when retracting tip in case of crash
@@ -145,11 +144,7 @@ class scanbot_interface(object):
         
         self.topoBasename = initDict['topo_basename']
         
-        self.sendToCloud = initDict['scp']
         self.cloudPath = initDict['scp_path']
-        if(self.sendToCloud == 1):
-            if(not self.cloudPath):
-                raise Exception("Check config file... cloud path not provided")
         
         self.scanbot.safeCurrent  = float(initDict['safe_current'])
         self.scanbot.safeRetractV = float(initDict['safe_retract_V'])

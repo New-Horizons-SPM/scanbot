@@ -11,6 +11,11 @@ import time
 import pickle
 app = Flask(__name__)
 
+@app.route('/has_config')
+def has_config():
+    hasConfig = os.path.isfile("scanbot_config.ini")
+    return {"status": hasConfig}, 200
+
 @app.route('/reset_init')
 def reset_init():
     scanbot.scanbot.autoInitSet = False

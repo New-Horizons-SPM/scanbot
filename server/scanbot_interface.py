@@ -50,6 +50,8 @@ class scanbot_interface(object):
         """
         print("Loading scanbot_config.ini...")
         initDict = {'zuliprc'                   : '',                           # Zulip rc file. See https://zulip.com/api/running-bots
+                    'zulip_stream'              : 'scanbot',                    # Default stream to send messages to
+                    'zulip_topic'               : 'live-stream',                # Default topic to send messages to
                     'upload_method'             : 'no_upload',                  # Ping data via this channel.
                     'path'                      : 'sbData',                     # Path to save data (if upload_method=path)
                     'firebase_credentials'      : '',                           # Credentials for firebase (if upload_method=firebase)
@@ -92,6 +94,8 @@ class scanbot_interface(object):
             print("Config file not found, using defaults...")
         
         self.zuliprc      = initDict['zuliprc']
+        self.zulipStream  = initDict['zulip_stream']
+        self.zulipTopic   = initDict['zulip_topic']
         
         self.path         = initDict['path']
         
@@ -731,12 +735,13 @@ class scanbot_interface(object):
             if(not replyTo): replyTo = self.bot_message                         # If we're just replying to the last message sent by user
             self.bot_handler.send_reply(replyTo, reply)                         # Send the message
             return
-        if(self.zulipClient):
+        
+        if(self.zulipClient):                                                   # We get here when self.runmode /= zulip
             self.zulipClient.send_message(
                 {
                     "type": "stream",
-                    "to": "scanbot",
-                    "topic": "live-stream",
+                    "to": self.zulipStream,
+                    "topic": self.zulipTopic,
                     "content": reply,
                 }
             )
@@ -754,7 +759,7 @@ class scanbot_interface(object):
     
         """
         if(not self.bot_handler):                                               # If we're not using zulip
-            # print("Scanbot reaction: " + reaction)                              # Send reaction to console
+            # print("Scanbot reaction: " + reaction)                             # Send reaction to console
             return
         
         reactTo = message                                                       # If we're reacting to a specific zulip message
@@ -784,22 +789,25 @@ class scanbot_interface(object):
             shutil.copy(path,'./temp/' + str(timestamp) + '_' + pngFilename)
         
         if(self.uploadMethod == 'zulip'):
-            # upload = self.bot_handler.upload_file_from_path(str(path))
-            # uploaded_file_reply = "[{}]({})".format(path.name, upload["uri"])
-            # self.sendReply(notifyString + pngFilename,message)
-            # self.sendReply(uploaded_file_reply,message)
-            result = ""
-            with open(str(path), "rb") as fp:
-                result = self.zulipClient.upload_file(fp)
-            if(result):
-                self.zulipClient.send_message(
-                    {
-                        "type": "stream",
-                        "to": "scanbot",
-                        "topic": "live-stream",
-                        "content": "[" + str(path) + "]({})".format(result["uri"]),
-                    }
-                )
+            if(self.bot_handler):
+                upload = self.bot_handler.upload_file_from_path(str(path))
+                uploaded_file_reply = "[{}]({})".format(path.name, upload["uri"])
+                self.sendReply(notifyString + pngFilename,message)
+                self.sendReply(uploaded_file_reply,message)
+            else:
+                result = ""
+                with open(str(path), "rb") as fp:
+                    result = self.zulipClient.upload_file(fp)
+
+                if(result):
+                    self.zulipClient.send_message(
+                        {
+                            "type": "stream",
+                            "to": self.zulipStream,
+                            "topic": self.zulipTopic,
+                            "content": "[" + str(path) + "]({})".format(result["uri"]),
+                        }
+                    )
             os.remove(path)
             
         if(self.uploadMethod == 'firebase'):
@@ -932,7 +940,7 @@ class scanbot_interface(object):
 ###############################################################################
 # Run
 ###############################################################################
-handler_class = scanbot_interface
+handler_class = scanbot_interface                                                   # Used by zulip-run-bot
 
 finish = False
 if('-z' in sys.argv):

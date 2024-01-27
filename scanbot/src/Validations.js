@@ -17,6 +17,12 @@ export const is_auto_init = async () => {
     return data['status']
 }
 
+export const getResponse = async (point) => {
+	const response = await fetch(point)
+	const data = await response.json()
+    return data['status']
+}
+
 export const positiveInt = (test) => {
     var result = /^\d*$/.test(test) || !(test)
     if(result) {

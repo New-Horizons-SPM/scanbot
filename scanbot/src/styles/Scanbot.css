@@ -26,6 +26,11 @@
   color: white;
 }
 
+.config-warning {
+  color: red;
+  font-size: large;
+}
+
 /* Card Row */
 
 .card-row {

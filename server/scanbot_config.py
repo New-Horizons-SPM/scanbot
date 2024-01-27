@@ -9,6 +9,8 @@ class scanbot_config():
         self.config = OrderedDict(
                       # key                         : [label, description, category, default value] 
                       { 'zuliprc'                   : ['Zulip RC File',                 'Upload your Zulip rc file. See https://zulip.com/api/running-bots',                'external', ''],
+                        'zulip_stream'              : ['Zulip Stream',                  'Default stream when sending messages via Zulip',                                   'external', 'scanbot'],
+                        'zulip_topic'               : ['Zulip Topic',                   'Default topic when sending messages via Zulip',                                    'external', 'live-stream'],
                         'upload_method'             : ['Upload Type',                   'Upload generated pngs via zulip or firebase',                                      'external', 'no_upload'],
                         'path'                      : ['Path',                          'Path to save data',                                                                'external', 'scanbot_data'],
                         'firebase_credentials'      : ['Firebase Credentials',          'Credentials for firebase (if upload_method=firebase)',                             'external', ''],

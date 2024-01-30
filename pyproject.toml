@@ -12,13 +12,13 @@ requires-python = ">=3.7"
 license = {text = "MIT"}
 keywords = ["stm","automation","python","scanning tunnelling microscopy","sts","scanbot"]
 dependencies = [
-    "numpy",
-    "matplotlib",
-    "scipy",
-    "opencv-python",
-    "zulip",
-    "panel",
-    "flask",
+    'numpy',
+    'matplotlib',
+    'scipy',
+    'opencv-python < 4.6.0',
+    'zulip',
+    'panel',
+    'flask',
 ]
 
 [tool.setuptools]

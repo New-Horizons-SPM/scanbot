@@ -3,7 +3,7 @@
 Scanbot has been implemented as a web application using [React](https://react.dev/).
 This application is still being developed, with the following features already fully implemented:
 
-* Survey
+* Sample Surveying
 * Bias Dependent Imaging
 * End-To-End Survey Automation
 
@@ -11,12 +11,14 @@ This application is still being developed, with the following features already f
 
 ## Installation
 
-To use the web application, you can follow the normal installation, then complete these additional steps:
+To use the web application, you can [download and run the .exe]([downloading and running the .exe](https://firebasestorage.googleapis.com/v0/b/scanbot-46390.appspot.com/o/scanbot-react%2Fscanbot.zip?alt=media&token=ee1091ef-7b08-4ec4-903d-3892a0fbd7b0))
+, then navigate to [http://127.0.0.1:5000/](http://127.0.0.1:5000/)
+Alternatively, follow the normal installation and complete these additional steps:
 
-    1. Install node.js from [here](https://nodejs.org/en) or if you're using anaconda, run conda install conda-forge::nodejs
-    2. Navigate to ```~/scanbot/scanbot``` and ```run npm install```
-    3. Start the server: navigate to ```~/scanbot/server/``` and run ```python server.py```
-    4. Start the web app: navigate to ```~/scanbot/scanbot/``` and run ```npm start```
+1. Install node.js from [here](https://nodejs.org/en) or if you're using anaconda, run conda install conda-forge::nodejs
+2. Navigate to ```~/scanbot/scanbot``` and ```run npm install```
+3. Start the server: navigate to ```~/scanbot/server/``` and run ```python server.py```
+4. Start the web app: navigate to ```~/scanbot/scanbot/``` and run ```npm start```
 
 ## Configuration
 From the landing page, you can access Scanbot's configuration.

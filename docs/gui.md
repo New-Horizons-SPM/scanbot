@@ -1,8 +1,8 @@
 # Scanbot Browser Mode
 
-Thanks to [holoviz Panel](https://panel.holoviz.org/), Scanbot now has a GUI that runs in a browser.
-This is still under active development, so not all of Scanbot's functionality is accessible from the GUI yet. 
-Currently, the following functions have been implemented in the Scanbot GUI:
+Thanks to [holoviz Panel](https://panel.holoviz.org/), Scanbot has a GUI that runs in a browser.
+Development for this has been moved to V4 so this version is no longer being supported.
+The following have been implemented in browser mode:
 
 * Survey
 * Bias Dependent Imaging
@@ -14,8 +14,8 @@ Currently, the following functions have been implemented in the Scanbot GUI:
 
 ## Overview
 
-Scanbot can be started in GUI mode by running the command ```python scanbot_interface.py -gui``` from ~/scanbot/scanbot
-The Scanbot GUI is split into two panels: the side panel and the plot area. The side panel is where functions and parameters can be selected,
+Scanbot can be started in GUI mode by running the command ```python scanbot_interface.py -gui``` from ```~/scanbot/scanbot```.
+The GUI is split into two panels: the side panel and the plot area. The side panel is where functions and parameters can be selected,
 and the plot area is where messages and images are displayed.
 
 ![survey_window](guiim/surveywindow.png)

@@ -123,7 +123,37 @@
     <div id="toc-collapse" class="navbar-collapse collapse card bg-secondary">
         <ul class="nav flex-column">
             
-            <li class="nav-item" data-level="2"><a href="#coming-soon" class="nav-link">Coming Soon</a>
+            <li class="nav-item" data-level="2"><a href="#scanbot-web-app" class="nav-link">Scanbot Web App</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+            
+            <li class="nav-item" data-level="2"><a href="#installation" class="nav-link">Installation</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+            
+            <li class="nav-item" data-level="2"><a href="#configuration" class="nav-link">Configuration</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+            
+            <li class="nav-item" data-level="2"><a href="#data-acquisition" class="nav-link">Data Acquisition</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+            
+            <li class="nav-item" data-level="2"><a href="#survey" class="nav-link">Survey</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+            
+            <li class="nav-item" data-level="2"><a href="#bias-dependent-imaging" class="nav-link">Bias Dependent Imaging</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+            
+            <li class="nav-item" data-level="2"><a href="#automation" class="nav-link">Automation</a>
               <ul class="nav flex-column">
               </ul>
             </li>
@@ -132,8 +162,250 @@
 </div></div>
                     <div class="col-md-9" role="main">
 
-<h2 id="coming-soon">Coming Soon</h2>
-<p>Documentation coming soon.</p></div>
+<h2 id="scanbot-web-app">Scanbot Web App</h2>
+<p>Scanbot has been implemented as a web application using <a href="https://react.dev/">React</a>.
+This application is still being developed, with the following features already fully implemented:</p>
+<ul>
+<li>Sample Surveying</li>
+<li>Bias Dependent Imaging</li>
+<li>End-To-End Survey Automation</li>
+</ul>
+<p><img alt="WebApp" src="../appim/top-level.png" /></p>
+<h2 id="installation">Installation</h2>
+<p>To use the web application, you can <a href="[downloading and running the .exe](https://firebasestorage.googleapis.com/v0/b/scanbot-46390.appspot.com/o/scanbot-react%2Fscanbot.zip?alt=media&amp;token=ee1091ef-7b08-4ec4-903d-3892a0fbd7b0)">download and run the .exe</a>
+, then navigate to <a href="http://127.0.0.1:5000/">http://127.0.0.1:5000/</a>
+Alternatively, follow the normal installation and complete these additional steps:</p>
+<ol>
+<li>Install node.js from <a href="https://nodejs.org/en">here</a> or if you're using anaconda, run conda install conda-forge::nodejs</li>
+<li>Navigate to <code>~/scanbot/scanbot</code> and <code>run npm install</code></li>
+<li>Start the server: navigate to <code>~/scanbot/server/</code> and run <code>python server.py</code></li>
+<li>Start the web app: navigate to <code>~/scanbot/scanbot/</code> and run <code>npm start</code></li>
+</ol>
+<h2 id="configuration">Configuration</h2>
+<p>From the landing page, you can access Scanbot's configuration.
+It is reccommended that you review the default settings before using any of the tools in Scanbot.
+Upon accepting the configuration, your scanbot_config.ini file will be saved automatically and your settings will be remembered.
+These settings can be updated any time. <strong>For a detailed description about the configurable parameters, see 
+<a href="../configuration">configuration</a>.</strong>
+<img alt="Config" src="../appim/configuration.png" /></p>
+<h2 id="data-acquisition">Data Acquisition</h2>
+<p>From the landing page, you can access the data acquisition tools, including tools to help automate the STM.
+<img alt="DataAcquisition" src="../appim/data-acquisition.png" /></p>
+<h2 id="survey">Survey</h2>
+<p><img alt="DataAcquisition" src="../appim/survey.png" /></p>
+<p>When the Survey function is selected, the parameters in the table below can be configured.
+Note that answering <code>Yes</code> to <code>Auto tip shaping?</code>, is only possible after following a short
+<a href="/stm-automation">initialisation procedure</a>.</p>
+<table>
+<thead>
+<tr>
+<th>Parameter</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Survey fine grid size (NxN)</td>
+<td>Surveys are grids of images. This parameter defines the grid size. For example, if N=3, the survey grid will be 9 images in a 3x3 grid</td>
+</tr>
+<tr>
+<td>Survey course grid size X/Y</td>
+<td>The course grid is a macroscopic grid of points on the sample where surveys will be carried out.<br>At the completion of each survey, the course piezos will move the tip to the next location in the course grid.<br>The course grid size is XxY.<br>For example, if X=5 and Y=2, a total of 10 fine-grid surveys will be carried out.</td>
+</tr>
+<tr>
+<td>Scan size (m)</td>
+<td>Length and widthof each image in the survey in meters</td>
+</tr>
+<tr>
+<td>Scan spacing (m)</td>
+<td>Spacing between images in a survey in meters</td>
+</tr>
+<tr>
+<td>Number of pixels</td>
+<td>Number of pixels in each image in the survey</td>
+</tr>
+<tr>
+<td>Scan bias (V)</td>
+<td>Bias the images in the survey will be acquired at</td>
+</tr>
+<tr>
+<td>Filename suffix</td>
+<td>String that will be appended to the end of the .sxm filenames for all images acquired in the survey</td>
+</tr>
+<tr>
+<td>Drift compensation (s)</td>
+<td>Number of seconds after which to restart each scan. This is to accommodate for drift induced by the scan frame moving.</td>
+</tr>
+<tr>
+<td>Number of motor steps (Z+)</td>
+<td>Number of motor steps the tip will retract before moving to the next survey location in the course grid</td>
+</tr>
+<tr>
+<td>Piezo voltage during Z+ motor steps (V)</td>
+<td>Voltage applied to the Z piezos when retracting the tip before moving to the next course grid location</td>
+</tr>
+<tr>
+<td>Piezo frequency during Z+ motor steps (Hz)</td>
+<td>Frequency applied to the Z piezos when retracting the tip before moving to the next course grid location</td>
+</tr>
+<tr>
+<td>Number of motor steps (X/Y)</td>
+<td>Number of piezo motor steps (after retracting in Z+) between course grid locations</td>
+</tr>
+<tr>
+<td>Piezo voltage during X/Y motor steps (V)</td>
+<td>Voltage applied to the X/Y piezos when moving to the next course grid location</td>
+</tr>
+<tr>
+<td>Piezo Frequency during X/Y motor steps (Hz)</td>
+<td>Frequency applied to the X/Y piezos when moving to the next course grid location</td>
+</tr>
+<tr>
+<td>Call hk_survey.py after each image?</td>
+<td>Answer 'Yes' if you've written a custom hk_hook.py hook that you want executed after each scan completes</td>
+</tr>
+<tr>
+<td>Call hk_classifier.py instead of default classifier?</td>
+<td>Answer 'Yes' if you've written a custom hk_classifier.py hook to analyse completed scans and determine if the tip needs reshaping</td>
+</tr>
+<tr>
+<td>Auto tip shaping?</td>
+<td>Answer 'Yes' if you want Scanbot to automatically move the tip to the clean reference metal and reshape the tip when it detects a bad tip</td>
+</tr>
+</tbody>
+</table>
+<h2 id="bias-dependent-imaging">Bias Dependent Imaging</h2>
+<p>The bias dependent imaging function lets you take a series of drift-corrected images at different bias values. The plot area will show the latest image side-by-side with a GIF of all the previously acquired images in the set.
+<img alt="biasdepwindow" src="../appim/bias-dep.png" /></p>
+<p>When the Bias Dependent function is selected, the following parameters can be configured:</p>
+<table>
+<thead>
+<tr>
+<th>Parameter</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Number of images</td>
+<td>Number of images to acquire between the initial and final bias</td>
+</tr>
+<tr>
+<td>Initial bias (V)</td>
+<td>Bias of the first image in the set</td>
+</tr>
+<tr>
+<td>Final bias (V)</td>
+<td>Bias of the final image in the set</td>
+</tr>
+<tr>
+<td>Pixels in data image</td>
+<td>Number of pixels in the bias dependent scans. This must be a multiple of 16 in nanonis</td>
+</tr>
+<tr>
+<td>Lines in data image</td>
+<td>Number of lines in the bias dependent scans</td>
+</tr>
+<tr>
+<td>Time per line during data acquisition (s)</td>
+<td>Sets the forward speed of the tip during bias dependent scans</td>
+</tr>
+<tr>
+<td>Backwards time per line multiplier</td>
+<td>Sets the backward speed of the tip during bias dependent scans. (2 = twice as fast as the forward speed)</td>
+</tr>
+<tr>
+<td>Pixels in drift correction image</td>
+<td>Number of pixels during the frames taken for drift correction purposes.<br>A drift correction frame is acquired between each of the bias dependent scans at a constant bias</td>
+</tr>
+<tr>
+<td>Lines in drift correction image</td>
+<td>Number of lines during the frames taken for drift correction purposes.<br>Set this to 0 to keep the same ratio as pixels/lines in the bias dependent images</td>
+</tr>
+<tr>
+<td>Bias during drift correction (V)</td>
+<td>Bias that the drift correction frames are acquired at.<br>Set this to 0 to turn off drift correction</td>
+</tr>
+<tr>
+<td>Time per line during drift correction (s)</td>
+<td>Sets the forward speed of the tip when acquiring drift correction images</td>
+</tr>
+<tr>
+<td>Backwards time per line multiplier</td>
+<td>Sets the backward speed of the tip during drift correction scans. (0.5 = half the speed as the forward speed)</td>
+</tr>
+<tr>
+<td>Suffix</td>
+<td>Text to append to the .sxm filenames for all images in this set</td>
+</tr>
+</tbody>
+</table>
+<h2 id="automation">Automation</h2>
+<p>Surveys can be fully automated by first initialising the tip, sample, and clean reference metal locations from the 'Automation' screen - simply allow the browser to use of the camera and follow the prompts.
+Once these locations are initialised, you will be able to answer 'Yes' to the <code>Automated Tip Shaping?</code> field.
+Under these cirumstances, Scanbot will autonomously shape the tip <strong>once it detects a five 'bad' images in a row</strong>.
+The process is described in more details <a href="../automation/#intended-usage">here</a>.</p>
+<p>Alternatively, you can trigger automated tip shaping manually. This action tells Scanbot to <a href="../automation/#tip-preparation">automatically acquire a tip</a> suitable for imaging. The process is as follows:</p>
+<ol>
+<li>An NxN grid is setup within the scannable region</li>
+<li>A small scan is acquired at the first location in the grid</li>
+<li>If the scanned region is flat/clean, it is deemed suitable for creating an imprint. If not, the scan frame is moved to the next location in the grid and the process repeats</li>
+<li>The tip apex creates an imprint in the middle of the scan window</li>
+<li>The imprint of the tip apex is imaged</li>
+<li>The imprint is analysed and given size score (in units of nm2) and a circularity score (from 0 to 1)</li>
+<li>If the target size and circularity values are not met, the scan frame moves to the next location and the process is repeated</li>
+<li>If the target size and circularity values are met, the process completes</li>
+</ol>
+<table>
+<thead>
+<tr>
+<th>Parameter</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Tip shaping grid size (NxN)</td>
+<td>The total number of tip-shaping attempts will be NxN</td>
+</tr>
+<tr>
+<td>Scan size (m)</td>
+<td>Size of the scan window when imaging the tip imprint</td>
+</tr>
+<tr>
+<td>Desired symmetry (0=asymmetric, 1=perfect circle)</td>
+<td>Circularity score that needs to be met before tip-shaping is successful.<br>The imprint circularity is calculated by analysing its contour.<br>0.85 or more will generally be good enough</td>
+</tr>
+<tr>
+<td>Maximum size (nm2)</td>
+<td>Maximum area in units of nm2 of the imprint.<br>This will vary for different metal surfaces.<br>2.5 is a good starting point</td>
+</tr>
+<tr>
+<td>Tip depth when assessing imprint (m)</td>
+<td>Amount to crash the tip when creating an imprint to be analysed.<br>This will vary for different metal surfaces.<br>-1.1e-9 is a good starting point</td>
+</tr>
+<tr>
+<td>Tip depth when reshaping the tip (m)</td>
+<td>Maximum amount to crash the tip when reshaping it.<br>-10e-9 to -15e-9 is a good starting point if the rng is turned on</td>
+</tr>
+<tr>
+<td>Randomise tip depth from 0 to above value when reshaping?</td>
+<td>Randomising the tip crash depth from zero to a maximum value seems to work better than try the same value over and over.<br>Generally select 'Yes' for this option</td>
+</tr>
+<tr>
+<td>Drift compensation time (s)</td>
+<td>Restarts each scan after this many seconds to compensate for drift when moving scan frames.<br>1 s is generally ok here</td>
+</tr>
+<tr>
+<td>Demo mode?</td>
+<td>Load pngs from a pickled file instead of scan window (useful for testing purposes only - contact me if you want a test.pk)</td>
+</tr>
+<tr>
+<td>Call the hook hk_tipshape?</td>
+<td>Call your own hk_tipshape.py hook to configure custom tip-shaping parameters based on images of the tip's imprint</td>
+</tr>
+</tbody>
+</table></div>
             </div>
         </div>
 

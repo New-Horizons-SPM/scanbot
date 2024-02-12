@@ -37,7 +37,7 @@ From the landing page, you can access the data acquisition tools, including tool
 
 When the Survey function is selected, the parameters in the table below can be configured.
 Note that answering ```Yes``` to ```Auto tip shaping?```, is only possible after following a short
-[initialisation procedure](/stm-automation).
+[initialisation procedure](#automation).
 
 | Parameter                                            | Description                                                                                                                                                                                                                                                                                                                             |
 |------------------------------------------------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|

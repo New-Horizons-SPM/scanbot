@@ -1,5 +1,5 @@
 # V4 Update!
-Scanbot has (mostly) been implemented in react. Simply [download the executable](https://firebasestorage.googleapis.com/v0/b/scanbot-46390.appspot.com/o/scanbot-react%2Fscanbot.zip?alt=media&token=ee1091ef-7b08-4ec4-903d-3892a0fbd7b0), run it, and head to http://127.0.0.1:5000/. Full documentation available [here](https://new-horizons-spm.github.io/scanbot/web-app/).
+Scanbot has (mostly) been implemented in react. Simply [download and run the executable](https://firebasestorage.googleapis.com/v0/b/scanbot-46390.appspot.com/o/scanbot-react%2Fscanbot_v4.zip?alt=media&token=83f256ca-c22d-4818-b6e7-225870796380) and head to http://127.0.0.1:5000/. Full documentation available [here](https://new-horizons-spm.github.io/scanbot/web-app/).
 
 # Scanbot       [![DOI](https://zenodo.org/badge/487719232.svg)](https://zenodo.org/badge/latestdoi/487719232)
 

@@ -232,8 +232,11 @@ def trimStart(cap,frames):
 
 def getVideo(cameraPort,demo=0):
     if(demo):
-        cap = cv2.VideoCapture('../Dev/move_tip_2.mp4')                         # Load in the mp4
-        # trimStart(cap,frames=2000)                                              # Trim off the start of the video
+        try:
+            cap = cv2.VideoCapture('../Dev/move_tip_2.mp4')                     # Load in the mp4
+        except:
+            cap = cv2.VideoCapture('./Dev/move_tip_2.mp4')                      # Load in the mp4
+        # trimStart(cap,frames=2000)                                            # Trim off the start of the video
         return cap
     
     cap = cv2.VideoCapture(cameraPort,cv2.CAP_DSHOW)                            # Camera feed. Camera port: usually 0 for desktop and 1 for laptops with a camera. cv2.CAP_DSHOW is magic
@@ -246,7 +249,10 @@ def getInitialFrame(cap,n=10,demo=0):
     initialFrame = []
     
     if(demo):
-        cp = cv2.VideoCapture('../Dev/initialise.mp4')                          # Load in the mp4
+        try:
+            cp = cv2.VideoCapture('../Dev/initialise.mp4')                      # Load in the mp4
+        except:
+            cp = cv2.VideoCapture('./Dev/initialise.mp4')                       # Load in the mp4
     else:
         cp = cap
     

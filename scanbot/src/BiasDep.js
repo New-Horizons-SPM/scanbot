@@ -142,9 +142,12 @@ function BiasDep() {
         },
         {
             title: "Actions",
-            inputs: []
+            inputs: [
+                { label: `${!running ? 'Start' : 'Stop'} Scanning`, type: "submit", id: "submit", name: "submit", description: "Start/stop the Scanbot bias-dependent image series", click: handleFormSubmit}
+            ]
         }
     ];
+
     async function fetchGif(){
         if(running){
             console.log("step 1")
@@ -212,9 +215,9 @@ function BiasDep() {
         };
 
         // eslint-disable-next-line react-hooks/exhaustive-deps
-      }, [running, imageIndex]);
+    }, [running, imageIndex]);
       
-      useEffect(() => {
+    useEffect(() => {
         const handleBeforeUnload = (event) => {
             if (running) {
                 // Standard for most browsers
@@ -233,7 +236,7 @@ function BiasDep() {
 
     const cleanUp = () => {
         if(running) {
-            const userResponse = window.confirm("There is a scan in progree. If you proceed, the scan will be stopped.");
+            const userResponse = window.confirm("There is a scan in progress. If you proceed, the scan will be stopped.");
             if(userResponse){
                 stop()
                 return true
@@ -249,8 +252,6 @@ function BiasDep() {
                 <Sidebar
                     formData={formData}
                     onInputChange={handleInputChange}
-                    onSubmit={handleFormSubmit}
-                    submitText={`${!running ? 'Start' : 'Stop'} Scanning`}
                 />
             </div>
             <div className='bias-dep-main-content'>

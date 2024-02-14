@@ -231,7 +231,9 @@ function Survey() {
         },
         {
             title: "Actions",
-            inputs: []
+            inputs: [
+                { label: `${!surveyRunning ? 'Start' : 'Stop'} Survey`, type: "submit", id: "submit", name: "submit", description: "Start/stop the Scanbot survey", click: handleFormSubmit}
+            ]
         }
     ];
 
@@ -302,7 +304,7 @@ function Survey() {
 
     const cleanUp = () => {
         if(surveyRunning) {
-            const userResponse = window.confirm("There is a scan in progree. If you proceed, the scan will be stopped.");
+            const userResponse = window.confirm("There is a scan in progress. If you proceed, the scan will be stopped.");
             if(userResponse){
                 stop()
                 return true
@@ -318,8 +320,6 @@ function Survey() {
             <Sidebar
                 formData={formData}
                 onInputChange={handleInputChange}
-                onSubmit={handleFormSubmit}
-                submitText={`${!surveyRunning ? 'Start' : 'Stop'} Survey`}
             />
         </div>
         <div className='survey-main-content'>

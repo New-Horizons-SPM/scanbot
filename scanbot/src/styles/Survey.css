@@ -31,6 +31,7 @@
     align-items: center; /* Align images vertically */
     margin: 0 auto;
     width: 100%;
+    padding: 10px;
     border: 3px;
     border-style: dashed;
     border-color: green;

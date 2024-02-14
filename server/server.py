@@ -1,4 +1,5 @@
-from flask import Flask, request, send_from_directory, jsonify
+from flask import Flask, request, send_from_directory
+from flask_cors import CORS
 from scanbot_interface import scanbot_interface
 from scanbot_config import scanbot_config
 import numpy as np
@@ -7,23 +8,53 @@ import shutil
 from pathlib import Path
 from PIL import Image
 import base64
-import time
+import sys
 import pickle
-app = Flask(__name__)
+import global_
+import webbrowser
+from threading import Timer
+
+# pyinstaller --onefile --icon=..\scanbot\public\favicon.ico --add-data "..\scanbot\build;static" --name scanbot v4.x server.py
+app = Flask(__name__, static_url_path='')
+
+# Determine if we're running in a PyInstaller bundle and adjust paths
+if getattr(sys, 'frozen', False):
+    # If the app is run from a PyInstaller bundle
+    app.static_folder = os.path.join(sys._MEIPASS, "static")
+else:
+    # Otherwise, use the normal base directory
+    app.static_folder = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'scanbot', 'build'))
+
+@app.route('/', defaults={'path': ''})
+@app.route('/<path:path>')
+def serve(path):
+    if path and os.path.exists(os.path.join(app.static_folder, path)):
+        return send_from_directory(app.static_folder, path)
+    else:
+        return send_from_directory(app.static_folder, 'index.html')
 
 @app.route('/has_config')
 def has_config():
     hasConfig = os.path.isfile("scanbot_config.ini")
     return {"status": hasConfig}, 200
 
+@app.route('/test_connection')
+def test_connection():
+    status = scanbot.testConnection()
+    return {"status": status}, 200
+
 @app.route('/reset_init')
 def reset_init():
     scanbot.scanbot.autoInitSet = False
     return {"status": "success"}, 200
 
+@app.route('/demo_init')
+def demo_init():
+    print("calling demo init",scanbot.autoInit(user_args=['-demo=1','-reactInit=1']))
+    return {"status": "success"}, 200
+
 @app.route('/is_auto_init')
 def is_auto_init():
-    print(scanbot.scanbot.autoInitSet)
     return {"status": scanbot.scanbot.autoInitSet}, 200
 
 @app.route('/check_hook', methods=['POST'])
@@ -87,7 +118,8 @@ def save_frame():
 
 @app.route ('/get_initialised_frame')
 def get_initialised_frame():
-    return send_from_directory('./autoinit', 'initialisation.png', as_attachment=True)
+    autoinit_dir = getDir('./autoinit')
+    return send_from_directory(autoinit_dir, 'initialisation.png', as_attachment=True)
 
 @app.route('/scanbot_config')
 def get_config():
@@ -135,19 +167,41 @@ def run_biasdep():
         pass
     return {"status": "success"}, 200
 
+@app.route('/run_autotipshape', methods=['POST'])
+def run_autotipshape():
+    userArgs = request.json['userArgs']
+    error = scanbot.autoTipShape(user_args=userArgs)
+    if(error):
+        return {"status": error}, 503
+    try:
+        shutil.rmtree('./temp')
+    except:
+        pass
+    return {"status": "success"}, 200
+
+@app.route('/get_imprint_score')
+def get_imprint_score():
+    files = sorted([file for file in Path('./temp').iterdir() if file.suffix == '.png'], key=os.path.getmtime)
+    latestFile = str(files[-1].name)
+    size = latestFile.split("size--")[1].split("_")[0]
+    symm = latestFile.split("symm--")[1].split(".png")[0]
+    running = global_.running.is_set()
+    return {"size": size,"sym": symm, "running": running}, 200
+    
+
 @app.route('/image_updates', methods=['POST'])
 def check_survey_updates():
     timestamp = request.json['timestamp']
     try:
-        files = sorted(Path('./temp').iterdir(), key=os.path.getmtime)
+        files = sorted([file for file in Path('./temp').iterdir() if file.suffix == '.png'], key=os.path.getmtime)
         latestFile = str(files[-1].name)
-
         try:
             latestTimestamp = float(latestFile.split('_')[0])*1000
             if(latestTimestamp > timestamp):
-                return send_from_directory('./temp', str(files[-1].name), as_attachment=True)
-        except:
-            pass
+                temp_dir = getDir('./temp')
+                return send_from_directory(temp_dir, str(files[-1].name), as_attachment=True)
+        except Exception as e:
+            print(e)
         
         return {"status": 'not found'}, 404
     except:
@@ -158,7 +212,7 @@ def check_survey_updates():
 @app.route('/get_gif')
 def get_gif():
     frames = []
-    files = sorted(Path('./temp').iterdir(), key=os.path.getmtime)
+    files = sorted([file for file in Path('./temp').iterdir() if file.suffix == '.png'], key=os.path.getmtime)
     for file in files:
         if(str(file.name).endswith('.png')):
             im = Image.open(file)
@@ -166,7 +220,8 @@ def get_gif():
             
     if(frames):
         frames[0].save('./temp/GIF.gif', format="GIF", append_images=frames, save_all=True, duration=500, loop=0)
-        return send_from_directory('./temp', 'GIF.gif', as_attachment=True)
+        temp_dir = getDir('./temp')
+        return send_from_directory(temp_dir, 'GIF.gif', as_attachment=True)
             
     return {"status": 'not found'}, 404
 
@@ -175,7 +230,21 @@ def stop():
     scanbot.stop(user_args=[])
     return {"status": "success"}, 200
 
+def getDir(path):
+    if getattr(sys, 'frozen', False):
+        # If running as a PyInstaller executable, the base directory is the directory of the executable
+        base_dir = os.path.dirname(sys.executable)
+    else:
+        # If running directly with Python, the base directory can be the current working directory
+        base_dir = os.getcwd()
+    
+    return os.path.join(base_dir, path)
+
+def open_browser():
+      webbrowser.open_new('http://127.0.0.1:5000/')
+
 # Running app
 if __name__ == '__main__':
+    Timer(1, open_browser).start()
     scanbot = scanbot_interface(run_mode='react')
-    app.run(debug=True)
+    app.run(debug=False)

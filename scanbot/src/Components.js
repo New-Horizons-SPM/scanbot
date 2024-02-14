@@ -50,7 +50,7 @@ export const Card = ({ title, content, navigateTo, className, url}) => {
 	)
 };
 
-export const Form1 = ({ title, inputs, onInputChange, formIndex, showSubmitButton, onSubmit, submitText, type }) => {
+export const Form1 = ({ title, inputs, onInputChange, formIndex, showSubmitButton, onSubmit, submitText }) => {
     const [isCollapsed, setIsCollapsed] = useState(false);
 
     const toggleCollapse = () => {
@@ -58,41 +58,65 @@ export const Form1 = ({ title, inputs, onInputChange, formIndex, showSubmitButto
     };
 
     return (
-        <div className={type + "-form"}>
-            <div className={type + "-form-header"} onClick={toggleCollapse}>
+        <div className="sidebar-form">
+            <div className="sidebar-form-header" onClick={toggleCollapse}>
                 <h3>{title}</h3>
-                {type === "sidebar" && <img src={collapseIcon} alt="Collapse" className="form-collapse-icon" style={{ transform: isCollapsed ? 'rotate(0deg)' : 'rotate(180deg)' }} />}
+                {<img src={collapseIcon} alt="Collapse" className="form-collapse-icon" style={{ transform: isCollapsed ? 'rotate(0deg)' : 'rotate(180deg)' }} />}
             </div>
-            {(!isCollapsed || type === "panel") && (
-                <div className={type + "-form-body"}>
+            {(!isCollapsed) && (
+                <div className="sidebar-form-body">
                     {inputs.map((input, index) => (
-                        <div key={index} className={type + "-input-group"}>
-                            <label htmlFor={input.id}>{input.label}</label>
-                            {input.type === "select" ? (
-                                <select
-                                    id={input.id}
-                                    name={input.name}
-                                    title={input.description}
-                                    value={input.value}
-                                    onChange={(e) => onInputChange(formIndex, input.name, e.target.value, index)}
-                                >
-                                {input.options.map((option, idx) => (
-                                    <option key={idx} value={option.value}>{option.label}</option>
-                                ))}
-                                </select>
-                            ) : (
-                                <input
-                                type={input.type} 
-                                id={input.id} 
-                                name={input.name}
-                                title={input.description}
-                                value={input.value}
-                                onChange={(e) => onInputChange(formIndex, input.name, e.target.value, index)}
-                            />
-                            )}
+                        <div key={index} className="sidebar-input-group">
+                            {(() => {
+                                switch (input.type) {
+                                    case "select":
+                                        return (
+                                            <div>
+                                                <label htmlFor={input.id}>{input.label}</label>
+                                                <select
+                                                    id={input.id}
+                                                    name={input.name}
+                                                    title={input.description}
+                                                    value={input.value}
+                                                    onChange={(e) => onInputChange(formIndex, input.name, e.target.value, index)}
+                                                >
+                                                {input.options.map((option, idx) => (
+                                                    <option key={idx} value={option.value}>{option.label}</option>
+                                                ))}
+                                                </select>
+                                            </div>
+                                        );
+                                    
+                                    case "submit":
+                                        return (
+                                            <div>
+                                                <br></br>
+                                                <button
+                                                    className = "sidebar-form-submit"
+                                                    type="button"
+                                                    onClick={input.click}>{input.label}
+                                                </button>
+                                            </div>
+                                        );
+
+                                    default:
+                                        return (
+                                            <div>
+                                                <label htmlFor={input.id}>{input.label}</label>
+                                                <input
+                                                    type={input.type} 
+                                                    id={input.id} 
+                                                    name={input.name}
+                                                    title={input.description}
+                                                    value={input.value}
+                                                    onChange={(e) => onInputChange(formIndex, input.name, e.target.value, index)}
+                                                />
+                                            </div>
+                                        );
+                                }
+                            })()}
                         </div>
                     ))}
-                    {showSubmitButton && <button className = {type + "-form-submit"} type="button" onClick={onSubmit}>{submitText}</button>}
                 </div>
             )}
         </div>
@@ -109,10 +133,6 @@ export const Sidebar = ({ formData, onInputChange, onSubmit, submitText }) => {
                     inputs={form.inputs}
                     onInputChange={onInputChange}
                     formIndex={index}
-                    onSubmit={onSubmit}
-                    submitText={submitText}
-                    showSubmitButton={index === formData.length - 1}
-                    type="sidebar"
                 />
             ))}
         </aside>

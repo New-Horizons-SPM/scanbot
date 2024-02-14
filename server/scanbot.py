@@ -21,6 +21,7 @@ from nanonisTCP.TipShaper import TipShaper
 import time
 from datetime import datetime as dt
 from datetime import timedelta
+from pathlib import Path
 import ntpath
 import numpy as np
 import nanonispyfit as napfit
@@ -223,7 +224,6 @@ class scanbot():
             _,scanData,_ = scan.FrameDataGrab(14, 1)                            # Grab the data within the scan frame. Channel 14 is . 1 is forward data direction
             
             if(autotip):                                                        # **Currently Testing**
-                classification = utilities.classify(scanData,filePath,classificationHistory) # Obtain image classification
                 if(classifier_hk):
                     try:
                         classification = hk_classifier.run(scanData,filePath,classificationHistory) # Overwrite classification with the one from the hook
@@ -231,6 +231,9 @@ class scanbot():
                         self.interface.sendReply("Warning: Call to survey hook hk_classifier.py failed:")
                         self.interface.sendReply(str(e))
                         self.interface.sendReply("Default Scanbot classifier will be used instead.")
+                        classification = utilities.classify(scanData,filePath,classificationHistory) # Obtain image classification
+                else:
+                    classification = utilities.classify(scanData,filePath,classificationHistory) # Obtain image classification
                     
                 classificationHistory.append(classification)
                 
@@ -1344,7 +1347,8 @@ class scanbot():
         String if an error occurred.
 
         """
-        if(reactMode):
+        if(reactMode and not demo):
+            global_.running.clear()                                         # Free up the running flag
             try:
                 autoinitDict = pickle.load(open('./autoInit/autoinit.pk','rb'))
                 self.tipPos         = autoinitDict['tipLocation']
@@ -1442,6 +1446,10 @@ class scanbot():
         rec = cv2.circle(rec, cleanMetalPos, radius=3, color=(0, 255, 0), thickness=-1)
             
         cv2.imshow('Frame',rec)
+        
+        if(reactMode):
+            Path('./autoinit').mkdir(parents=True, exist_ok=True)
+            cv2.imwrite('./autoInit/initialisation.png',rec)
         
         self.interface.sendReply("Initialisation complete! If this doens't look correct, run it again.")
         self.interface.sendReply("Press 'q' to exit (timeout = 30s)")
@@ -1669,7 +1677,10 @@ class scanbot():
             x = np.array(list(reversed(x)))                                     # Snake the grid - better for drift
         
         if(demo):
-            demoData = pickle.load(open("../Dev/autoTipShape.pk",'rb'))         # Load in dummy data for demo mode. This is just a few images of various tip imprints
+            try:
+                demoData = pickle.load(open("../Dev/autoTipShape.pk",'rb'))     # Load in dummy data for demo mode. This is just a few images of various tip imprints
+            except:                                                             # If it faile, maybe we're running in react mode or the user pasted it in the wrong folder
+                demoData = pickle.load(open("./Dev/autoTipShape.pk",'rb'))      # Load in dummy data for demo mode. This is just a few images of various tip imprints
             demoIDX = 0                                                         # Keep track of demo data file
             
         for frame in snakedGrid:

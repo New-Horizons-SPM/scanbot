@@ -528,6 +528,10 @@ class scanbot_interface(object):
         if(error): return error + "\nRun ```help auto_tip_shape``` if you're unsure."
         
         args = self.unpackArgs(user_arg_dict)
+        if(self.run_mode == 'react'):   # React interface passes scan size and spacing in units of nm. convert to m
+            args[1] *= 1e-9
+            args[4] *= 1e-9
+            args[5] *= 1e-9
         
         func = lambda : self.scanbot.autoTipShape(*args,message=self.bot_message.copy())
         return self.threadTask(func)
@@ -830,6 +834,19 @@ class scanbot_interface(object):
 ###############################################################################
 # Misc
 ###############################################################################
+    def testConnection(self):
+        status = True
+        try:
+            from nanonisTCP.Bias import Bias
+            NTCP,connection_error = self.scanbot.connect()                      # Connect to nanonis via TCP
+            biasModule = Bias(NTCP)
+            bias = biasModule.Get()
+            self.scanbot.disconnect(NTCP)
+        except:
+            status = False
+
+        return status
+
     def stop(self,user_args=[],_help=False):
         arg_dict = {'-s' : ['1', lambda x: int(x), "(int) Stop scan in progress. 1=Yes"]}
         

@@ -1,9 +1,14 @@
 import React, { useEffect, useState, useRef } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { Sidebar, usePersistedState, GoBack } from './Components';
 import { checkHook, is_auto_init, positiveInt, integer, positiveNumber } from './Validations';
 import { Gallery } from "react-grid-gallery";
 import emptyFrameIcon from './img/frame.png';
 import './styles/Survey.css'
+
+function useQuery() {
+    return new URLSearchParams(useLocation().search);
+}
 
 function Survey() {
     const [allFormData, setAllFormData] = usePersistedState('survey-allFormData', {
@@ -29,6 +34,10 @@ function Survey() {
     const [surveyTimestamp, setSurveyTimestamp]     = useState(0);
     const [galleryRowHeight, setGalleryRowHeight]   = useState(300);
     const timerIdRef = useRef(null);
+    const navigate = useNavigate();
+    let query = useQuery();
+    const location = useLocation();
+    const { action } = location.state || {}
 
     const handleInputChange = async (formIndex, name, value, index) => {
         var goahead = true
@@ -66,6 +75,27 @@ function Survey() {
             setAllFormData(temp);
         }
     };
+
+    useEffect(() => {
+        startAction()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [action]);
+
+    async function startAction() {
+        if(!action) { return }
+        const response = await fetch('/get_state')
+        const data = await response.json()
+        const isRunning = data['running']
+        
+        if(!isRunning) {
+            navigate('/survey');
+        }
+
+        if(action === 'survey') {
+            await fetch('/remove_temp')
+            setUpSurvey()
+        }
+    }
 
     async function validateDropDowns(temp) {
         const formIndex = 3
@@ -139,25 +169,7 @@ function Survey() {
         .then(response => response.json())
         .then(data => {
             if(data['status'] === "success"){
-                const n = parseInt(allFormData[0]['n'])
-                const newRowHeight = Math.floor(900/n)
-                // const newRowHeight = Math.floor(0.9*window.innerHeight/n)
-                setGalleryRowHeight(newRowHeight)
-                var images = []
-                for (let i = 0; i < n**2; i++) {
-                    images.push({src: emptyFrameIcon, alt: 'Survey Image', width: newRowHeight , height: newRowHeight})
-                }
-                
-                if(surveyImages){
-                    for (let i = 0; i < surveyImages.length; i++) {
-                        URL.revokeObjectURL(surveyImages[i]);
-                    }
-                }
-                setSurveyImages(images)
-                setSurveyIndex(0)
-
-                setSurveyRunning(true)
-
+                setUpSurvey()
                 console.log('Success:', data);
             }else{
                 console.log('Fail', data)
@@ -167,6 +179,26 @@ function Survey() {
             alert("Scanbot Error: " + error);
             console.error('Error:', error);
         });
+    }
+    const setUpSurvey = () => {
+        const n = parseInt(allFormData[0]['n'])
+        const newRowHeight = Math.floor(900/n)
+        // const newRowHeight = Math.floor(0.9*window.innerHeight/n)
+        setGalleryRowHeight(newRowHeight)
+        var images = []
+        for (let i = 0; i < n**2; i++) {
+            images.push({src: emptyFrameIcon, alt: 'Survey Image', width: newRowHeight , height: newRowHeight})
+        }
+        
+        if(surveyImages){
+            for (let i = 0; i < surveyImages.length; i++) {
+                URL.revokeObjectURL(surveyImages[i]);
+            }
+        }
+        setSurveyImages(images)
+        setSurveyIndex(0)
+
+        setSurveyRunning(true)
     }
 
     const unpackArgs = () => {
@@ -258,12 +290,20 @@ function Survey() {
                 setSurveyImages(images)
                 setSurveyIndex(index + 1)
                 setSurveyTimestamp(Date.now())
+            }
 
-                const n = parseInt(allFormData[0]['n'])
-                if(index + 2 > n**2) {
-                    setSurveyRunning(false);
-                    stopPolling();
-                }
+            const actionResponse = await fetch('/get_state')
+            const actionData     = await actionResponse.json()
+            const action = actionData['action']
+            const isRunning = actionData['running']
+
+            if(!isRunning || !(action === "survey")) {
+                setSurveyRunning(false)
+            }
+
+            if(action === "movetip") {
+                // navigate('/stm-control?action=movetip'); // Redirect to the AutoTipShape page
+                navigate('/stm-control', {state: { action: 'movetip' }})
             }
         };
     

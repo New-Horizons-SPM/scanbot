@@ -1,15 +1,21 @@
 import React, { useEffect, useState, useRef } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { is_auto_init, positiveNumber, positiveInt, number, checkHook } from './Validations';
 import { Sidebar, GoBack, usePersistedState } from './Components';
 import Webcam from './Webcam';
 import emptyFrameIcon from './img/frame.png';
 import './styles/STMControl.css'
 
+function useQuery() {
+    return new URLSearchParams(useLocation().search);
+}
+
 function STMControl () {
-    const [initialiseState, setInitialiseState] = useState({step: 0, inProgress: false, complete: false})
+    const [initialiseState, setInitialiseState] = useState({step: 0, inProgress: false, complete: false, mode: 'live'})
     const [showWebcam, setShowWebcam]       = useState(false);
     const [initialisationImage, setInitialisationImage] = useState(null)
     const [currentInstruction, setCurrentInstruction] = useState(null)
+    const [currentAction, setCurrentAction] = useState(null)
     const resetState = {
         initialFrame: null,
         tipInFrame: null,
@@ -17,19 +23,26 @@ function STMControl () {
         metalLocation: null,
         sampleLocation: null
     }
-    const [ viewMode, setViewMode] = usePersistedState("control-viewMode","autotipshape")
+    const [ viewMode, setViewMode] = usePersistedState("control-viewMode","autotipshaping")
     const [ autoInitData, setAutoInitData ] = useState(resetState);
     const [ autoTipRunning,  setAutoTipRunning] = useState(false);
+    const [ goToTargetRunning,  setGoToTargetRunning] = useState(false);
+    const [tipTrackingImage,  setTipTrackingImage]  = useState({ src: emptyFrameIcon, alt: "blank image", width: 300, height: 300} );
     const [lastImage,  setLastImage]  = useState({ src: emptyFrameIcon, alt: "blank image", width: 300, height: 300} );
     const [imprintGif, setImprintGif] = useState([{ src: emptyFrameIcon, alt: "blank image", width: 300, height: 300}] );
     const [ imprintScore, setImprintScore ] = useState({size: 0, sym: 0})
     const [lastTimestamp, setLastTimestamp] = useState(0);
     const timerIdRef = useRef(null);
+    let query = useQuery();
+    const navigate = useNavigate();
+    const location = useLocation();
+    const { action } = location.state || {}
 
     // const [allFormData, setAllFormData] = usePersistedState('stm-control-allFormData', {
     const [allFormData, setAllFormData] = usePersistedState("control-allFormData", {
-        0: {n: '10', wh: '30',sym: 0.7, size: 2.0, zQA: -0.9, ztip: -5, rng: 1, st: 3, demo: 0, hk_tipShape: 0},
-        1: {demo: 0, light: 0, cameraPort: 0}
+        0: {n: '10', wh: '10',sym: 0.7, size: 2.0, zQA: -0.9, ztip: -5, rng: 1, st: 3, demo: 0, hk_tipShape: 0},
+        1: {demo: 0, light: 0, cameraPort: 0},
+        2: {xStep: 50, zStep: 100, xV: 100, zV: 180, xF: 2000, zF: 2000, approach: 1, tipshape: 0, hk_tipShape: 0, return: 0, run: ''}
     });
     
     const startStopAutotipshaping = () => {
@@ -54,7 +67,7 @@ function STMControl () {
         // Validations
         const positiveNumbers = ['st','wh','sym','size','ztip']
         const negativeNumbers = ['zQA', 'ztip']
-        const positiveInts = ['n']
+        const positiveInts = ['n','xStep','zStep','xV','zV','xF','zF']
         if(positiveInts.includes(name)) {
             goahead = positiveInt(value)
         }
@@ -115,6 +128,40 @@ function STMControl () {
         validateDropDowns(temp)
     // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
+
+    useEffect(() => {
+        startAction()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [action]);
+    
+    async function startAction() {
+        if(!action) { return }
+        var image = lastImage
+
+        const response = await fetch('/get_state')
+        const data = await response.json()
+        const isRunning = data['running']
+        
+        if(!isRunning) {
+            navigate('/stm-control');
+        }
+
+        if(action === 'movetip') {
+            await fetch('/remove_temp')
+            setViewMode("tiptracking")
+            image['src'] = emptyFrameIcon
+            setTipTrackingImage(image)
+            setGoToTargetRunning(true)
+        }
+
+        if(action === 'autotipshape') {
+            await fetch('/remove_temp')
+            setViewMode("autotipshaping")
+            setLastImage(image)
+            setImprintGif([image])
+            setAutoTipRunning(true)
+        }
+    }
 
     const startAutoTipShape = () => {
         const userArgs = unpackArgs(0)
@@ -177,24 +224,19 @@ function STMControl () {
                 body: JSON.stringify({timestamp: timestamp}),
             })
             
-            if(response.ok){
-                const blob = await response.blob()
-                const url = URL.createObjectURL(blob);
-                
-                var image = lastImage
-                image['src'] = url
-                console.log(url)
-                setLastImage(image)
-                setLastTimestamp(Date.now())
-                
-                fetchGif();
+            const blob = await response.blob()
+            const url = URL.createObjectURL(blob);
 
-                await getImprintScore()
-                // const n = parseInt(allFormData[0]['n'])
-                // if(index + 2 > n) {
-                //     setRunning(false);
-                //     stopPolling();
-                // }
+            if(response.ok){
+                if(autoTipRunning) {
+                    await autoTipUpdate(url)
+                }
+
+                if(goToTargetRunning) {
+                    await goToUpdate(url)
+                }
+
+                setLastTimestamp(Date.now())
             }
         };
     
@@ -206,7 +248,7 @@ function STMControl () {
           clearInterval(timerIdRef.current);
         };
     
-        if (autoTipRunning) {
+        if (autoTipRunning || goToTargetRunning) {
           startPolling();
         }
     
@@ -215,8 +257,64 @@ function STMControl () {
         };
 
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [autoTipRunning]);
+    }, [autoTipRunning,goToTargetRunning]);
     
+    async function goToUpdate(url) {
+        let image = tipTrackingImage
+        image['src'] = url
+        setTipTrackingImage(image)
+
+        const response = await fetch('/get_state')
+        const data = await response.json()
+        const isRunning = data['running']
+        const action = data['action']
+        setCurrentAction(action)
+        if(!isRunning && goToTargetRunning) {
+            startStopGoToTarget()
+        }
+
+        if(isRunning && goToTargetRunning && action === "autotipshape") {
+            setGoToTargetRunning(false)
+            // navigate('/stm-control?action=autotipshape'); // Redirect to the AutoTipShape page
+            navigate('/stm-control', {state: { action: 'autotipshape' }})
+        }
+        
+        if(isRunning && action === 'survey') {
+            setAutoTipRunning(false)
+            // navigate('/survey?action=survey')
+            navigate('/survey', {state: { action: 'survey' }})
+        }
+    }
+
+    async function autoTipUpdate(url) {
+        var image = lastImage
+        image['src'] = url
+        setLastImage(image)
+        
+        await fetchGif();
+
+        const response = await fetch('/get_state')
+        const data = await response.json()
+        const isRunning = data['running']
+        const action = data['action']
+
+        if(isRunning && action === 'movetip') {
+            setAutoTipRunning(false)
+            navigate('/stm-control', {state: { action: 'movetip' }})
+        }
+        
+        if(isRunning && action === 'survey') {
+            setAutoTipRunning(false)
+            navigate('/survey', {state: { action: 'survey' }})
+        }
+        
+        if(!isRunning) {
+            startStopAutotipshaping()
+        }
+        
+        await getImprintScore()
+    }
+
     async function getImprintScore() {
         const response = await fetch('/get_imprint_score')
         const data = await response.json()
@@ -360,7 +458,7 @@ function STMControl () {
             return
         }
         setViewMode("autoinit")
-        if(allFormData[1]['demo']) {
+        if(allFormData[1]['demo'] === '1') {
             console.log("Starting in demo mode")
             fetch('/demo_init')
             return
@@ -393,6 +491,69 @@ function STMControl () {
         }
     }
 
+    const startStopGoToSample = () => {
+        startStopGoToTarget('sample')
+
+    }
+
+    const startStopGoToMetal = () => {
+        startStopGoToTarget('metal')
+    }
+
+    const startStopGoToTarget = async (target) => {
+        if(goToTargetRunning) {
+            setGoToTargetRunning(false)
+            stop()
+            return
+        }
+
+        if(autoTipRunning){
+            console.log("Auto tip shaping is in progress. Let it complete or stop it before continuing.")
+            return
+        }
+        const isInit = await is_auto_init()
+        if(!isInit) {
+            console.log("You must initialise the tip, sample, and clean reference metal locations before Scanbot can track and maneuver the tip.")
+            return
+        }
+
+        setViewMode("tiptracking")
+        goToTarget(target)
+
+    }
+
+    const goToTarget = (target) => {
+        const userArgs = unpackArgs(2)
+
+        fetch('/run_go_to_target', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({userArgs: userArgs,target: target}),
+        })
+        .then(response => response.json())
+        .then(data => {
+            if(data['status'] === "success"){
+                var image = lastImage
+                image['src'] = emptyFrameIcon
+                if(lastImage){
+                    URL.revokeObjectURL(lastImage);
+                    URL.revokeObjectURL(imprintGif[0]);
+                }
+                setTipTrackingImage(image)
+                setGoToTargetRunning(true)
+                console.log('Success:', data);
+            }else{
+                console.log('Fail', data)
+            }
+            
+        })
+        .catch((error) => {
+            console.error('Error:', error);
+        });
+    }
+
     const yesNo       = [{label: 'Yes', value: 1},{label: 'No', value: 0}]
     // const cameraPorts = [{label: '0',   value: 0},{label: '1',  value: 1},{label: '2',  value: 2},{label: '3',  value: 3}]
     const formData = [
@@ -419,6 +580,23 @@ function STMControl () {
                 // { label: "Use hk_light.py to control light?", type: "select", id: "light", name: "light", value: allFormData[1]['light'], description: "(int) Flag to call the hk_light.py hook when controlling the STM light", options: yesNo},
                 { label: "Run in demo mode?", type: "select", id: "demo", name: "demo", value: allFormData[1]['demo'], description: "(int) Flag to call in demo mode. In demo mode, the camerafeed will be replaced with a pre-recorded video", options: yesNo},
                 { label: "Initialise",        type: "submit", id: "initSubmit", name: "initSubmit", description: "Reinitialise the tip, sample, and metal locations using the camera feed", click: initialise},
+            ]
+        },
+        {
+            title: "Move Tip",
+            inputs: [
+                { label: "Steps at a time in the X direction",                  type: "text",   id: "xStep",    name: "xStep",      value: allFormData[2]['xStep'],     description: "(int) Number of motor steps in the X direction before updating tip position. More=Faster but might lose the tip"},
+                { label: "Piezo voltage when moving in the X direction (V)",    type: "text",   id: "xV",       name: "xV",         value: allFormData[2]['xV'],        description: "(float) Piezo voltage when moving motor steps in X direction (V)"},
+                { label: "Piezo frequency when moving in the X direction (Hz)", type: "text",   id: "xF",       name: "xF",         value: allFormData[2]['xF'],        description: "(float) Piezo frequency when moving motor steps in X direction (Hz)"},
+                { label: "Steps at a time in the Z direction",                  type: "text",   id: "zStep",    name: "zStep",      value: allFormData[2]['zStep'],     description: "(int) Number of motor steps to move in +Z (upwards) before updating tip position. More=Faster but might lose the tip"},
+                { label: "Piezo voltage when moving in the Z direction (V)",    type: "text",   id: "zV",       name: "zV",         value: allFormData[2]['zV'],        description: "(float) Piezo voltage when moving motor steps in Z direction (V)"},
+                { label: "Piezo frequency when moving in the Z direction (Hz)", type: "text",   id: "zF",       name: "zF",         value: allFormData[2]['zF'],        description: "(float) Piezo frequency when moving motor steps in Z direction (Hz)"},
+                { label: "Approach on arrival?",                                type: "select", id: "approach", name: "approach",   value: allFormData[2]['approach'],  description: "(int) Auto approach when the tip reaches target destination?", options: yesNo},
+                // { label: "Auto tip shape upon appraching on clean metal?",      type: "select", id: "tipshape", name: "tipshape",   value: allFormData[2]['tipshape'],  description: "(int) If auto approach is selected, initiate an automated shaping when you get there?", options: yesNo},
+                // { label: "Return to sample after auto tip shaping completes?",  type: "select", id: "return",   name: "return",     value: allFormData[2]['return'],    description: "(int) If auto approach and auto tip shaping are both selected, return to sample?", options: yesNo},
+                // { label: "Run a survey upon return?",                           type: "select", id: "run",      name: "run",        value: allFormData[2]['run'],       description: "(int) If auto approach and auto tip shaping are both selected, return to sample?", options: yesNo (make sure this makes -run=survey)},
+                { label: `${!goToTargetRunning ? 'Go to Sample' : 'Stop'} `,  type: "submit", description: "Tell Scanbot to track and move the tip to the initialised sample location", click: startStopGoToSample},
+                { label: `${!goToTargetRunning ? 'Go to Metal'  : 'Stop'} `,  type: "submit", description: "Tell Scanbot to track and move the tip to the initialised clean metal location", click: startStopGoToMetal},
             ]
         },
     ];
@@ -461,33 +639,52 @@ function STMControl () {
                 />
             </div>
             <div className='control-main-content'>
-                {viewMode==="autoinit"
-                    ?
-                    <div className='autoinit-content'>
-                        {initialiseState['complete']
-                            ? <img src={ initialisationImage } alt="Inisialisation complete" />
-                            : <Webcam
-                                onCoordinatesSelected={handleVideoClick}
-                                showWebcam={showWebcam}
-                            />
-                        }
-                        {!initialiseState['inProgress']
-                            ? <p/>
-                            : <div>
-                                <p>{currentInstruction}</p>
-                                <button className='init-button' onClick={cancelInit}>Cancel</button>
-                            </div>
-                        }
-                    </div>
-                    :
-                    <div>
-                        <div className='autotipshape-content'>
-                            <img className="autotipshape-image autotipshape-last-image" src={lastImage['src']} alt={lastImage['alt'] }/>
-                            <img className="autotipshape-image autotipshape-gif" src={imprintGif[0]['src']} alt={imprintGif['alt'] }/>
-                        </div>
-                        <p className="imprint-score">Last imprint size: {imprintScore['size']} nm<sup>2</sup>, symmetry: {imprintScore['sym']}</p>
-                    </div>
-                }
+                {(() => {
+                    switch (viewMode) {
+                        case "autoinit":
+                            return (
+                                <div className='autoinit-content'>
+                                    {initialiseState['complete']
+                                        ? <img src={ initialisationImage } alt="Inisialisation complete" />
+                                        : <Webcam
+                                            onCoordinatesSelected={handleVideoClick}
+                                            showWebcam={showWebcam}
+                                        />
+                                    }
+                                    {!initialiseState['inProgress']
+                                        ? <p/>
+                                        : <div>
+                                            <p>{currentInstruction}</p>
+                                            <button className='init-button' onClick={cancelInit}>Cancel</button>
+                                        </div>
+                                    }
+                                </div>
+                            );
+
+                        case "autotipshaping":
+                            return (
+                                <div>
+                                    <div className='autotipshape-content'>
+                                        <img className="autotipshape-image autotipshape-last-image" src={lastImage['src']} alt={lastImage['alt'] }/>
+                                        <img className="autotipshape-image autotipshape-gif" src={imprintGif[0]['src']} alt={imprintGif['alt'] }/> */}
+                                    </div>
+                                    <p className="imprint-score">Last imprint size: {imprintScore['size']} nm<sup>2</sup>, symmetry: {imprintScore['sym']}</p>
+                                </div>
+                            );
+                        
+                        case "tiptracking":
+                            return (
+                                <div className='autoinit-content'>
+                                    <img src={tipTrackingImage['src']} alt={tipTrackingImage['alt'] }/>
+                                    <p>{!goToTargetRunning ? 'Tip Stopped!'  : 'Tip moving... This frame updates every 5s. See the popup for a live feed.'}</p>
+                                    <p>{currentAction}</p>
+                                </div>
+                            );
+
+                        default:
+                            return(<div></div>);
+                    }
+                })()}
             </div>
             <GoBack
                 cleanUp={cleanUp}

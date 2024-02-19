@@ -121,6 +121,29 @@ def get_initialised_frame():
     autoinit_dir = getDir('./autoinit')
     return send_from_directory(autoinit_dir, 'initialisation.png', as_attachment=True)
 
+@app.route('/run_go_to_target', methods=['POST'])
+def run_go_to_target():
+    data = request.json
+
+    target   = data['target']
+    userArgs = data['userArgs']
+    if(target == 'sample'):
+        error = scanbot.moveTipToSample(user_args=userArgs)
+
+    if(target == 'metal'):
+        error = scanbot.moveTipToClean(user_args=userArgs)
+
+    if(error):
+        print("ERROR:",error)
+        return {"status": error}, 503
+    
+    try:
+        shutil.rmtree('./temp')
+    except:
+        pass
+    
+    return {"status": "success"}, 200
+
 @app.route('/scanbot_config')
 def get_config():
     sbConfig = scanbot_config()
@@ -224,6 +247,20 @@ def get_gif():
         return send_from_directory(temp_dir, 'GIF.gif', as_attachment=True)
             
     return {"status": 'not found'}, 404
+
+@app.route('/get_state')
+def get_running():
+    running = global_.running.is_set()
+    action  = scanbot.getAction()
+    return {"running": running, "action": action['action']}, 200
+
+@app.route('/remove_temp')
+def remove_temp():
+    try:
+        shutil.rmtree('./temp')
+    except:
+        pass
+    return {"status": "success"}, 200
 
 @app.route('/stop')
 def stop():

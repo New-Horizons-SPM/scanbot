@@ -15,10 +15,11 @@ dependencies = [
     'numpy',
     'matplotlib',
     'scipy',
-    'opencv-python < 4.6.0',
+    'opencv-python < 4.8.0',
     'zulip',
     'panel',
     'flask',
+    'flask-cors',
 ]
 
 [tool.setuptools]

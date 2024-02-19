@@ -492,7 +492,6 @@ class scanbot_interface(object):
                     '-xF'         : ['1100',lambda x: float(x), "(float) Piezo frequency when moving motor steps in x direction"],
                     '-zF'         : ['1100',lambda x: float(x), "(float) Piezo frequency when moving motor steps in z direction"],
                     '-approach'   : ['1',   lambda x: int(x),   "(int) Approach when tip reaches target. 0=No,1=Yes"],
-                    '-demo'       : ['0',   lambda x: int(x),   "(int) Load in an mp4 recording of the tip moving instead of using live feed"],
                     '-tipshape'   : ['0',   lambda x: int(x),   "(int) Flag to initiate auto_tip_shape on approach (applies to move_tip_to_clean only)"],
                     '-hk_tipShape': ['0',   lambda x: int(x),   "(int) Flag to call hk_tipShape when auto tip shaping. 1=Yes, 0=No"],
                     '-return'     : ['0',   lambda x: int(x),   "(int) Return to sample after tipshaping (applies to move_tip_to_clean when -tipshape=1)"],
@@ -500,7 +499,7 @@ class scanbot_interface(object):
         
         if(_help): return arg_dict
         
-        if(self.run_mode != 'c' and self.run_mode != 'p' and self.run_mode != 'react'): return "This function is only available in console mode."
+        if(self.run_mode != 'c' and self.run_mode != 'p' and self.run_mode != 'react'): return "This function is not available."
         
         error,user_arg_dict = self.userArgs(arg_dict,user_args)
         if(error): return error + "\nRun ```help move_tip_to_" + target + "``` if you're unsure."
@@ -750,6 +749,7 @@ class scanbot_interface(object):
                 }
             )
         print(reply)                                                            # Print reply to console
+        self.scanbot.currentAction["message"] = reply
         
     def reactToMessage(self,reaction,message=""):
         """
@@ -834,6 +834,9 @@ class scanbot_interface(object):
 ###############################################################################
 # Misc
 ###############################################################################
+    def getAction(self):
+        return self.scanbot.currentAction
+    
     def testConnection(self):
         status = True
         try:

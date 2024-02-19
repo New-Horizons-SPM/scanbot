@@ -7,8 +7,8 @@
 }
 
 .control-sidebar-container {
-    width: 20%; /* Adjust as needed */
-    min-width: 20em;
+    width: 30%; /* Adjust as needed */
+    min-width: 25em;
     height: 100vh;
     overflow-x: hidden;
     overflow-y: hidden;

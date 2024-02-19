@@ -66,9 +66,14 @@ class scanbot():
     xyMinF = 500                                                                # Frequency limits Dummy value - this gets overridden by config.
     
     autoInitSet  = False                                                        # Flag to indicate whether tip, sample, and clean metal locations have been initialised
-    
+    autoInitDemo = 0                                                            # 0 = live, 1 = demo
+
     surveyParams  = []                                                          # Last survey params
     survey2Params = []                                                          # Last survey2 params
+
+    currentAction = {"action":  "",                                             # Let the front-end know what Scanbot is currently doing
+                     "status":  "",
+                     "message": ""}
 ###############################################################################
 # Constructor
 ###############################################################################
@@ -142,7 +147,7 @@ class scanbot():
         iamauto : Flag when this function was called autonomously
 
         """
-        
+        self.currentAction["action"] = "survey"
         NTCP,connection_error = self.connect()                                  # Connect to nanonis via TCP
         if(connection_error):
             global_.running.clear()                                             # Free up the running flag
@@ -237,9 +242,11 @@ class scanbot():
                     
                 classificationHistory.append(classification)
                 
+                print("Image classification: ",classification)
+                
                 if(classification["tipShape"] == 1):
                     print("auto tip shaping initate!")
-                    global_.running.clear()
+                    # global_.running.clear()
                     callAutoTipShape = True
             
             _,scanData,_ = scan.FrameDataGrab(self.channel, 1)                  # Grab the data related to our focused channel
@@ -266,7 +273,8 @@ class scanbot():
                 self.interface.uploadToCloud(pklFile)                           # Send data to cloud database
             
             if(self.checkEventFlags()): break                                   # Check event flags
-        
+            if(callAutoTipShape): break
+
         if(stitch == 1 and not np.isnan(stitchedSurvey).all()):
             stitchFilepath = self.makePNG(stitchedSurvey,pngFilename = suffix + '_stitch.png',dpi=150*n, fit=False)
             self.interface.sendPNG(stitchFilepath,notify=False,message=message) # Send a png over zulip
@@ -282,6 +290,7 @@ class scanbot():
         if(iamauto): return callAutoTipShape
         
         if(callAutoTipShape):
+            global_.running.clear()                                             # Free up the running flag
             user_args = ['-run=survey', '-return=1', '-tipshape=1']
             self.interface.moveTipToClean(user_args=user_args)
         
@@ -292,6 +301,7 @@ class scanbot():
         each one.
         
         """
+        self.currentAction["action"] = "survey"
         
         self.survey2Params = [bias,n,startAt,suffix,xy,dx,px,sleepTime,stitch,survey_hk,classifier_hk,autotip, # Survey2 params
                               nx,ny,xStep,yStep,zStep,xyV,zV,xyF,zF]
@@ -387,6 +397,7 @@ class scanbot():
         Error message if something went wrong
 
         """
+        self.currentAction["action"] = "biasdep"
         NTCP,connection_error = self.connect()                                  # Connect to nanonis via TCP
         if(connection_error):
             global_.running.clear()                                             # Free up the running flag
@@ -527,6 +538,7 @@ class scanbot():
                 
                    
         """
+        self.currentAction["action"] = "zdep"
         NTCP,connection_error = self.connect()                                  # Connect to nanonis via TCP
         if(connection_error):
             global_.running.clear()                                             # Free up the running flag
@@ -766,6 +778,7 @@ class scanbot():
                    way
 
         """
+        self.currentAction["action"] = "registration"
         NTCP,connection_error = self.connect()                                  # Connect to nanonis via TCP
         if(connection_error):
             global_.running.clear()                                             # Free up the running flag
@@ -1091,7 +1104,7 @@ class scanbot():
         
         return True
     
-    def moveTip(self,lightOnOff,cameraPort,trackOnly,xStep,zStep,xV,zV,xF,zF,demo,target=[],tipPos=[],iamauto=False):
+    def moveTip(self,lightOnOff,cameraPort,trackOnly,xStep,zStep,xV,zV,xF,zF,target=[],tipPos=[],iamauto=False):
         """
         This function moves the tip to a desired target location while tracking
         it's position using the camera feed. In order for a tip to be moved to 
@@ -1123,12 +1136,12 @@ class scanbot():
         zV         : Piezo voltage during zStep (V)
         xF         : Piezo frequency during xStep (Hz)
         zF         : Piezo frequency during zStep (Hz)
-        demo       : demo mode (temporary)
         target     : Target position (used in autonomous mode)
         tipPos     : Current tip position (used in autonomous mode)
         iamauto    : Flag for when this function was called in autonomous mode
 
         """
+        self.currentAction["action"] = "movetip"
         if(lightOnOff):                                                         # If we want to turn the light on
             try:
                 turn_on()                                                       # Call the hook to do so. Hook should return null if successful, otherwise it should throw an Exception
@@ -1137,7 +1150,7 @@ class scanbot():
                 global_.running.clear()                                         # Free up the running flag
                 return str(e)
         
-        cap = utilities.getVideo(cameraPort,demo)
+        cap = utilities.getVideo(cameraPort,self.autoInitDemo)
         ret,frame = utilities.getAveragedFrame(cap,n=1)                         # Read the first frame of the video to test camera feed
         if(not ret):
             self.interface.sendReply("Error finding camera feed. Check camera port.")
@@ -1167,7 +1180,8 @@ class scanbot():
         success = True
         targetHit = False
         previousPos = np.array([0,0])
-        pk = []
+        previousTime = time.time()
+        # pk = []
         currentPos = tipPos.copy()
         
         while(cap.isOpened()):
@@ -1187,32 +1201,39 @@ class scanbot():
             if(not ret): break
             rec = cv2.circle(frame, currentPos, radius=3, color=(0, 0, 255), thickness=-1)
             if(len(target)): rec = cv2.circle(rec, target, radius=3, color=(0, 255, 0), thickness=-1)
-            
-            if(not (currentPos == previousPos).all()):
-                pk.append([rec,currentPos,frame])
-                previousPos = currentPos.copy()
                 
             cv2.imshow('Frame',rec)
             
             if cv2.waitKey(25) & 0xFF == ord('q'): break                        # Press Q on keyboard to  exit
             if(self.checkEventFlags()): break                                   # Check event flags
             
+            if(self.interface.run_mode == 'react'):
+            
+                if(not (currentPos == previousPos).all()):
+                    # pk.append([rec,currentPos,frame])
+                    previousPos = currentPos.copy()
+
+                    if(previousTime + 5 < time.time()):
+                        pngFilename = self.makePNG(rec[:, :, ::-1],pngFilename="tiptracking.png",fit=False,process=False)
+                        self.interface.sendPNG(pngFilename)
+                        previousTime = time.time()
+
             if(trackOnly): continue
             
             if(currentPos[1] > target[1]):                                      # First priority is to always keep the tip above this line
-                if(demo):
+                if(self.autoInitDemo):
                     print("Moving up")
                     continue
                 success = self.moveArea(up=zStep, upV=zV, upF=zF, direction="X+", steps=0, dirV=xV, dirF=xF, zon=False, approach=False)
                 continue
             if(currentPos[0] < target[0]):
-                if(demo):
+                if(self.autoInitDemo):
                     print("Moving right")
                     continue
                 success = self.moveArea(up=10, upV=zV, upF=zF, direction="X+", steps=xStep, dirV=xV, dirF=xF, zon=False, approach=False)
                 continue
             if(currentPos[0] > target[0]):
-                if(demo):
+                if(self.autoInitDemo):
                     print("Moving left")
                     continue
                 success = self.moveArea(up=10, upV=zV, upF=zF, direction="X-", steps=xStep, dirV=xV, dirF=xF, zon=False, approach=False)
@@ -1347,6 +1368,9 @@ class scanbot():
         String if an error occurred.
 
         """
+        self.currentAction["action"] = "autoinit"
+        self.autoInitSet = False
+        self.autoInitDemo = demo
         if(reactMode and not demo):
             global_.running.clear()                                         # Free up the running flag
             try:
@@ -1378,7 +1402,7 @@ class scanbot():
                 global_.running.clear()                                         # Free up the running flag
                 return str(e)
         
-        cap = utilities.getVideo(cameraPort,demo)
+        cap = utilities.getVideo(cameraPort,self.autoInitDemo)
         
         ret,frame = utilities.getAveragedFrame(cap,n=1)                         # Read the first frame of the video
         if(not ret):
@@ -1389,7 +1413,7 @@ class scanbot():
             return
         
         self.interface.sendReply("Move the tip completely out of view of the camera. 'q' to cancel")
-        initialFrame = utilities.getInitialFrame(cap,demo=demo)
+        initialFrame = utilities.getInitialFrame(cap,demo=self.autoInitDemo)
         if(not len(initialFrame)):
             self.interface.sendReply("Cancelling...")
             global_.running.clear()                                             # Free up the running flag
@@ -1483,7 +1507,7 @@ class scanbot():
         global_.running.clear()                                                 # Free up the running flag
         return
     
-    def moveTipToTarget(self,lightOnOff, cameraPort, xStep, zStep, xV, zV, xF, zF, approach, demo, tipshape, tipShape_hk, retrn, run, target, autoTipParams=[]):
+    def moveTipToTarget(self,lightOnOff, cameraPort, xStep, zStep, xV, zV, xF, zF, approach, tipshape, tipShape_hk, retrn, run, target, autoTipParams=[]):
         if(not self.autoInitSet):
             self.interface.sendReply("Error, run the auto_init command to initialise tip, sample, and clean metal locations")
             global_.running.clear()                                             # Free up the running flag
@@ -1493,7 +1517,7 @@ class scanbot():
         if(target == "sample"):  targetPos = self.samplePos.copy()
         elif(target == "clean"): targetPos = self.cleanMetalPos.copy()
         
-        targetHit = self.moveTip(lightOnOff, cameraPort, trackOnly, xStep, zStep, xV, zV, xF, zF, demo,target=targetPos,tipPos=self.tipPos.copy(),iamauto=True)
+        targetHit = self.moveTip(lightOnOff, cameraPort, trackOnly, xStep, zStep, xV, zV, xF, zF,target=targetPos,tipPos=self.tipPos.copy(),iamauto=True)
         
         if(not targetHit == "Target Hit"): return
         
@@ -1503,7 +1527,7 @@ class scanbot():
         
         message = ""
         if(target == "clean" and tipshape == 1):
-            message = self.autoTipShape(n=20, wh=10e-9, symTarget=0.7, sizeTarget=3, zQA=-85e-11, ztip=-2.5e-9, sleepTime=1, iamauto=True, demo=demo, tipShape_hk=tipShape_hk)
+            message = self.autoTipShape(n=20, wh=10e-9, symTarget=0.7, sizeTarget=3, zQA=-85e-11, ztip=-2.5e-9, sleepTime=1, iamauto=True, demo=self.autoInitDemo, tipShape_hk=tipShape_hk)
             if(not message): message = ""
         
         if(not "Tip shaping successful" in message):
@@ -1513,7 +1537,7 @@ class scanbot():
         if(not retrn == 1): return
         
         targetPos = self.samplePos.copy()
-        targetHit = self.moveTip(lightOnOff, cameraPort, trackOnly, xStep, zStep, xV, zV, xF, zF, demo,target=targetPos,tipPos=self.tipPos.copy(),iamauto=True)
+        targetHit = self.moveTip(lightOnOff, cameraPort, trackOnly, xStep, zStep, xV, zV, xF, zF,target=targetPos,tipPos=self.tipPos.copy(),iamauto=True)
         
         if(not targetHit == "Target Hit"): return
         
@@ -1530,7 +1554,7 @@ class scanbot():
             return
                 
         if(run == "survey2"):
-            self.survey2(user_args=[],_help=False,surveyParams=self.survey2Params)
+            self.interface.survey2(user_args=[],_help=False,survey2Params=self.survey2Params)
             return
         
     def autoTipShape(self,n,wh,symTarget,sizeTarget,zQA,ztip,rng=1,sleepTime=1,demo=False,tipShape_hk="",message="",iamauto=False):
@@ -1605,6 +1629,9 @@ class scanbot():
                       failure.
 
         """
+        self.currentAction["action"] = "autotipshape"
+        if(iamauto): demo = self.autoInitDemo
+
         NTCP,connection_error = self.connect()                                  # Connect to nanonis via TCP
         if(connection_error):
             global_.running.clear()                                             # Free up the running flag
@@ -1708,7 +1735,7 @@ class scanbot():
                 continue                                                        # Don't count the attempt if the area sucks
             
             if(not filePath): break                                             # If the scan was stopped before finishing, stop program
-            
+
             tipCheckPos = utilities.getCleanCoordinate(cleanImage, lxy=wh)      # Do some processing to find a clean location to assess tip quality
             if(not len(tipCheckPos)):                                           # If no coordinate is returned because the area is bad...
                 continue                                                        # Don't count the attempt if the area sucks
@@ -2010,7 +2037,7 @@ class scanbot():
         
         if(zhold): zController.OnOffSet(True)                                   # Turn the controller back on if we need to
         
-    def makePNG(self,scanData,filePath='',pngFilename='im.png',returnData=False,fit=True,dpi=150):
+    def makePNG(self,scanData,filePath='',pngFilename='im.png',returnData=False,fit=True,process=True,dpi=150):
         """
         This function generates a .png file from scanData. It replaces nan's 
         with the mean value of scanData.
@@ -2032,13 +2059,17 @@ class scanbot():
         """
         fig, ax = plt.subplots(1,1)
         
-        mask = np.isnan(scanData)                                               # Mask the Nan's
-        scanData[mask == True] = np.nanmean(scanData)                           # Replace the Nan's with the mean so it doesn't affect the plane fit
-        scanData -= np.nanmean(scanData)
-        if(fit): scanData = napfit.plane_fit_2d(scanData)                       # Flatten the image
-        vmin, vmax = napfit.filter_sigma(scanData)                              # cmap saturation
+        if(process):
+            mask = np.isnan(scanData)                                               # Mask the Nan's
+            scanData[mask == True] = np.nanmean(scanData)                           # Replace the Nan's with the mean so it doesn't affect the plane fit
+            scanData -= np.nanmean(scanData)
+            if(fit): scanData = napfit.plane_fit_2d(scanData)                       # Flatten the image
+            vmin, vmax = napfit.filter_sigma(scanData)                              # cmap saturation
         
-        ax.imshow(scanData, cmap='inferno', vmin=vmin, vmax=vmax)               # Plot
+            ax.imshow(scanData, cmap='inferno', vmin=vmin, vmax=vmax)               # Plot
+        else:
+            ax.imshow(scanData)                                                     # Plot without processing
+
         ax.axis('off')
         
         if filePath: pngFilename = ntpath.split(filePath)[1] + '.png'

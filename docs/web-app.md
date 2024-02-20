@@ -5,15 +5,16 @@ This application is still being developed, with the following features already f
 
 * Sample Surveying
 * Bias Dependent Imaging
+* Tip Shaping
 * End-To-End Survey Automation
 
 ![WebApp](./appim/top-level.png)
 
 # Installation
 
-To use the web application, you can [download and run the .exe](https://firebasestorage.googleapis.com/v0/b/scanbot-46390.appspot.com/o/scanbot-react%2FScanbot.zip?alt=media&token=25b7a4a5-b18a-49d5-b4bf-ae35973e7094)
-, then navigate to [http://127.0.0.1:5000/](http://127.0.0.1:5000/).
-Alternatively, follow the normal installation and complete these additional steps:
+To use the web application, you can [download and run the .exe](https://firebasestorage.googleapis.com/v0/b/scanbot-46390.appspot.com/o/scanbot-react%2FScanbot_V4.zip?alt=media&token=c65a5346-41bc-4dd8-b547-0cb598a031bd)
+- it should automatically launch in a new browser tab. Note this only works on Windows at the moment.
+Alternatively, if you want to run Scanbot from its source, follow the normal installation and complete these additional steps:
 
 1. Install node.js from [here](https://nodejs.org/en) or if you're using anaconda, run conda install conda-forge::nodejs
 2. Navigate to ```~/scanbot/scanbot``` and ```run npm install```

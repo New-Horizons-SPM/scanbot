@@ -15,13 +15,12 @@ Scanbot is a collection of several automated STM and nc-AFM data acquisition com
 Scanbot can be run in the following ways:
 
 1. <details>
-    <summary>Web App (V4+ NEW!)</summary>
-    Scanbot hast (mostly) been implemented using [React](https://react.dev/)
+    <summary>Web App (V4 NEW!)</summary>
+    Scanbot has been implemented as a web application using [React](https://react.dev/).
     
-    On Windows, the easiest way to use it is by [downloading and running the .exe](https://firebasestorage.googleapis.com/v0/b/scanbot-46390.appspot.com/o/scanbot-react%2FScanbot.zip?alt=media&token=25b7a4a5-b18a-49d5-b4bf-ae35973e7094).
-    Then navigating to [http://127.0.0.1:5000/](http://127.0.0.1:5000/) in a browser (tested in Chrome).
+    On Windows, the easiest way to use it is by [downloading and running the .exe](https://firebasestorage.googleapis.com/v0/b/scanbot-46390.appspot.com/o/scanbot-react%2FScanbot_V4.zip?alt=media&token=c65a5346-41bc-4dd8-b547-0cb598a031bd).
     
-    Alternatively, you can install it from scratch:
+    Alternatively, you can install Scanbot from its source:
 
     1. Install node.js from [here](https://nodejs.org/en) or if you're using anaconda, run conda install conda-forge::nodejs
     2. Navigate to ```~/scanbot/scanbot``` and run ```npm install```

@@ -603,7 +603,7 @@ function STMControl () {
 
     useEffect(() => {
         const handleBeforeUnload = (event) => {
-            if (autoTipRunning || initialiseState['inProgress']) {
+            if (autoTipRunning || initialiseState['inProgress'] || goToTargetRunning) {
                 // Standard for most browsers
                 event.preventDefault();
                 // Required for some browsers (e.g., Chrome)
@@ -616,11 +616,11 @@ function STMControl () {
         return () => {
             window.removeEventListener('beforeunload', handleBeforeUnload);
         };
-    }, [autoTipRunning,initialiseState]);
+    }, [autoTipRunning,initialiseState,goToTargetRunning]);
 
     const cleanUp = () => {
-        if(autoTipRunning || initialiseState['inProgress']) {
-            const userResponse = window.confirm("Automatic Tip Shaping in progress. If you proceed, the scan will be stopped.");
+        if(autoTipRunning || initialiseState['inProgress'] || goToTargetRunning) {
+            const userResponse = window.confirm("If you leave, the current process will be stopped.");
             if(userResponse){
                 stop()
                 return true

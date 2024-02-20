@@ -356,7 +356,7 @@ def classify(scanData,filename,classificationHistory):
     i = 0
     badScans = 0
     tipShape = 0
-    while(True):
+    while(True and tipChangeCount > 5):
         i -= 1
         if(abs(i) > len(classificationHistory)): break
     
@@ -368,7 +368,7 @@ def classify(scanData,filename,classificationHistory):
         if(scan_i["tipChanges"] > 5):                                           # If there are more than 5 tip changes in this scan, consider the tip unstable
             badScans += 1                                                       # Keep track of the number of bad scans in a row
         
-        if(badScans > 4):                                                       # If we get to 5 bad scans in a row, then we'll kick off tip shaping
+        if(badScans > 3):                                                       # If we get to 5 bad scans in a row (the current one plus four from history), then we'll kick off tip shaping
             tipShape = 1
             break
         

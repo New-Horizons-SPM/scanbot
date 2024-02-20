@@ -228,7 +228,19 @@ class scanbot():
             
             _,scanData,_ = scan.FrameDataGrab(14, 1)                            # Grab the data within the scan frame. Channel 14 is . 1 is forward data direction
             
-            if(autotip):                                                        # **Currently Testing**
+            dummyData = []
+            if(autotip):                                                        # If auto tip shaping = Yes, we need to classify the scan to determine if it's time to reshape the tip
+                if(self.autoInitDemo):                                          # Replace real scanData with dummy data if auto tip shape is on and the tip was initialised in demo mode
+                    try:
+                        dummyData = pickle.load(open('../Dev/survey.pk','rb'))
+                        scanData  = dummyData[idx]
+                    except:
+                        try:
+                            dummyData = pickle.load(open('./Dev/survey.pk','rb'))
+                            scanData  = dummyData[idx]
+                        except:
+                            self.interface.sendReply("Could not load demo data for survey. Please ensure the Dev folder is saved in ~/scanbot")
+
                 if(classifier_hk):
                     try:
                         classification = hk_classifier.run(scanData,filePath,classificationHistory) # Overwrite classification with the one from the hook
@@ -246,10 +258,11 @@ class scanbot():
                 
                 if(classification["tipShape"] == 1):
                     print("auto tip shaping initate!")
-                    # global_.running.clear()
                     callAutoTipShape = True
             
             _,scanData,_ = scan.FrameDataGrab(self.channel, 1)                  # Grab the data related to our focused channel
+            if(dummyData): scanData = dummyData[idx]                            # This happens when in demo mode
+
             pngFilename,scanDataPlaneFit = self.makePNG(scanData, filePath,returnData=True,dpi=150) # Generate a png from the scan data
             self.interface.sendPNG(pngFilename,notify=True,message=message)     # Send a png over zulip
             

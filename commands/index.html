@@ -48,15 +48,7 @@
 </li>
                                     
 <li>
-    <a href="../configuration/" class="dropdown-item">Browser</a>
-</li>
-                                    
-<li>
-    <a href="../configuration/" class="dropdown-item">Terminal</a>
-</li>
-                                    
-<li>
-    <a href="../configuration/" class="dropdown-item">Zulip</a>
+    <a href="../configuration/" class="dropdown-item">Terminal/Zulip</a>
 </li>
                                 </ul>
                             </li>
@@ -66,10 +58,6 @@
                                     
 <li>
     <a href="../web-app/" class="dropdown-item">Web App</a>
-</li>
-                                    
-<li>
-    <a href="../gui/" class="dropdown-item">Browser</a>
 </li>
                                     
 <li>
@@ -93,7 +81,7 @@
 
                     <ul class="nav navbar-nav ml-auto">
                             <li class="nav-item">
-                                <a rel="prev" href="../gui/" class="nav-link">
+                                <a rel="prev" href="../web-app/" class="nav-link">
                                     <i class="fa fa-arrow-left"></i> Previous
                                 </a>
                             </li>
@@ -145,6 +133,16 @@
               <ul class="nav flex-column">
               </ul>
             </li>
+              </ul>
+            </li>
+            
+            <li class="nav-item" data-level="1"><a href="#intended-usage" class="nav-link">Intended Usage</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+            
+            <li class="nav-item" data-level="1"><a href="#operation-details" class="nav-link">Operation Details</a>
+              <ul class="nav flex-column">
               </ul>
             </li>
         </ul>
@@ -392,7 +390,97 @@ For a list of available commands on the fly, run <code>help</code>, or for help 
 <td>move_tip_to_sample -light=1</td>
 </tr>
 </tbody>
-</table></div>
+</table>
+<h1 id="intended-usage">Intended Usage</h1>
+<p>This section describes how the automation aspect of Scanbot can be used for supervised or unsupervised operation. Note that you can still take advantage of Scanbot's
+<a href="../commands/#data-acquisition">data acquisition commands</a> without automating the entire process.</p>
+<h3 id="1-setup">1. Setup</h3>
+<p>These steps must be carried out before Scanbot is able to automatically move the tip between the sample and the clean metal.</p>
+<ol>
+<li>Making sure the STM tip, sample of interest, and clean metal surface are in clear view of the camera.</li>
+<li>Run the <code>auto_init</code> command. This will initialise the locations of the STM tip, sample, and clean metal.<ul>
+<li>Drive the tip completely outside the view of the camera, then click within the picture to set the background frame.</li>
+<li>Drive the tip back into view of the camera, in close proximity to the sample.</li>
+<li>Place a marker near the apex of the tip.</li>
+<li>Place a marker at a safe distance above the clean metal.</li>
+<li>Place a marker at a safe distance above the sample.</li>
+<li><strong>Note: Close any other applications that use the camera as they might prevent Scanbot from accessing it.</strong></li>
+<li><strong>Note2: If the course piezos are moved manually at any point, Scanbot will have incorrect information about the location of the tip and this process must be repeated. Same goes for moving the camera.</strong></li>
+</ul>
+</li>
+</ol>
+<h3 id="2-end-to-end-supervised-test">2. End-to-End Supervised Test</h3>
+<p><strong>It is advised to go through these steps, especially steps 1 and 3, each time <code>auto_init</code> is run.</strong></p>
+<ol>
+<li>Run the <code>move_tip_to_clean</code> command. This will move the tip to the location you set above the clean metal and begin an auto approach.<ul>
+<li><strong>Configure the correct piezo voltages, frequency, and number of steps for your machine</strong> (see <a href="./">commands</a> or run <code>help move_tip_to_clean</code>).</li>
+<li>Observe the camera feed and ensure the tip is tracked correctly. If not, run <code>stop</code>, then rerun <code>auto_init</code> after refocusing the camera.</li>
+<li>Note: run the <code>stop</code> command at any time to abort.</li>
+</ul>
+</li>
+<li>Once the tip has approached, run <code>auto_tip_shape</code> with the appropriate inputs for your system (e.g. metal used, etc.).<ul>
+<li>This function may take some time, for testing purposes run the <code>stop</code> command once you've <a href="#auto-tip-shaping">verified it's working correctly</a>.</li>
+</ul>
+</li>
+<li>Next run the <code>move_tip_to_sample</code> command.<ul>
+<li>Observe the camera feed and ensure the tip is tracked correctly.</li>
+</ul>
+</li>
+<li>Once the tip has approached, start a survey using the <code>survey</code> or <code>survey2</code> command.</li>
+</ol>
+<h3 id="3-supervised-operation-example">3. Supervised Operation Example</h3>
+<ol>
+<li>After setup, run the <code>move_tip_to_sample</code> command.</li>
+<li>Upon approach, start a <code>survey</code> leaving <code>-autotip=0</code>.</li>
+<li>Periodically monitor the scans stream (for Zulip users, each scan will be sent through the steam the survey was started from).</li>
+<li>If the tip requires refinement, run <code>stop</code> followed by <code>move_tip_to_clean</code> with the options <code>-tipshape=1</code>, <code>-return=1</code>, and <code>-run=survey</code><ul>
+<li>Here, Scanbot will automatically move the tip to the clean metal location set in <code>auto_init</code></li>
+<li>With <code>-tipshape=1</code>, the auto tip shaping process will begin after approaching</li>
+<li>With <code>-return=1</code>, Scanbot will move the tip back to the sample location set in <code>auto_init</code></li>
+<li>With <code>-run=survey</code>, Scanbot will begin a survey with the same options as the previous survey</li>
+<li><strong>Note: If the function passed to the -run option has not been run previously, the default parameters will be used - check them to ensure they are compatible with your system in this case.</strong></li>
+</ul>
+</li>
+</ol>
+<h3 id="4-fully-automated-operation">4. Fully Automated Operation</h3>
+<ol>
+<li>After setup, run the <code>survey</code> or <code>survey2</code> command with the <code>-autotip=1</code> option.<ul>
+<li>This will begin a survey and each scan will be analysed.</li>
+<li>When scanbot detects that the tip is unstable, it will automatically navigate the tip to the clean metal surface and initiate the <code>auto_tip_shape</code> command.</li>
+<li>Once the tip is refined, it will be moved back to the sample and the survey will continue.</li>
+</ul>
+</li>
+</ol>
+<p><strong>Note:</strong> Although Scanbot excels at identifying noisy images resulting from tip-sample interaction, its capacity to evaluate overall image quality remains restricted.
+While it can detect unstable tips, <strong>it cannot identify doubled tips</strong>. In the event of a tip alteration resulting in multiple tips, Scanbot will not endeavor to reshape it.
+However, if the tip becomes unstable, Scanbot will recognise this and refine the tip accordingly.</p>
+<p><strong>Note2: Scanbot requires a camera feed to track the tip during automated operation.</strong> For this reason, there is a configurable <a href="../hooks/#hk_light">hook</a> that will allow Scanbot to control the STM light when required.
+<br></p>
+<h1 id="operation-details">Operation Details</h1>
+<h3 id="auto-tip-shaping">Auto Tip Shaping</h3>
+<p>The <code>auto_tip_shape</code> command is executed as follows:</p>
+<ol>
+<li>A small scan (<code>wh=&lt;scan_size&gt;</code>) of the clean surface will be acquired.<ul>
+<li>The scan will be monitored line by line and if the area is contaminated or contains a step edge, the scan will be stopped and the scan frame will be moved.</li>
+</ul>
+</li>
+<li>If the small scan completes and the area is clean, a light tip shape (~0.8 nm) will be performed in the centre of the frame.</li>
+<li>The imprint of the tip will be imaged.</li>
+<li>The contour of the imprint's enclosed area and circularity will be calculated and compared against the criteria set by the options <code>-size=&lt;area_in_nm2&gt;</code> and <code>-sym=&lt;score_0-1&gt;</code>, respectively.</li>
+<li>If the criteria are met, a successful tip shape is declared and the process stops here. Otherwise, a more aggressive tip shape is carried out and the process starts over.</li>
+<li>In the event where the entire scan region is either unsuitable for tip shaping or the area has been destroyed by tip shaping, Scanbot will automatically call the <code>move_area</code> command, before continuing.</li>
+</ol>
+<h3 id="auto-tip-maneuvering">Auto Tip Maneuvering</h3>
+<p>The primary concern when it comes to automating movement of the STM head is accidental tip crashes.
+The following rules have been applied to any command where the course piezos are utilised:
+<br></p>
+<ul>
+<li>Scanbot can never move the tip in the <code>Z-</code> direction (down) when using the course piezo. Instead, auto approach is used.</li>
+<li>When moving in <code>X</code> or <code>Y</code> directions, the tunnelling current must be monitored after every 10 steps.</li>
+<li>A tunnelling current greater than the threshold set in the config file is considered a crash (see <a href="../configuration/#tip-crash-safety">Tip Crash Safety</a>).</li>
+<li>In the event of a crash, the tip will be retracted using the <code>Z+</code> piezo and operation will cease.</li>
+</ul>
+<p><strong>Please make sure to set appropriate piezo voltages and frequencies when using any of the commands that control the course piezos. You can configure voltage and frequency limits in the <a href="../configuration/#piezo-safety">config file</a>.</strong></p></div>
             </div>
         </div>
 

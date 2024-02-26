@@ -48,15 +48,7 @@
 </li>
                                     
 <li>
-    <a href="configuration/" class="dropdown-item">Browser</a>
-</li>
-                                    
-<li>
-    <a href="configuration/" class="dropdown-item">Terminal</a>
-</li>
-                                    
-<li>
-    <a href="configuration/" class="dropdown-item">Zulip</a>
+    <a href="configuration/" class="dropdown-item">Terminal/Zulip</a>
 </li>
                                 </ul>
                             </li>
@@ -66,10 +58,6 @@
                                     
 <li>
     <a href="web-app/" class="dropdown-item">Web App</a>
-</li>
-                                    
-<li>
-    <a href="gui/" class="dropdown-item">Browser</a>
 </li>
                                     
 <li>
@@ -129,11 +117,11 @@
               <ul class="nav flex-column">
               </ul>
             </li>
-            <li class="nav-item" data-level="2"><a href="#installation" class="nav-link">Installation</a>
+            <li class="nav-item" data-level="2"><a href="#functional-overview" class="nav-link">Functional Overview</a>
               <ul class="nav flex-column">
               </ul>
             </li>
-            <li class="nav-item" data-level="2"><a href="#setup-and-run" class="nav-link">Setup and Run</a>
+            <li class="nav-item" data-level="2"><a href="#installation" class="nav-link">Installation</a>
               <ul class="nav flex-column">
               </ul>
             </li>
@@ -161,68 +149,77 @@
                     <div class="col-md-9" role="main">
 
 <h1 id="scanbot">Scanbot       <a href="https://zenodo.org/badge/latestdoi/487719232"><img alt="DOI" src="https://zenodo.org/badge/487719232.svg" /></a></h1>
-<p>Scanbot is a collection of several automated STM and nc-AFM data acquisition commands compatible with Nanonis V5 SPM control software.</p>
 <h2 id="featured">Featured</h2>
 <ul>
 <li><a href="./featured/#web-app">React Implementation of Scanbot</a><br></li>
 <li><a href="./featured/#scanbot-meets-chatgpt">Scanbot meets ChatGPT</a></li>
 </ul>
+<h2 id="functional-overview">Functional Overview</h2>
+<p>Scanbot is a collection of several automated STM and nc-AFM data acquisition commands compatible with Nanonis V5 SPM control software. It can help with:</p>
+<ul>
+<li>STM<ul>
+<li>Bias dependent imaging with drift correction</li>
+<li>Automated sample surveying (NxN grid)</li>
+</ul>
+</li>
+<li>nc-AFM<ul>
+<li>z-dependent nc-AFM</li>
+<li>nc-AFM registration</li>
+</ul>
+</li>
+<li>Automation<ul>
+<li>Tip shaping</li>
+<li>Full control over the coarse motors</li>
+</ul>
+</li>
+<li>Hooks<ul>
+<li>Scanbot has a number of built-in <a href="./hooks">hooks</a> to let you customise key functionality.</li>
+</ul>
+</li>
+</ul>
 <h2 id="installation">Installation</h2>
 <ol>
 <li>
-<p>Install the <a href="https://github.com/New-Horizons-SPM/nanonisTCP">nanonisTCP interface</a></p>
-</li>
-<li>
-<p>Clone <a href="https://github.com/New-Horizons-SPM/scanbot">this repository</a>, navigate to the root directory, and run <code>pip install .</code></p>
-</li>
-</ol>
-<h2 id="setup-and-run">Setup and Run</h2>
-<p>Scanbot can be run in the following ways:</p>
-<ol>
-<li>
 <p><details>
-    <summary>Web App (V4 NEW!)</summary>
+    <summary>Web App</summary>
     Scanbot has been implemented as a web application using <a href="https://react.dev/">React</a>.</p>
 <p>On Windows, the easiest way to use it is by <a href="https://firebasestorage.googleapis.com/v0/b/scanbot-46390.appspot.com/o/scanbot-react%2FScanbot_V4.zip?alt=media&amp;token=c65a5346-41bc-4dd8-b547-0cb598a031bd">downloading and running the .exe</a>.</p>
 <p>Alternatively, you can install Scanbot from its source:</p>
 <ol>
+<li>Clone the <a href="https://github.com/New-Horizons-SPM/nanonisTCP">nanonisTCP interface</a>, navigate to the root directory and run <code>pip install .</code></li>
+<li>Clone the <a href="https://github.com/New-Horizons-SPM/scanbot">Scanbot repository</a>, navigate to the root directory, and run <code>pip install .</code></li>
 <li>Install node.js from <a href="https://nodejs.org/en">here</a> or if you're using anaconda, run conda install conda-forge::nodejs</li>
 <li>Navigate to <code>~/scanbot/scanbot</code> and run <code>npm install</code></li>
 <li>Start the server: navigate to <code>~/scanbot/server/</code> and run <code>python server.py</code></li>
 <li>Start the web app: navigate to <code>~/scanbot/scanbot/</code> and run <code>npm start</code></li>
 </ol>
 <p><br></p>
-<p><strong>Documentation available <a href="./web-app">here</a></strong>
+<p><strong>Test Scanbot with the Nanonis V5 Simulator</strong> before integrating it with your STM by following <a href="./web-app-test">these instructions</a>.</p>
+<p><strong>General user guide available <a href="./web-app">here</a></strong>.
   </details></p>
 </li>
 <li>
 <p><details>
-    <summary>Broswer (V3+)</summary>
-    Thanks to <a href="https://panel.holoviz.org/">holoviz Panel</a>, Scanbot runs in a browser from V3 onwards.
-    <br><br>
-        1. Find the <code>scanbot_interface.py</code> script (up to V3: <code>~/scanbot/scanbot/</code>, or in V4: <code>~/scanbot/server/</code>)
-        <br>
-        2. Run <code>python scanbot_interface.py -gui</code>
-    <br><br>
-    <strong>Documentation available <a href="./gui">here</a></strong>
-  </details></p>
-</li>
-<li>
-<p><details>
-    <summary>Terminal (V1+)</summary>
+    <summary>Terminal</summary>
     Running Scanbot from a terminal:
-    <br><br>
-    Run <code>python scanbot_interface.py -c</code></p>
+    <br><br></p>
+<ol>
+<li>Clone the <a href="https://github.com/New-Horizons-SPM/nanonisTCP">nanonisTCP interface</a>, navigate to the root directory and run <code>pip install .</code></li>
+<li>Clone the <a href="https://github.com/New-Horizons-SPM/scanbot">Scanbot repository</a>, navigate to the root directory, and run <code>pip install .</code></li>
+<li>Run <code>python scanbot_interface.py -c</code></li>
+</ol>
 <p><br>
 For a full list of Scanbot commands, see <a href="./commands">commands</a>. Alternatively run the <code>help</code> command or, for help with a specific command, run <code>help &lt;command_name&gt;</code>.
   </details></p>
 </li>
 <li>
 <p><details>
-    <summary>Zulip (V1+)</summary>
-    Running via zulip is the most flexible implementation of Scanbot. You can send commands and receive data in real time via chat streams.
+    <summary>Zulip</summary>
+    Running via zulip is the most flexible implementation of Scanbot. You can send commands and receive data from anywhere and in real time via chat streams.
     <br><br></p>
 <ol>
+<li>Clone the <a href="https://github.com/New-Horizons-SPM/nanonisTCP">nanonisTCP interface</a>, navigate to the root directory and run <code>pip install .</code></li>
+<li>Clone the <a href="https://github.com/New-Horizons-SPM/scanbot">Scanbot repository</a>, navigate to the root directory, and run <code>pip install .</code></li>
 <li>
 <p>Install zulip and zulip_bots</p>
 <p><code>pip install zulip</code><br>
@@ -247,41 +244,9 @@ For a full list of Scanbot commands, see <a href="./commands">commands</a>. Alte
 </li>
 </ol>
 <h2 id="usage">Usage</h2>
-<p>For example automation work-flow, see <a href="./automation/#intended-usage">Intended Usage</a>. To write your own custom Scanbot commands, see <a href="./hooks/#hk_commands">hk_commads</a>.</p>
-<h3 id="configuration">Configuration</h3>
-<p>The scanbot_config.ini configuration file can store things like the default IP adress, default TCP Ports, etc. Save it in the project's root directory.
-See <a href="configuration/">configuration</a> for more details.
-An example config file is:</p>
-<pre><code>ip=127.0.0.1                    # IP of the machine running Nanonis
-port_list=6501,6502,6503,6504   # Available TCP ports
-upload_method=path              # Configure Scanbot to save PNGs locally
-path=./scanbot_images/          # Directory for saved PNGs
-
-</code></pre>
-<h3 id="functional-overview">Functional Overview</h3>
-<ul>
-<li>STM<ul>
-<li>Bias dependent imaging with drift correction</li>
-<li>Automated sample surveying (NxN grid)</li>
-</ul>
-</li>
-<li>nc-AFM<ul>
-<li>z-dependent nc-AFM</li>
-<li>nc-AFM registration</li>
-</ul>
-</li>
-<li>Automation<ul>
-<li>Tip shaping</li>
-<li>Full control over the course motors</li>
-</ul>
-</li>
-<li>Hooks<ul>
-<li>Scanbot has a number of built-in <a href="./hooks">hooks</a> to let you customise key functionality.</li>
-</ul>
-</li>
-</ul>
+<p>Refer to the relevant user guide to see how Scanbot can help with data acquisition and probe conditioning in STM experiments.</p>
 <h2 id="contributing">Contributing</h2>
-<p>If you would like to contibute to the Scanbot project you can do this through the GitHub <a href="https://github.com/New-Horizons-SPM/scanbot/issues">Issue Register</a>.
+<p>If you would like to contribute to the Scanbot project you can do this through the GitHub <a href="https://github.com/New-Horizons-SPM/scanbot/issues">Issue Register</a>.
 If you come across a problem with Scanbot or would like to request new features, you can raise a <a href="https://github.com/New-Horizons-SPM/scanbot/issues/new">new issue</a>.
 Alternatively, scan through our <a href="https://github.com/New-Horizons-SPM/scanbot/issues">existing issues</a>; if you find one you're interested in fixing/implementing, feel free to open a pull request.</p>
 <h2 id="citing">Citing</h2>
@@ -348,5 +313,5 @@ Alternatively, scan through our <a href="https://github.com/New-Horizons-SPM/sca
 
 <!--
 MkDocs version : 1.4.2
-Build Date UTC : 2024-02-20 23:01:18.836090+00:00
+Build Date UTC : 2024-02-26 07:11:46.570069+00:00
 -->

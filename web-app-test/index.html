@@ -1,0 +1,387 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="utf-8">
+        <meta http-equiv="X-UA-Compatible" content="IE=edge">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        
+        <meta name="author" content="Julian Ceddia">
+        
+        <link rel="shortcut icon" href="../img/favicon.ico">
+        <title>Testing Scanbot with the Nanonis V5 Simulator - Scanbot</title>
+        <link href="../css/bootstrap.min.css" rel="stylesheet">
+        <link href="../css/font-awesome.min.css" rel="stylesheet">
+        <link href="../css/base.css" rel="stylesheet">
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/10.5.0/styles/github.min.css">
+
+        <script src="../js/jquery-1.10.2.min.js" defer></script>
+        <script src="../js/bootstrap.min.js" defer></script>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/10.5.0/highlight.min.js"></script>
+        <script>hljs.initHighlightingOnLoad();</script> 
+    </head>
+
+    <body>
+        <div class="navbar fixed-top navbar-expand-lg navbar-dark bg-primary">
+            <div class="container">
+                <a class="navbar-brand" href="..">Scanbot</a>
+                <!-- Expander button -->
+                <button type="button" class="navbar-toggler" data-toggle="collapse" data-target="#navbar-collapse">
+                    <span class="navbar-toggler-icon"></span>
+                </button>
+
+                <!-- Expanded navigation -->
+                <div id="navbar-collapse" class="navbar-collapse collapse">
+                        <!-- Main navigation -->
+                        <ul class="nav navbar-nav">
+                            <li class="navitem">
+                                <a href=".." class="nav-link">Home</a>
+                            </li>
+                            <li class="navitem">
+                                <a href="../featured/" class="nav-link">Featured</a>
+                            </li>
+                            <li class="dropdown">
+                                <a href="#" class="nav-link dropdown-toggle" data-toggle="dropdown">Configuration <b class="caret"></b></a>
+                                <ul class="dropdown-menu">
+                                    
+<li>
+    <a href="../web-app/#configuration" class="dropdown-item">Web App</a>
+</li>
+                                    
+<li>
+    <a href="../configuration/" class="dropdown-item">Terminal/Zulip</a>
+</li>
+                                </ul>
+                            </li>
+                            <li class="dropdown">
+                                <a href="#" class="nav-link dropdown-toggle" data-toggle="dropdown">User Guide <b class="caret"></b></a>
+                                <ul class="dropdown-menu">
+                                    
+<li>
+    <a href="../web-app/" class="dropdown-item">Web App</a>
+</li>
+                                    
+<li>
+    <a href="../commands/" class="dropdown-item">Terminal/Zulip</a>
+</li>
+                                </ul>
+                            </li>
+                            <li class="navitem">
+                                <a href="../automation/" class="nav-link">Automation</a>
+                            </li>
+                            <li class="navitem">
+                                <a href="../hooks/" class="nav-link">Hooks</a>
+                            </li>
+                            <li class="navitem">
+                                <a href="../about/" class="nav-link">About</a>
+                            </li>
+                            <li class="navitem">
+                                <a href="../contact/" class="nav-link">Contact</a>
+                            </li>
+                        </ul>
+
+                    <ul class="nav navbar-nav ml-auto">
+                            <li class="nav-item">
+                                <a href="https://github.com/New-Horizons-SPM/scanbot/edit/master/docs/web-app-test.md" class="nav-link"><i class="fa fa-github"></i> Edit on GitHub</a>
+                            </li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <div class="container">
+            <div class="row">
+                    <div class="col-md-3"><div class="navbar-light navbar-expand-md bs-sidebar hidden-print affix" role="complementary">
+    <div class="navbar-header">
+        <button type="button" class="navbar-toggler collapsed" data-toggle="collapse" data-target="#toc-collapse" title="Table of Contents">
+            <span class="fa fa-angle-down"></span>
+        </button>
+    </div>
+
+    
+    <div id="toc-collapse" class="navbar-collapse collapse card bg-secondary">
+        <ul class="nav flex-column">
+            
+            <li class="nav-item" data-level="1"><a href="#testing-scanbot-with-the-nanonis-v5-simulator" class="nav-link">Testing Scanbot with the Nanonis V5 Simulator</a>
+              <ul class="nav flex-column">
+            <li class="nav-item" data-level="2"><a href="#installation-5-min" class="nav-link">Installation (5 min)</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+            <li class="nav-item" data-level="2"><a href="#launching-scanbot-5-min" class="nav-link">Launching Scanbot (5 min)</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+            <li class="nav-item" data-level="2"><a href="#configuration-2-min" class="nav-link">Configuration (2 min)</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+            <li class="nav-item" data-level="2"><a href="#sample-surveying-10-min" class="nav-link">Sample Surveying (10 min)</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+            <li class="nav-item" data-level="2"><a href="#automated-tip-shaping-10-min" class="nav-link">Automated Tip Shaping (10 min)</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+            <li class="nav-item" data-level="2"><a href="#autonomous-tip-navigation-10-min" class="nav-link">Autonomous Tip Navigation (10 min)</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+            <li class="nav-item" data-level="2"><a href="#survey-automation-with-tip-tracking-and-shaping-15-min" class="nav-link">Survey Automation with Tip Tracking and Shaping (15 min)</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+              </ul>
+            </li>
+        </ul>
+    </div>
+</div></div>
+                    <div class="col-md-9" role="main">
+
+<h1 id="testing-scanbot-with-the-nanonis-v5-simulator">Testing Scanbot with the Nanonis V5 Simulator</h1>
+<p>This page provides detailed instructions about how you can try Scanbot using the Nanonis V5 Simulator.
+Completing all of these tests will take approximately one hour.</p>
+<p><strong>When navigating the web application, avoid using the browser back and forward buttons. To go back one page, use the buttons located in the top right.</strong></p>
+<h2 id="installation-5-min">Installation (5 min)</h2>
+<ol>
+<li>Download <a href="https://firebasestorage.googleapis.com/v0/b/scanbot-46390.appspot.com/o/scanbot-react%2FScanbot_V4.zip?alt=media&amp;token=c65a5346-41bc-4dd8-b547-0cb598a031bd">Scanbot</a></li>
+<li>Download <a href="https://www.specs-group.com/nanonis/products/mimea/#c1265">Nanonis V5 Simulator</a></li>
+</ol>
+<h2 id="launching-scanbot-5-min">Launching Scanbot (5 min)</h2>
+<h3 id="nanonis-v5-simulator">Nanonis V5 Simulator</h3>
+<ol>
+<li>Open the Nanonis V5 Simulator</li>
+<li>In the 'Current' module, change the Gain to LN 10^9
+<br><img alt="CurrenModule" src="../testing/gain109.png" /><br></li>
+<li>In the Z-Controller module, turn on the Controller. Ensure the tip is 'tunnelling' at the correct setpoint.
+<br>
+<img alt="Z-ControllerModule" src="../testing/z-controller-on.png" />
+<br></li>
+<li>From the Scan Control module in Nanonis, ensure all images are being autosaved. <strong>This is essential for proper operation of Scanbot</strong>. It's also useful to turn on the auto-paste option too.
+<br>
+<img alt="autosave" src="../testing/saveall.png" />
+<br></li>
+</ol>
+<h3 id="launch-scanbot">Launch Scanbot</h3>
+<ol>
+<li>Open Scanbot.exe. A terminal will open and you should see the server start.
+<br>
+<img alt="Scanbot-terminal" src="../testing/scanbot-terminal.png" />
+<br></li>
+<li>Scanbot should then open in a new browser tab. If it does not, then navigate to <a href="http://127.0.0.1:5000">http://127.0.0.1:5000</a>
+<br>
+<img alt="landing-page" src="../appim/top-level.png" />
+<br></li>
+</ol>
+<h2 id="configuration-2-min">Configuration (2 min)</h2>
+<ol>
+<li>In Nanonis, check the TCP ports from system =&gt; options =&gt; TCP Programming Interface.
+<br>
+<img alt="tcp-ports" src="../testing/tcp-ports.png" />
+<br></li>
+<li>From the Scanbot landing page, navigate to the 'Configuration' page.</li>
+<li>Ensure that the comma-delimited ports in Scanbot match those configured in Nanonis.
+<br>
+<img alt="configuration-page" src="../testing/configuration-page.png" />
+<br></li>
+<li>When running Scanbot using the simulator, the default configuration is ok. Accept the configuration. This will save the scanbot_config.ini file and your settings will be remembered.</li>
+</ol>
+<h2 id="sample-surveying-10-min">Sample Surveying (10 min)</h2>
+<ol>
+<li>From the Scanbot landing page, navigate to 'Data Acquisition' =&gt; 'Survey'.</li>
+<li>Review the survey settings. More details about these settings can be found in the <a href="../web-app/#survey">user guide</a>.
+Alternatively, you can hover over any field to obtain its description. In summary:
+<br><ul>
+<li>The Fine Grid Parameters control the size and spacing of each survey grid.</li>
+<li>The Coarse Grid Parameters control the number of surveys to acquire (at different macroscopic locations) and the spacing between them.</li>
+<li>The Scan Parameters configure the settings for individual scans.
+<br></li>
+</ul>
+</li>
+<li>At this stage, you will not be able to answer "Yes" to "Automated Tip Shaping?". We'll go through that later.</li>
+<li>Once you're satisfied with the survey parameters, click 'Start Survey'. Acquired images will begin populating the empty grid.
+You can either wait for the survey to complete or stop it any time with the 'Stop' button.
+<br>
+<img alt="survey-page" src="../appim/survey.png" />
+<br></li>
+</ol>
+<h2 id="automated-tip-shaping-10-min">Automated Tip Shaping (10 min)</h2>
+<p>The automatic tip shaping process is outlined <a href="../web-app/#automated-tip-shaping">here</a>.
+In Summary:
+<br></p>
+<ol>
+<li>An initial upward scan will be acquired to make sure the area is suitable for tip shaping. If it is not suitable (i.e. there is debris), the scan frame will move to the next location in the grid.</li>
+<li>A tip-shaping action will be performed in the centre of the scan frame.</li>
+<li>A downward scan will acquire an image of the imprint left behind.</li>
+<li>From this image, the imprint size and circularity will be calculated.</li>
+<li>If the imprint size and circularity do not meet the desired criteria, a more aggressive tip-shaping action will be performed and the process repeats.
+<br></li>
+</ol>
+<p><strong>With Scanbot:</strong></p>
+<ol>
+<li>From the landing page navigate to 'Data Acquisition' =&gt; 'Automation'.</li>
+<li>In Nanonis, from the 'Scan Control' module, open the 'Tip Shaper' module.
+<br>
+<img alt="tip-shaper-module" src="../testing/tip-shaper-module.png" />
+<br></li>
+<li>Review the 'Automatic Tip Shaping' settings.
+<strong>When running with the Nanonis Simulator, please obey the following:</strong>
+<br><ul>
+<li><strong>Select "Yes" for "Run in demo mode?".</strong>
+    In demo mode, acquired images are replaced with pre-recorded data which is loaded from a file.</li>
+<li><strong>The scans loaded from this file are (10x10) nm in size.</strong>
+    It is important that the settings in Scanbot reflect that or the size of the tip’s imprint will be calculated incorrectly.</li>
+<li><strong>The last imprint in the demo data has an imprint size of 1.55 nm<sup>2</sup> and a circularity of 0.83.</strong>
+    Set the parameters for desired size and circularity appropriate to these numbers.</li>
+</ul>
+</li>
+<li>Click 'Start'</li>
+<li>You may find that the scan frame repeatedly moves before a scan is able to complete.
+This is because Scanbot ensures that the area is flat before performing a tip-shaping action.
+If the area is not flat, Scanbot will continue searching for a region appropriate for tip shaping.
+The simulator scans are not flat, thus one can withdraw the tip to trick Scanbot into thinking the region being scanned is flat and appropriate for tip shaping.</li>
+<li>You can monitor Scanbot's tip shaping through the signal chart:
+<br>
+<img alt="tip-shaping" src="../testing/tip-shaping.png" />
+<br></li>
+<li>Scans of the tip's imprint, along with its calculated size and circularity, after each iteration will be shown in the browser.
+Remember that in demo mode, these scans are pulled from a pre-loaded file so they will look different to what's shown in the Nanonis Scan Control module.
+<br>
+<img alt="auto-tip-shaping" src="../appim/autotipshaping.png" />
+<br></li>
+<li>The process will finish when the tip imprint's area is smaller than the desired area <strong>and</strong> the circularity is larger than the desired.</li>
+</ol>
+<h2 id="autonomous-tip-navigation-10-min">Autonomous Tip Navigation (10 min)</h2>
+<p>Before Scanbot can take control over the coarse piezos and track the tip via the camera feed, a short initialisation procedure must be completed.
+This procedure gives Scanbot the initial location of the probe as well as the coordinates of the sample and clean reference metal.
+This is normally accomplished via a live camera feed, however in Demo mode, the camera feed is replaced with pre-recorded videos.</p>
+<h3 id="initialisation">Initialisation</h3>
+<ol>
+<li>From the landing page, navigate to 'Data Acquisition' =&gt; 'Automation'.</li>
+<li>Under the "Initialise Tip and Sample Positions" group, select "Yes" for 'Run in demo mode'.</li>
+<li>Click the "Initialise" button.</li>
+<li>Because demo mode was selected, a popup should open displaying a pre-recorded video. <strong>Note that the popup may not take focus</strong>.</li>
+<li>Follow the prompts in the top left:<ol>
+<li>The recording will show a view of the STM with the tip fully retracted and out of view. Click anywhere within the frame to go to the next step.</li>
+<li>The recording will show the tip in close proximity to the sample surface. Click anywhere within the frame to go to the next step.</li>
+<li>Mark the location at the apex of the probe by clicking on it.</li>
+<li>Mark a location in close proximity to, but at a safe distance from the sample surface.</li>
+<li>Mark a location in close proximity to, but at a safe distance from the clean reference metal surface.</li>
+<li>A preview of the locations you have initialised will be shown. Press 'q' to close and finish the initialisation, otherwise the window will close by itself after 30 seconds.
+    Your initialisation should look something like the figure below:
+<br>
+<img alt="initialised" src="../testing/initialised.png" />
+<br>
+<strong>Note: the dotted line represents the path of the tip in the video recording.
+Placing the sample or reference metal coordinates outside the shaded region means that the tip will never reach them.
+</strong></li>
+</ol>
+</li>
+</ol>
+<h3 id="tip-tracking-test">Tip Tracking Test</h3>
+<ol>
+<li>Review the settings in the 'Move Tip' group. In live mode, these must be configured appropriate to your setup. Since we're running this in demo mode, the defaults are ok.</li>
+<li>In Nanonis, from the Z-Controller, open the Auto Approach module
+<br>
+<img alt="autoapproach" src="../testing/autoapproach.png" />
+<br></li>
+<li>Click the 'Go to Metal' button</li>
+<li>A popup video feed will open showing the STM tip move from its current position to the reference metal. The red marker will track the tip as it moves towards its target.
+<br>
+<br>
+<strong>Note:</strong> This is programmed so that the tip retracts in Z+ until its Z-coordinate is above the target Z-coordinate.
+Once the tip apex is above the target location, it then starts moving in the X direction towards the target (with the requirement that Z<sub>tip</sub> &gt; Z<sub>target</sub> at all times when moving in X).
+Once the X-coordinate of the tip matches the X-coordinate of the target, it has reached its destination <strong>and Scanbot will initiate auto approach</strong>.</li>
+</ol>
+<h2 id="survey-automation-with-tip-tracking-and-shaping-15-min">Survey Automation with Tip Tracking and Shaping (15 min)</h2>
+<p>Normally, Scanbot will remember the location of the STM tip after any such movement performed in the previous step.
+A limitation to running the initialisation in demo mode is that the video recording of the tip restarts from the beginning each time.
+This means the STM tip will not be at the location that Scanbot thinks it is, <strong>thus the initialisation procedure must be performed again for this test</strong>.</p>
+<h3 id="initialisation_1">Initialisation</h3>
+<ol>
+<li>Follow the initialisation steps in the previous test.
+<strong>Now that we're confident that the tip can be tracked via the camera feed, this time you can initialise the sample and metal coordinates as shown:</strong>
+<br>
+<img alt="quickinitialisation" src="../testing/quickinitialisation.png" />
+<br>
+<strong>Setting the initial coordinates in this state lets the tip move back and forth between sample and metal locations without Scanbot losing track of the STM tip when the video recording restarts between movements.</strong></li>
+</ol>
+<h3 id="survey-with-auto-tip-shaping">Survey with Auto Tip Shaping</h3>
+<ol>
+<li>Ensure the 'Auto Approach' and 'Tip Shaper' modules are open.</li>
+<li>Use the button in the top right to navigate back to the 'Data Acquisition' page.</li>
+<li>Navigate to the 'Survey' screen.</li>
+<li>Select at least 3 for the fine grid size.</li>
+<li>Choose “Yes” for "Automated Tip Shaping?".</li>
+<li>“Start Survey”.</li>
+</ol>
+<p>Because we ran the initialisation procedure in demo mode, starting the survey with "Automated Tip Shaping" = "Yes", means that the survey will also be run in a demo mode.
+Images acquired from the Nanonis Simulator will be replaced with pre-loaded mock 'bad data'.
+This is to give Scanbot the impression that the STM tip is in need of reshaping (despite running on a simulator).
+The process for survey automation is as follows:</p>
+<ol>
+<li>Acquired images are analysed by Scanbot and deemed good or bad depending on the number of tip changes and how much the tip interacts with the sample.</li>
+<li>If five 'bad' images are detected in a row, Scanbot will use the camera feed to track and move the tip from the sample to the clean metal.</li>
+<li>After approaching on arrival, the auto tip shaping procedure will be initiated.</li>
+<li>After acquiring a 'good tip', Scanbot will move the tip back to the sample.</li>
+<li>A new survey will begin.</li>
+<li>In demo mode, this process will repeat indefinitely if the initialisation was completed as in the figure above.</li>
+</ol>
+<p><strong>Note:</strong> Scanbot is able to detect when the tip is unstable during image acquisition. It cannot detect doubled tips.
+The in-built image classifier can be replaced with a custom one by using the <a href="../hooks/#hk_classifier">hk_classifier hook</a>.</p></div>
+            </div>
+        </div>
+
+        <footer class="col-md-12">
+            <hr>
+            <p>Documentation built with <a href="https://www.mkdocs.org/">MkDocs</a>.</p>
+        </footer>
+        <script>
+            var base_url = "..",
+                shortcuts = {"help": 191, "next": 78, "previous": 80, "search": 83};
+        </script>
+        <script src="../js/base.js" defer></script>
+
+        <div class="modal" id="mkdocs_keyboard_modal" tabindex="-1" role="dialog" aria-labelledby="keyboardModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h4 class="modal-title" id="keyboardModalLabel">Keyboard Shortcuts</h4>
+                <button type="button" class="close" data-dismiss="modal"><span aria-hidden="true">&times;</span><span class="sr-only">Close</span></button>
+            </div>
+            <div class="modal-body">
+              <table class="table">
+                <thead>
+                  <tr>
+                    <th style="width: 20%;">Keys</th>
+                    <th>Action</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td class="help shortcut"><kbd>?</kbd></td>
+                    <td>Open this help</td>
+                  </tr>
+                  <tr>
+                    <td class="next shortcut"><kbd>n</kbd></td>
+                    <td>Next page</td>
+                  </tr>
+                  <tr>
+                    <td class="prev shortcut"><kbd>p</kbd></td>
+                    <td>Previous page</td>
+                  </tr>
+                  <tr>
+                    <td class="search shortcut"><kbd>s</kbd></td>
+                    <td>Search</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            <div class="modal-footer">
+            </div>
+        </div>
+    </div>
+</div>
+
+    </body>
+</html>

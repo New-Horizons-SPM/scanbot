@@ -14,7 +14,7 @@ Completing all of these tests will take approximately one hour.
 
 ### Nanonis V5 Simulator
 1. Open the Nanonis V5 Simulator
-2. In the 'Current' module, change the Gain to LN 10^9
+2. In the 'Current' module, change the Gain to LN 10^9. <strong>If your version of the simulator does not have this setting you can ignore this step.</strong>
 <br>![CurrenModule](./testing/gain109.png)<br>
 3. In the Z-Controller module, turn on the Controller. Ensure the tip is 'tunnelling' at the correct setpoint.
 <br>
@@ -30,7 +30,9 @@ Completing all of these tests will take approximately one hour.
 <br>
 ![Scanbot-terminal](./testing/scanbot-terminal.png)
 <br>
-2. Scanbot should then open in a new browser tab. If it does not, then navigate to [http://127.0.0.1:5000](http://127.0.0.1:5000)
+2. Scanbot should then open in a new browser tab. If it does not, then navigate to [http://127.0.0.1:5000](http://127.0.0.1:5000).
+When running Scanbot for the first time, you will see a warning letting you know that you have not yet reviewed the configuration.
+You may receive an additional warning message if Scanbot is unable to communicate to Nanonis. This will be solved in the next step.
 <br>
 ![landing-page](./testing/top-level.png)
 <br>
@@ -46,6 +48,7 @@ Completing all of these tests will take approximately one hour.
 ![configuration-page](./testing/configuration-page.png)
 <br>
 4. When running Scanbot using the simulator, the default configuration is ok. Accept the configuration. This will save the scanbot_config.ini file and your settings will be remembered.
+Accepting the configuration will also stop the warning message from being displayed.
 
 ## Sample Surveying (10 min)
 1. From the Scanbot landing page, navigate to 'Data Acquisition' => 'Survey'.
@@ -54,6 +57,7 @@ Alternatively, you can hover over any field to obtain its description. In summar
 <br>
     * The Fine Grid Parameters control the size and spacing of each survey grid.
     * The Coarse Grid Parameters control the number of surveys to acquire (at different macroscopic locations) and the spacing between them.
+      <strong>Note: The motor controller in the Nanonis simulator is not sufficient for testing the coarse movement of the STM tip, thus please leave the coarse grid size to 1x1.</strong>
     * The Scan Parameters configure the settings for individual scans.
 <br>
 <strong>Note: At this stage, you will not be able to answer "Yes" to "Automated Tip Shaping?". We'll go through that later.</strong>
@@ -83,6 +87,8 @@ In Summary:
 ![tip-shaper-module](./testing/tip-shaper-module.png)
 <br>
 3. In Nanonis, from 'Graphs', open the 'Signal Chart'. This can be used to monitor Scanbot's tip shaping actions (as well as looking at the parameters in the Tip Shaper module).
+Select the 'Current (A)' and 'Z (m)' channels. You can adjust the 'Averaging' slider to slow down the rate at which the curves move through the window.
+In the figure below, the tip was at an intial height of -2 nm, then moved 3 nm into the surface and retracted 8 nm before turning the feedback controller on. During this time, the current spiked to its maximum value of 10 nA.
 <br>
 ![tip-shaping](./testing/tip-shaping.png)
 <br>
@@ -95,7 +101,7 @@ In Summary:
     * <strong>The last imprint in the demo data has an imprint size of 1.55 nm<sup>2</sup> and a circularity of 0.83.</strong>
         Set the parameters for desired size and circularity appropriate to these numbers.
 5. Click 'Start'
-6. You may find that the scan frame repeatedly moves before a scan is able to complete.
+6. <strong>You may find that the scan frame repeatedly moves before a scan is able to complete.</strong>
 This is because Scanbot ensures that the area is flat before performing a tip-shaping action.
 If the area is not flat, Scanbot will continue searching for a region appropriate for tip shaping.
 The simulator scans are not flat, thus one can withdraw the tip to trick Scanbot into thinking the region being scanned is flat and appropriate for tip shaping.
@@ -108,7 +114,7 @@ Remember that in demo mode, these scans are pulled from a pre-loaded file so the
 
 ## Autonomous Tip Navigation (10 min)
 Before Scanbot can take control over the coarse piezos and track the tip via the camera feed, a short initialisation procedure must be completed.
-This procedure gives Scanbot the initial location of the probe as well as the coordinates of the sample and clean reference metal.
+This procedure gives Scanbot the initial location of the probe as well as the coordinates of the sample and clean metal.
 This is normally accomplished via a live camera feed, however in Demo mode, the camera feed is replaced with pre-recorded videos.
 
 ### Initialisation
@@ -116,19 +122,19 @@ This is normally accomplished via a live camera feed, however in Demo mode, the 
 2. Under the "Initialise Tip and Sample Positions" group, select "Yes" for 'Run in demo mode'.
 3. Click the "Initialise" button.
 4. Because demo mode was selected, a popup should open displaying a pre-recorded video. <strong>Note that the popup may not take focus</strong>.
-5. Follow the prompts in the top left:
+5. Follow the prompts in the top left of the popup. They will be in the following order:
     1. The recording will show a view of the STM with the tip fully retracted and out of view. Click anywhere within the frame to go to the next step.
     2. The recording will show the tip in close proximity to the sample surface. Click anywhere within the frame to go to the next step.
     3. Mark the location at the apex of the probe by clicking on it.
-    4. Mark a location in close proximity to, but at a safe distance from the sample surface.
-    5. Mark a location in close proximity to, but at a safe distance from the clean reference metal surface.
-    6. A preview of the locations you have initialised will be shown. Press 'q' to close and finish the initialisation, otherwise the window will close by itself after 30 seconds.
+    4. Mark a location in close proximity to, but at a safe distance from the clean metal surface.
+    5. Mark a location in close proximity to, but at a safe distance from the sample surface.
+    6. A preview of the locations you have initialised will be shown. <strong>Press 'q' to close and finish the initialisation, otherwise the window will close by itself after 30 seconds.</strong>
         Your initialisation should look something like the figure below:
     <br>
     ![initialised](./testing/initialised.png)
     <br>
     <strong>Note: the dotted line represents the path of the tip in the video recording.
-    Placing the sample or reference metal coordinates outside the shaded region means that the tip will never reach them.
+    Placing the sample or metal coordinates outside the shaded region means that the tip will never reach them.
     </strong>
 
 ### Tip Tracking Test
@@ -136,9 +142,10 @@ This is normally accomplished via a live camera feed, however in Demo mode, the 
 2. In Nanonis, from the Z-Controller, open the Auto Approach module
 <br>
 ![autoapproach](./testing/autoapproach.png)
+![autoapproachmodule](./testing/autoapproachmodule.png)
 <br>
-3. Click the 'Go to Metal' button
-4. A popup video feed will open showing the STM tip move from its current position to the reference metal. The red marker will track the tip as it moves towards its target.
+3. In Scanbot, click the 'Go to Metal' button
+4. A popup video feed will open showing the STM tip move from its current position to the clean metal. The red marker will track the tip as it moves towards its target.
 <br>
 <br>
 <strong>Note:</strong> This is programmed so that the tip retracts in Z+ until its Z-coordinate is above the target Z-coordinate.
@@ -167,7 +174,7 @@ This means the STM tip will not be at the location that Scanbot thinks it is, <s
 6. “Start Survey”.
 
 Because we ran the initialisation procedure in demo mode, starting the survey with "Automated Tip Shaping" = "Yes", means that the survey will also be run in a demo mode.
-Images acquired from the Nanonis Simulator will be replaced with pre-loaded mock 'bad data'.
+<strong>Images acquired from the Nanonis Simulator will be replaced with pre-loaded mock 'bad data'.</strong>
 This is to give Scanbot the impression that the STM tip is in need of reshaping (despite running on a simulator).
 The process for survey automation is as follows:
 
@@ -178,5 +185,5 @@ The process for survey automation is as follows:
 5. A new survey will begin.
 6. In demo mode, this process will repeat indefinitely if the initialisation was completed as in the figure above.
 
-<strong>Note:</strong> Scanbot is able to detect when the tip is unstable during image acquisition. It cannot detect doubled tips.
-The in-built image classifier can be replaced with a custom one by using the [hk_classifier hook](../hooks/#hk_classifier).
+<strong>Note:</strong> Scanbot is able to detect when the tip is unstable or 'noisy' during image acquisition. It cannot detect doubled tips.
+The built-in image classifier can be replaced with a custom one by using the [hk_classifier hook](../hooks/#hk_classifier).

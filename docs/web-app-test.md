@@ -32,7 +32,7 @@ Completing all of these tests will take approximately one hour.
 <br>
 2. Scanbot should then open in a new browser tab. If it does not, then navigate to [http://127.0.0.1:5000](http://127.0.0.1:5000)
 <br>
-![landing-page](./appim/top-level.png)
+![landing-page](./testing/top-level.png)
 <br>
 
 ## Configuration (2 min)
@@ -56,8 +56,8 @@ Alternatively, you can hover over any field to obtain its description. In summar
     * The Coarse Grid Parameters control the number of surveys to acquire (at different macroscopic locations) and the spacing between them.
     * The Scan Parameters configure the settings for individual scans.
 <br>
-3. At this stage, you will not be able to answer "Yes" to "Automated Tip Shaping?". We'll go through that later.
-4. Once you're satisfied with the survey parameters, click 'Start Survey'. Acquired images will begin populating the empty grid.
+<strong>Note: At this stage, you will not be able to answer "Yes" to "Automated Tip Shaping?". We'll go through that later.</strong>
+3. Once you're satisfied with the survey parameters, click 'Start Survey'. Acquired images will begin populating the empty grid.
 You can either wait for the survey to complete or stop it any time with the 'Stop' button.
 <br>
 ![survey-page](./appim/survey.png)
@@ -82,8 +82,11 @@ In Summary:
 <br>
 ![tip-shaper-module](./testing/tip-shaper-module.png)
 <br>
-3. Review the 'Automatic Tip Shaping' settings.
-<strong>When running with the Nanonis Simulator, please obey the following:</strong>
+3. In Nanonis, from 'Graphs', open the 'Signal Chart'. This can be used to monitor Scanbot's tip shaping actions (as well as looking at the parameters in the Tip Shaper module).
+<br>
+![tip-shaping](./testing/tip-shaping.png)
+<br>
+4. <strong>When running with the Nanonis Simulator, please obey the following in the 'Automated Tip Shaping' settings:</strong>
 <br>
     * <strong>Select "Yes" for "Run in demo mode?".</strong>
         In demo mode, acquired images are replaced with pre-recorded data which is loaded from a file.
@@ -91,15 +94,11 @@ In Summary:
         It is important that the settings in Scanbot reflect that or the size of the tip’s imprint will be calculated incorrectly.
     * <strong>The last imprint in the demo data has an imprint size of 1.55 nm<sup>2</sup> and a circularity of 0.83.</strong>
         Set the parameters for desired size and circularity appropriate to these numbers.
-4. Click 'Start'
-5. You may find that the scan frame repeatedly moves before a scan is able to complete.
+5. Click 'Start'
+6. You may find that the scan frame repeatedly moves before a scan is able to complete.
 This is because Scanbot ensures that the area is flat before performing a tip-shaping action.
 If the area is not flat, Scanbot will continue searching for a region appropriate for tip shaping.
 The simulator scans are not flat, thus one can withdraw the tip to trick Scanbot into thinking the region being scanned is flat and appropriate for tip shaping.
-6. You can monitor Scanbot's tip shaping through the signal chart:
-<br>
-![tip-shaping](./testing/tip-shaping.png)
-<br>
 7. Scans of the tip's imprint, along with its calculated size and circularity, after each iteration will be shown in the browser.
 Remember that in demo mode, these scans are pulled from a pre-loaded file so they will look different to what's shown in the Nanonis Scan Control module.
 <br>

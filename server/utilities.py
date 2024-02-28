@@ -207,7 +207,7 @@ def drawRec(frame,rec,xy=[0,0],win=0):
 
     """
     r = rec.copy()
-    r[0] -= win;
+    r[0] -= win
     r[1] -= win
     r[2] += 2*win
     r[3] += 2*win
@@ -261,11 +261,17 @@ def getInitialFrame(cap,n=10,demo=0):
     cv2.namedWindow(windowName)
     cv2.setMouseCallback(windowName, checkClick)
     while(not clicked):
-        _,frame = getAveragedFrame(cp,n=1)
+        ret,frame = getAveragedFrame(cp,n=1)
+        
+        if(not ret and demo):
+            cp.set(cv2.CAP_PROP_POS_FRAMES, 0)
+            continue
+
         cv2.imshow(windowName,frame.astype(np.uint8))
         if cv2.waitKey(25) & 0xFF == ord('q'): break                            # Press Q on keyboard to  exit
-    
+
     if(clicked):
+        if(demo): cp.set(cv2.CAP_PROP_POS_FRAMES, 0)
         _,initialFrame = getAveragedFrame(cp,n=n)
         
     cv2.destroyAllWindows()

@@ -230,10 +230,10 @@ function Survey() {
             ]
         },
         {
-            title: "Course Grid Parameters",
+            title: "Coarse Grid Parameters",
             inputs: [
-                { label: "Course grid x size",      type: "text", id: "nx",    name: "nx", value: allFormData[1]['nx'], description: "(int) Size of the nx x ny grid of surveys. This sets up nx x ny surveys each taken after moving the course piezo in x/y", min: 1, max: 100},
-                { label: "Course grid y size",      type: "text", id: "ny",    name: "ny", value: allFormData[1]['ny'], description: "(int) Size of the nx x ny grid of surveys. This sets up nx x ny surveys each taken after moving the course piezo in x/y", min: 1, max: 100},
+                { label: "Coarse grid x size",      type: "text", id: "nx",    name: "nx", value: allFormData[1]['nx'], description: "(int) Size of the nx x ny grid of surveys. This sets up nx x ny surveys each taken after moving the course piezo in x/y", min: 1, max: 100},
+                { label: "Coarse grid y size",      type: "text", id: "ny",    name: "ny", value: allFormData[1]['ny'], description: "(int) Size of the nx x ny grid of surveys. This sets up nx x ny surveys each taken after moving the course piezo in x/y", min: 1, max: 100},
                 { label: "Motor steps Z",           type: "text", id: "zStep", name: "zStep", value: allFormData[1]['zStep'], description: "(int) Number of motor steps between surveys in the X direction. Negative value snakes course grid in opposite direction"},
                 { label: "Motor steps X",           type: "text", id: "xStep", name: "xStep", value: allFormData[1]['xStep'], description: "(int) Number of motor steps between surveys in the X direction. Negative value snakes course grid in opposite direction"},
                 { label: "Motor steps Y",           type: "text", id: "yStep", name: "yStep", value: allFormData[1]['yStep'], description: "(int) Number of motor steps between surveys in the Y direction. Negative value snakes course grid in opposite direction"},

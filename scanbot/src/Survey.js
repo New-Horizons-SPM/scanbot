@@ -226,7 +226,7 @@ function Survey() {
             title: "Fine Grid Parameters",
             inputs: [
                 { label: "Fine grid size",  type: "text", id: "n",  name: "n",  value: allFormData[0]['n'],  description: "(int) Size of the nxn grid of scans"},
-                { label: "Fine grid size spacing (nm)",  type: "number", id: "dx",  name: "dx",  value: allFormData[0]['dx'],  description: "(float) Distance to move the scan frame after each image (nm)"},
+                { label: "Scan centre-centre spacing (nm)",  type: "number", id: "dx",  name: "dx",  value: allFormData[0]['dx'],  description: "(float) Distance to move the scan frame after each image (nm)"},
             ]
         },
         {

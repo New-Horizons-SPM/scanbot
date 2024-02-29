@@ -949,7 +949,7 @@ class scanbot():
 ###############################################################################
 # Tip Actions
 ###############################################################################
-    def moveArea(self,up,upV,upF,direction,steps,dirV,dirF,zon,approach=True,message=""):
+    def moveArea(self,up,upV,upF,direction,steps,dirV,dirF,zon,approach=True,demo=False,message=""):
         """
         This function blindly moves the tip. The tip can never be moved down.
         The tip is first moved in Z+ before moving in any other direction.
@@ -1059,7 +1059,8 @@ class scanbot():
         time.sleep(0.25)
         
         motor.FreqAmpSet(upF,upV)                                               # Set the motor controller params appropriate for Z piezos
-        motor.StartMove("Z+",up,wait_until_finished=True)                       # Retract the tip +Z direction
+        if(not demo):
+            motor.StartMove("Z+",up,wait_until_finished=True)                       # Retract the tip +Z direction
         print("Moving motor: Z+" + " " + str(up) + "steps")
         time.sleep(0.5)
         
@@ -1070,7 +1071,8 @@ class scanbot():
         isSafe = True
         motor.FreqAmpSet(dirF,dirV)                                             # Set the motor controller params appropriate for XY piezos
         for s in range(steps):
-            motor.StartMove(direction,stepsAtATime,wait_until_finished=True)    # Move safe number of steps at a time
+            if(not demo):
+                motor.StartMove(direction,stepsAtATime,wait_until_finished=True)    # Move safe number of steps at a time
             print("Moving motor: " + direction + " " + str(stepsAtATime) + "steps")
             isSafe = self.safeCurrentCheck(NTCP,message=message)                # Safe retract if current overload
             if(not isSafe):
@@ -1083,7 +1085,8 @@ class scanbot():
                 
             time.sleep(0.25)
         
-        motor.StartMove(direction,leftOver,wait_until_finished=True)
+        if(not demo):
+            motor.StartMove(direction,leftOver,wait_until_finished=True)
         print("Moving motor: " + direction + " " + str(leftOver) + "steps")
         time.sleep(0.5)
         
@@ -1536,7 +1539,7 @@ class scanbot():
         
         if(not approach == 1): return
         
-        self.moveArea(up=10, upV=zV, upF=zF, direction="X+", steps=0, dirV=xV, dirF=xF, zon=True) # Approach
+        self.moveArea(up=10, upV=zV, upF=zF, direction="X+", steps=0, dirV=xV, dirF=xF, zon=True, demo=self.autoInitDemo) # Approach
         
         message = ""
         if(target == "clean" and tipshape == 1):
@@ -1554,7 +1557,7 @@ class scanbot():
         
         if(not targetHit == "Target Hit"): return
         
-        self.moveArea(up=10, upV=zV, upF=zF, direction="X+", steps=0, dirV=xV, dirF=xF, zon=True) # Approach
+        self.moveArea(up=10, upV=zV, upF=zF, direction="X+", steps=0, dirV=xV, dirF=xF, zon=True, demo=self.autoInitDemo) # Approach
         
         global_.running.clear()                                                 # Free up the running flag
         

@@ -1058,8 +1058,8 @@ class scanbot():
         print("withdrew")
         time.sleep(0.25)
         
-        motor.FreqAmpSet(upF,upV)                                               # Set the motor controller params appropriate for Z piezos
         if(not demo):
+            motor.FreqAmpSet(upF,upV)                                               # Set the motor controller params appropriate for Z piezos
             motor.StartMove("Z+",up,wait_until_finished=True)                       # Retract the tip +Z direction
         print("Moving motor: Z+" + " " + str(up) + "steps")
         time.sleep(0.5)
@@ -1069,7 +1069,8 @@ class scanbot():
         steps        = int(steps/stepsAtATime)                                  # Sets of 10 steps
         
         isSafe = True
-        motor.FreqAmpSet(dirF,dirV)                                             # Set the motor controller params appropriate for XY piezos
+        if(not demo):
+            motor.FreqAmpSet(dirF,dirV)                                             # Set the motor controller params appropriate for XY piezos
         for s in range(steps):
             if(not demo):
                 motor.StartMove(direction,stepsAtATime,wait_until_finished=True)    # Move safe number of steps at a time
@@ -1101,7 +1102,8 @@ class scanbot():
         
         if(approach):
             self.interface.reactToMessage("double_down")
-            motor.FreqAmpSet(upF,upV)
+            if(not demo):
+                motor.FreqAmpSet(upF,upV)
         
             autoApproach.Open()
             autoApproach.OnOffSet(on_off=True)

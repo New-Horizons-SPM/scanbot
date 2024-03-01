@@ -12,7 +12,7 @@ This application is still being developed, with the following features already f
 
 # Installation
 
-To use the web application, you can [download and run the .exe](https://firebasestorage.googleapis.com/v0/b/scanbot-46390.appspot.com/o/scanbot-react%2FScanbot_V4.zip?alt=media&token=0dfed896-3df8-4a44-81e5-bf0b126181d9)
+To use the web application, you can [download and run the .exe](https://firebasestorage.googleapis.com/v0/b/scanbot-46390.appspot.com/o/scanbot-react%2FScanbot_V4.zip?alt=media&token=1c627e79-422e-41e9-9d85-dd12835c3386)
 - it should automatically launch in a new browser tab. Note this only works on Windows at the moment.
 Alternatively, you can install Scanbot from its source:
 

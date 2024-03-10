@@ -1,0 +1,31 @@
+name: Windows Installation Test
+
+on: [push, pull_request]
+
+jobs:
+  install:
+    runs-on: windows-latest
+
+    steps:
+    - uses: actions/checkout@v4
+      name: Check out main repository code
+
+    - name: Clone dependent repository
+      run: git clone https://github.com/New-Horizons-SPM/nanonisTCP.git
+
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.12'
+
+    - name: Install dependent repository
+      run: |
+        cd nanonisTCP
+        pip install .
+
+    - name: Install the main application
+      run: pip install .
+
+    - name: Verify Installation of the main application
+      run: |
+        python server/scanbot_interface.py --version

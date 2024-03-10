@@ -963,7 +963,11 @@ class scanbot_interface(object):
 handler_class = scanbot_interface                                                   # Used by zulip-run-bot
 
 finish = False
-if('-z' in sys.argv):
+if('--version' in sys.argv):
+    print("Scanbot v4")
+    finish = True
+    
+if('-z' in sys.argv and not finish):
     rcfile = ''
     try:
         with open('scanbot_config.ini','r') as f:                                   # Go through the config file to see what defaults need to be overwritten

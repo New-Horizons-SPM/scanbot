@@ -5,7 +5,8 @@ Created on Fri August 8 22:06:37 2022
 @author: Julian Ceddia
 """
 
-from scanbot import scanbot
+from scanbot.server.scanbot import scanbot
+from scanbot.server import global_
 
 import zulip
 
@@ -18,7 +19,6 @@ import time
 
 import ipaddress
 
-import global_
 import threading
 
 class scanbot_interface(object):
@@ -29,11 +29,11 @@ class scanbot_interface(object):
 ###############################################################################
 # Constructor
 ###############################################################################
-    def __init__(self,run_mode="",panel=""):
+    def __init__(self,run_mode="",module_dir="./"):
         print("Initialising app...")
-        self.run_mode = run_mode
-        self.panel = panel
-        self.scanbot = scanbot(self)
+        self.run_mode   = run_mode
+        self.module_dir = module_dir
+        self.scanbot    = scanbot(self)
         self.loadConfig()
         self.initGlobals()
         self.initCommandDict()
@@ -77,7 +77,7 @@ class scanbot_interface(object):
                     'hk_commands'               : '0'}                          # Flag to look for customised commands in hk_commands
         
         try:
-            with open('scanbot_config.ini','r') as f:                           # Go through the config file to see what defaults need to be overwritten
+            with open(self.module_dir + 'scanbot_config.ini','r') as f:         # Go through the config file to see what defaults need to be overwritten
                 line = "begin"
                 while(line):
                     line = f.readline()[:-1]
@@ -461,7 +461,7 @@ class scanbot_interface(object):
         
         if(_help): return arg_dict
         
-        if(self.run_mode != 'c' and self.run_mode != 'p' and self.run_mode != 'react'): return "This function is not available."
+        if(self.run_mode != 'c' and self.run_mode != 'react'): return "This function is not available."
         
         arg_dict['-reactInit'] = ['0', lambda x: int(x), "(int) User-hidden flag when running in react mode. 1=running from react - use data in ./autoInit/"]
         
@@ -499,7 +499,7 @@ class scanbot_interface(object):
         
         if(_help): return arg_dict
         
-        if(self.run_mode != 'c' and self.run_mode != 'p' and self.run_mode != 'react'): return "This function is not available."
+        if(self.run_mode != 'c' and self.run_mode != 'react'): return "This function is not available."
         
         error,user_arg_dict = self.userArgs(arg_dict,user_args)
         if(error): return error + "\nRun ```help move_tip_to_" + target + "``` if you're unsure."
@@ -780,17 +780,13 @@ class scanbot_interface(object):
             for user in self.notifyUserList:
                 notifyString += "@**" + user + "** "
             
-        path = os.getcwd() + '/' + pngFilename
-        path = Path(path)
-        path = path.resolve()
-        
-        if(self.run_mode == 'p'):
-            self.panel.updatePNG(path)
+        # path = os.getcwd() + '/' + pngFilename
+        path = self.module_dir + pngFilename
         
         if(self.run_mode == 'react'):
             timestamp = time.time()
-            Path('./temp').mkdir(parents=True, exist_ok=True)
-            shutil.copy(path,'./temp/' + str(timestamp) + '_' + pngFilename)
+            Path(self.module_dir + 'temp').mkdir(parents=True, exist_ok=True)
+            shutil.copy(path,self.module_dir + 'temp/' + str(timestamp) + '_' + pngFilename)
         
         if(self.uploadMethod == 'zulip'):
             if(self.bot_handler):
@@ -953,9 +949,9 @@ class scanbot_interface(object):
     def _quit(self,arg_dict=[]):
         sys.exit()
 
-    def restart(self,run_mode):
+    def restart(self,run_mode,module_dir="./"):
         self.stop(user_args=[])
-        self.__init__(run_mode=run_mode)
+        self.__init__(run_mode=run_mode,module_dir=module_dir)
 
 ###############################################################################
 # Run
@@ -963,7 +959,8 @@ class scanbot_interface(object):
 handler_class = scanbot_interface                                                   # Used by zulip-run-bot
 
 finish = False
-if('-z' in sys.argv):
+    
+if('-z' in sys.argv and not finish):
     rcfile = ''
     try:
         with open('scanbot_config.ini','r') as f:                                   # Go through the config file to see what defaults need to be overwritten
@@ -1006,22 +1003,5 @@ if('-react' in sys.argv and not finish):
             break
         handler_class.handle_message(message)
     
-    finish = True
-
-if('-gui' in sys.argv and not finish):
-    auth = ""
-    if('-auth' in sys.argv):
-        authpath = ""
-        try:
-            authpath = sys.argv[sys.argv.index('-auth') + 1]
-            auth  = " --basic-auth"
-            auth += " " + authpath
-            auth += " --cookie-secret jsd83od02ss11"
-        except Exception as e:
-            print("Error: -auth not provided")
-            print(e)
-            sys.exit()
-        
-    os.system("panel serve panel.py --show" + auth)
     finish = True
     

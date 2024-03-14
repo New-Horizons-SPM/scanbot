@@ -10,9 +10,10 @@ import pickle
 import math
 import numpy as np
 import scipy.signal as sp
-import nanonispyfit as napfit
+from scanbot.server import nanonispyfit as napfit
 import cv2
 from scipy import ndimage
+import os
 
 def pklDict(scanData,filePath,x,y,w,h,angle,pixels,lines,comments=""):
     filename = ntpath.split(filePath)[1]
@@ -175,7 +176,7 @@ def trackTip(ROI,tipPos):
         print("LOST TIP")
         mask = np.zeros_like(ROI).astype(np.uint8)
         cv2.drawContours(mask, contours, -1, 255, -1)                           # Draw filled in contour on mask
-        return mask,tipPos
+        return
     
     tipRow = max(loc for loc, val in enumerate(np.argmax(mask > 0,axis=1) > 0) if val)
     mask[minRow:maxRow,minCol:maxCol] *= 2
@@ -233,10 +234,15 @@ def trimStart(cap,frames):
 def getVideo(cameraPort,demo=0):
     if(demo):
         try:
-            cap = cv2.VideoCapture('../Dev/move_tip_2.mp4')                     # Load in the mp4
+            path = os.path.join(os.path.dirname(__file__), '..', 'Dev', 'move_tip_2.mp4')
+            if(not os.path.isfile(path)):
+                path = '../Dev/move_tip_2.mp4'
+            cap = cv2.VideoCapture(path)                                        # Load in the mp4
         except:
-            cap = cv2.VideoCapture('./Dev/move_tip_2.mp4')                      # Load in the mp4
-        # trimStart(cap,frames=2000)                                            # Trim off the start of the video
+            path = os.path.join(os.path.dirname(__file__), '.', 'Dev', 'move_tip_2.mp4')
+            if(not os.path.isfile(path)):
+                path = './Dev/move_tip_2.mp4'
+            cap = cv2.VideoCapture(path)                                        # Load in the mp4
         return cap
     
     cap = cv2.VideoCapture(cameraPort,cv2.CAP_DSHOW)                            # Camera feed. Camera port: usually 0 for desktop and 1 for laptops with a camera. cv2.CAP_DSHOW is magic
@@ -250,9 +256,15 @@ def getInitialFrame(cap,n=10,demo=0):
     
     if(demo):
         try:
-            cp = cv2.VideoCapture('../Dev/initialise.mp4')                      # Load in the mp4
+            path = os.path.join(os.path.dirname(__file__), '..', 'Dev', 'initialise.mp4')
+            if(not os.path.isfile(path)):
+                path = '../Dev/initialise.mp4'
+            cp = cv2.VideoCapture(path)                                         # Load in the mp4
         except:
-            cp = cv2.VideoCapture('./Dev/initialise.mp4')                       # Load in the mp4
+            path = os.path.join(os.path.dirname(__file__), '.', 'Dev', 'initialise.mp4')
+            if(not os.path.isfile(path)):
+                path = './Dev/initialise.mp4'
+            cp = cv2.VideoCapture(path)                                         # Load in the mp4
     else:
         cp = cap
     

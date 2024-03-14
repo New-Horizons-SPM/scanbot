@@ -5,7 +5,7 @@ class scanbot_config():
     description = 1
     category    = 2
     value       = 3
-    def __init__(self):
+    def __init__(self, module_dir="./"):
         self.config = OrderedDict(
                       # key                         : [label, description, category, default value] 
                       { 'zuliprc'                   : ['Zulip RC File',                 'Upload your Zulip rc file. See https://zulip.com/api/running-bots',                'external', ''],
@@ -34,7 +34,7 @@ class scanbot_config():
                       })
         
         try:
-            with open('scanbot_config.ini','r') as f:                               # Go through the config file to see what defaults need to be overwritten
+            with open(module_dir + 'scanbot_config.ini','r') as f:                  # Go through the config file to see what defaults need to be overwritten
                 line = "begin"
                 while(line):
                     line = f.readline()[:-1]

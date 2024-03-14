@@ -17,15 +17,23 @@ jobs:
       uses: actions/setup-python@v5
       with:
         python-version: '3.12'
-
+    
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+          
     - name: Install dependent repository
       run: |
         cd nanonisTCP
         pip install .
+        
+    - name: Install node_modules and build the app
+      run: |
+        cd scanbot/App
+        npm install
+        npm run build
 
     - name: Install the main application
       run: pip install .
 
     - name: Verify Installation of the main application
-      run: |
-        python server/scanbot_interface.py --version
+      run: scanbot --version

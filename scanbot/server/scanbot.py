@@ -18,23 +18,22 @@ from nanonisTCP.FolMe import FolMe
 from nanonisTCP.Marks import Marks
 from nanonisTCP.TipShaper import TipShaper
 
+from scanbot.server import global_
+from scanbot.server import utilities
+from scanbot.server import nanonispyfit as napfit
+
 import time
 from datetime import datetime as dt
 from datetime import timedelta
 from pathlib import Path
 import ntpath
 import numpy as np
-import nanonispyfit as napfit
 import matplotlib.pyplot as plt
 import matplotlib
 matplotlib.use('agg')
 import cv2
-
+import os
 import math
-
-import global_
-
-import utilities
 
 try: import hk_classifier
 except: pass
@@ -232,11 +231,13 @@ class scanbot():
             if(autotip):                                                        # If auto tip shaping = Yes, we need to classify the scan to determine if it's time to reshape the tip
                 if(self.autoInitDemo):                                          # Replace real scanData with dummy data if auto tip shape is on and the tip was initialised in demo mode
                     try:
-                        dummyData = pickle.load(open('../Dev/survey.pk','rb'))
+                        pkpath = self.interface.module_dir + "../Dev/survey.pk"
+                        dummyData = pickle.load(open(pkpath,'rb'))
                         scanData  = dummyData[idx]
                     except:
                         try:
-                            dummyData = pickle.load(open('./Dev/survey.pk','rb'))
+                            pkpath = self.interface.module_dir + "./Dev/survey.pk"
+                            dummyData = pickle.load(open(pkpath,'rb'))
                             scanData  = dummyData[idx]
                         except:
                             self.interface.sendReply("Could not load demo data for survey. Please ensure the Dev folder is saved in ~/scanbot")
@@ -1106,6 +1107,7 @@ class scanbot():
                 motor.FreqAmpSet(upF,upV)
         
             autoApproach.Open()
+            time.sleep(1)                                                       # Module needs time to open
             autoApproach.OnOffSet(on_off=True)
             
             while(autoApproach.OnOffGet()):
@@ -1392,7 +1394,8 @@ class scanbot():
         if(reactMode and not demo):
             global_.running.clear()                                         # Free up the running flag
             try:
-                autoinitDict = pickle.load(open('./autoInit/autoinit.pk','rb'))
+                pkpath = self.interface.module_dir + "autoInit/autoInit.pk"
+                autoinitDict = pickle.load(open(pkpath,'rb'))
                 self.tipPos         = autoinitDict['tipLocation']
                 self.samplePos      = autoinitDict['sampleLocation']
                 self.cleanMetalPos  = autoinitDict['metalLocation']
@@ -1404,7 +1407,9 @@ class scanbot():
                 rec = cv2.circle(tipInFrame.astype(np.uint8), self.tipPos, radius=3, color=(0, 0, 255), thickness=-1)
                 rec = cv2.circle(rec, self.samplePos, radius=3, color=(0, 255, 0), thickness=-1)
                 rec = cv2.circle(rec, self.cleanMetalPos, radius=3, color=(0, 255, 0), thickness=-1)
-                cv2.imwrite('./autoInit/initialisation.png',rec)
+                
+                pkpath = self.interface.module_dir + "autoInit/initialisation.png"
+                cv2.imwrite(pkpath,rec)
                 return
             
             except Exception as e:
@@ -1490,8 +1495,9 @@ class scanbot():
         cv2.imshow('Frame',rec)
         
         if(reactMode):
-            Path('./autoinit').mkdir(parents=True, exist_ok=True)
-            cv2.imwrite('./autoInit/initialisation.png',rec)
+            module_dir = self.interface.module_dir
+            Path(module_dir + 'autoinit').mkdir(parents=True, exist_ok=True)
+            cv2.imwrite(module_dir + 'autoInit/initialisation.png',rec)
         
         self.interface.sendReply("Initialisation complete! If this doens't look correct, run it again.")
         self.interface.sendReply("Press 'q' to exit (timeout = 30s)")
@@ -1723,9 +1729,11 @@ class scanbot():
         
         if(demo):
             try:
-                demoData = pickle.load(open("../Dev/autoTipShape.pk",'rb'))     # Load in dummy data for demo mode. This is just a few images of various tip imprints
+                pkpath = self.interface.module_dir + "../Dev/autoTipShape.pk"
+                demoData = pickle.load(open(pkpath,'rb'))                       # Load in dummy data for demo mode. This is just a few images of various tip imprints
             except:                                                             # If it faile, maybe we're running in react mode or the user pasted it in the wrong folder
-                demoData = pickle.load(open("./Dev/autoTipShape.pk",'rb'))      # Load in dummy data for demo mode. This is just a few images of various tip imprints
+                pkpath = self.interface.module_dir + "./Dev/autoTipShape.pk"
+                demoData = pickle.load(open(pkpath,'rb'))                       # Load in dummy data for demo mode. This is just a few images of various tip imprints
             demoIDX = 0                                                         # Keep track of demo data file
             
         for frame in snakedGrid:
@@ -2092,7 +2100,7 @@ class scanbot():
         
         if filePath: pngFilename = ntpath.split(filePath)[1] + '.png'
         
-        fig.savefig(pngFilename, dpi=dpi, bbox_inches='tight', pad_inches=0)
+        fig.savefig(self.interface.module_dir + pngFilename, dpi=dpi, bbox_inches='tight', pad_inches=0)
         plt.close(fig)
         
         if(returnData): return pngFilename,scanData

@@ -171,16 +171,17 @@ This application is still being developed, with the following features already f
 </ul>
 <p><img alt="WebApp" src="../appim/top-level.png" /></p>
 <h1 id="installation">Installation</h1>
-<p>To use the web application, you can <a href="https://firebasestorage.googleapis.com/v0/b/scanbot-46390.appspot.com/o/scanbot-react%2FScanbot_V4.zip?alt=media&amp;token=1c627e79-422e-41e9-9d85-dd12835c3386">download and run the .exe</a>
+<p>To use the web application, you can <a href="https://firebasestorage.googleapis.com/v0/b/scanbot-46390.appspot.com/o/scanbot-react%2FScanbot_V4.1.zip?alt=media&amp;token=c0fca54e-619f-418c-9c06-f77d5ddc4ea6">download and run the .exe</a>
 - it should automatically launch in a new browser tab. Note this only works on Windows at the moment.
 Alternatively, you can install Scanbot from its source:</p>
 <ol>
 <li>Clone the <a href="https://github.com/New-Horizons-SPM/nanonisTCP">nanonisTCP interface</a>, navigate to the root directory and run <code>pip install .</code></li>
-<li>Clone the <a href="https://github.com/New-Horizons-SPM/scanbot">Scanbot repository</a>, navigate to the root directory, and run <code>pip install .</code></li>
+<li>Clone the <a href="https://github.com/New-Horizons-SPM/scanbot">Scanbot repository</a></li>
 <li>Install node.js from <a href="https://nodejs.org/en">here</a> or if you're using anaconda, run conda install conda-forge::nodejs</li>
-<li>Navigate to <code>~/scanbot/scanbot</code> and run <code>npm install</code></li>
-<li>Start the server: navigate to <code>~/scanbot/server/</code> and run <code>python server.py</code></li>
-<li>Start the web app: navigate to <code>~/scanbot/scanbot/</code> and run <code>npm start</code></li>
+<li>Navigate to <code>/scanbot/scanbot/App</code> and run <code>npm install</code></li>
+<li>From the same directory, run <code>npm run build</code></li>
+<li>Navigate to the project root directory, and run <code>pip install .</code></li>
+<li>Start Scanbot by running the command <code>scanbot</code></li>
 </ol>
 <p><br></p>
 <p><strong>You can test Scanbot with the Nanonis V5 Simulator</strong> before integrating it with your STM by following <a href="../web-app-test">these instructions</a>.</strong></p>

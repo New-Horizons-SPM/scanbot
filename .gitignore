@@ -1,6 +1,6 @@
 hk_*
 ## node
-/scanbot/node_modules
+/scanbot/App/node_modules
 
 ##
 /server

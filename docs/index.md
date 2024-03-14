@@ -25,16 +25,17 @@ Scanbot is a collection of several automated STM and nc-AFM data acquisition com
     <summary>Web App</summary>
     Scanbot has been implemented as a web application using [React](https://react.dev/).
     
-    On Windows, the easiest way to use it is by [downloading and running the .exe](https://firebasestorage.googleapis.com/v0/b/scanbot-46390.appspot.com/o/scanbot-react%2FScanbot_V4.zip?alt=media&token=1c627e79-422e-41e9-9d85-dd12835c3386).
+    On Windows, the easiest way to use it is by [downloading and running the .exe](https://firebasestorage.googleapis.com/v0/b/scanbot-46390.appspot.com/o/scanbot-react%2FScanbot_V4.1.zip?alt=media&token=c0fca54e-619f-418c-9c06-f77d5ddc4ea6).
     
     Alternatively, you can install Scanbot from its source:
 
     1. Clone the [nanonisTCP interface](https://github.com/New-Horizons-SPM/nanonisTCP), navigate to the root directory and run ```pip install .```
-    2. Clone the [Scanbot repository](https://github.com/New-Horizons-SPM/scanbot), navigate to the root directory, and run ```pip install .```
+    2. Clone the [Scanbot repository](https://github.com/New-Horizons-SPM/scanbot)
     3. Install node.js from [here](https://nodejs.org/en) or if you're using anaconda, run conda install conda-forge::nodejs
-    4. Navigate to ```~/scanbot/scanbot``` and run ```npm install```
-    5. Start the server: navigate to ```~/scanbot/server/``` and run ```python server.py```
-    6. Start the web app: navigate to ```~/scanbot/scanbot/``` and run ```npm start```
+    4. Navigate to ```/scanbot/scanbot/App``` and run ```npm install```
+    5. From the same directory, run ```npm run build```
+    6. Navigate to the project root directory, and run ```pip install .```
+    5. Start Scanbot by running the command ```scanbot```
 
     <br>
     

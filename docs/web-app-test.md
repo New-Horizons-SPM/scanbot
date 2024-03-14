@@ -7,7 +7,8 @@ Completing all of these tests will take approximately one hour.
 
 ## Installation (5 min)
 
-1. Download [Scanbot](https://firebasestorage.googleapis.com/v0/b/scanbot-46390.appspot.com/o/scanbot-react%2FScanbot_V4.zip?alt=media&token=1c627e79-422e-41e9-9d85-dd12835c3386)
+1. Download the latest version of Scanbot: [Scanbot_V4.1](https://firebasestorage.googleapis.com/v0/b/scanbot-46390.appspot.com/o/scanbot-react%2FScanbot_V4.1.zip?alt=media&token=c0fca54e-619f-418c-9c06-f77d5ddc4ea6)
+Note: If you prefer to run Scanbot from its source, follow the installation instructions [here](../web-app/#installation).
 2. Download [Nanonis V5 Simulator](https://www.specs-group.com/nanonis/products/mimea/#c1265)
 
 ## Launching Scanbot (5 min)

@@ -18,9 +18,6 @@ import argparse
 parser = argparse.ArgumentParser()
 parser.add_argument('--version', action='version', version='scanbot 4.1.0', help='show the version number and exit')
 args = parser.parse_args()
-if args.version:
-    print(f"scanbot {args.version}")
-    sys.exit()
 
 # pyinstaller --onefile --icon=..\App\public\favicon.ico --add-data "..\App\build;static" --name scanbot_v4.1 server.py
 app = Flask(__name__, static_url_path='')

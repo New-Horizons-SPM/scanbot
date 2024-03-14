@@ -27,9 +27,11 @@ jobs:
         pip install .
         
     - name: Install node_modules and build the app
+      env:
+        CI: ""
       run: |
         cd scanbot/App
-        npm install --loglevel=error  # Only log errors, ignore warnings
+        npm install
         npm run build
 
     - name: Install the main application

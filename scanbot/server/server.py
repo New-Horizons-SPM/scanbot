@@ -18,9 +18,6 @@ import argparse
 parser = argparse.ArgumentParser()
 parser.add_argument('--version', action='version', version='scanbot 4.1.0', help='show the version number and exit')
 args = parser.parse_args()
-if args.version:
-    print(f"scanbot {args.version}")
-    sys.exit()
 
 # pyinstaller --onefile --icon=..\App\public\favicon.ico --add-data "..\App\build;static" --name scanbot_v4.1 server.py
 app = Flask(__name__, static_url_path='')
@@ -29,14 +26,14 @@ app = Flask(__name__, static_url_path='')
 if getattr(sys, 'frozen', False):
     # If the app is run from a PyInstaller bundle
     app.static_folder = os.path.join(sys._MEIPASS, "static")
-    module_dir = "./"
+    app.module_dir = "./"
 else:
     # Otherwise, use the normal base directory
     app.static_folder = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'App', 'build'))
-    module_dir = str(os.path.dirname(os.path.abspath(__file__))).replace('\\','/')
-    if(not module_dir.endswith('/')): module_dir += '/'
+    app.module_dir = str(os.path.dirname(os.path.abspath(__file__))).replace('\\','/')
+    if(not app.module_dir.endswith('/')): app.module_dir += '/'
 
-scanbot = scanbot_interface(run_mode='react',module_dir=module_dir)
+scanbot = scanbot_interface(run_mode='react',module_dir=app.module_dir)
 
 @app.route('/', defaults={'path': ''})
 @app.route('/<path:path>')
@@ -48,7 +45,7 @@ def serve(path):
 
 @app.route('/has_config')
 def has_config():
-    hasConfig = os.path.isfile(module_dir + "scanbot_config.ini")
+    hasConfig = os.path.isfile(app.module_dir + "scanbot_config.ini")
     return {"status": hasConfig}, 200
 
 @app.route('/test_connection')
@@ -90,11 +87,11 @@ def save_frame():
     initialFrame = data['initialFrame']
     tipInFrame   = data['tipInFrame']
 
-    Path(module_dir + 'autoinit').mkdir(parents=True, exist_ok=True)
+    Path(app.module_dir + 'autoinit').mkdir(parents=True, exist_ok=True)
 
     header, encoded = initialFrame.split(",", 1)
     binary_data = base64.b64decode(encoded)
-    file_path = module_dir + 'autoinit/initialFrame.png'
+    file_path = app.module_dir + 'autoinit/initialFrame.png'
     with open(file_path, 'wb') as file:
         file.write(binary_data)
     
@@ -104,7 +101,7 @@ def save_frame():
         
     header, encoded = tipInFrame.split(",", 1)
     binary_data = base64.b64decode(encoded)
-    file_path = module_dir + 'autoinit/tipInFrame.png'
+    file_path = app.module_dir + 'autoinit/tipInFrame.png'
     with open(file_path, 'wb') as file:
         file.write(binary_data)
     
@@ -120,7 +117,7 @@ def save_frame():
         'tipInFrame'      : np.array(tipInFrame)
     }
 
-    pickle.dump(pk,open(module_dir + 'autoinit/autoinit.pk','wb'))
+    pickle.dump(pk,open(app.module_dir + 'autoinit/autoinit.pk','wb'))
 
     userArgs = ['-reactInit=1']
     error = scanbot.autoInit(user_args=userArgs)
@@ -131,7 +128,7 @@ def save_frame():
 
 @app.route ('/get_initialised_frame')
 def get_initialised_frame():
-    autoinit_dir = getDir(module_dir + 'autoinit')
+    autoinit_dir = getDir(app.module_dir + 'autoinit')
     return send_from_directory(autoinit_dir, 'initialisation.png', as_attachment=True)
 
 @app.route('/run_go_to_target', methods=['POST'])
@@ -159,19 +156,19 @@ def run_go_to_target():
 
 @app.route('/scanbot_config')
 def get_config():
-    sbConfig = scanbot_config(module_dir=module_dir)
+    sbConfig = scanbot_config(module_dir=app.module_dir)
     return {'config': sbConfig.config}
 
 @app.route('/save_config', methods=['POST'])
 def save_config():
     config = request.json['config']
 
-    with open(module_dir + 'scanbot_config.ini', 'w') as file:
+    with open(app.module_dir + 'scanbot_config.ini', 'w') as file:
         for line in config:
             if(not line['value'][scanbot_config.value]): continue
             file.write(line['parameter'] + '=' + line['value'][scanbot_config.value] + '\n')
 
-    scanbot.restart(run_mode='react',module_dir=module_dir)
+    scanbot.restart(run_mode='react',module_dir=app.module_dir)
 
     # Maybe have something like scanbot.errors where errors can be stored with varying priority levels (i.e. 1=code failure, 2=warning, etc.)
 
@@ -185,7 +182,7 @@ def run_survey():
         return {"status": error}, 503
 
     try:
-        shutil.rmtree(module_dir + 'temp')
+        shutil.rmtree(app.module_dir + 'temp')
     except:
         pass
     return {"status": "success"}, 200
@@ -198,7 +195,7 @@ def run_biasdep():
         return {"status": error}, 503
 
     try:
-        shutil.rmtree(module_dir + 'temp')
+        shutil.rmtree(app.module_dir + 'temp')
     except:
         pass
     return {"status": "success"}, 200
@@ -210,14 +207,14 @@ def run_autotipshape():
     if(error):
         return {"status": error}, 503
     try:
-        shutil.rmtree(module_dir + 'temp')
+        shutil.rmtree(app.module_dir + 'temp')
     except:
         pass
     return {"status": "success"}, 200
 
 @app.route('/get_imprint_score')
 def get_imprint_score():
-    files = sorted([file for file in Path(module_dir + 'temp').iterdir() if file.suffix == '.png'], key=os.path.getmtime)
+    files = sorted([file for file in Path(app.module_dir + 'temp').iterdir() if file.suffix == '.png'], key=os.path.getmtime)
     latestFile = str(files[-1].name)
     size = latestFile.split("size--")[1].split("_")[0]
     symm = latestFile.split("symm--")[1].split(".png")[0]
@@ -229,12 +226,12 @@ def get_imprint_score():
 def check_survey_updates():
     timestamp = request.json['timestamp']
     try:
-        files = sorted([file for file in Path(module_dir + 'temp').iterdir() if file.suffix == '.png'], key=os.path.getmtime)
+        files = sorted([file for file in Path(app.module_dir + 'temp').iterdir() if file.suffix == '.png'], key=os.path.getmtime)
         latestFile = str(files[-1].name)
         try:
             latestTimestamp = float(latestFile.split('_')[0])*1000
             if(latestTimestamp > timestamp):
-                temp_dir = getDir(module_dir + 'temp')
+                temp_dir = getDir(app.module_dir + 'temp')
                 return send_from_directory(temp_dir, str(files[-1].name), as_attachment=True)
         except Exception as e:
             print(e)
@@ -248,15 +245,15 @@ def check_survey_updates():
 @app.route('/get_gif')
 def get_gif():
     frames = []
-    files = sorted([file for file in Path(module_dir + 'temp').iterdir() if file.suffix == '.png'], key=os.path.getmtime)
+    files = sorted([file for file in Path(app.module_dir + 'temp').iterdir() if file.suffix == '.png'], key=os.path.getmtime)
     for file in files:
         if(str(file.name).endswith('.png')):
             im = Image.open(file)
             frames.append(im.copy())
             
     if(frames):
-        frames[0].save(module_dir + 'temp/GIF.gif', format="GIF", append_images=frames, save_all=True, duration=500, loop=0)
-        temp_dir = getDir(module_dir + 'temp')
+        frames[0].save(app.module_dir + 'temp/GIF.gif', format="GIF", append_images=frames, save_all=True, duration=500, loop=0)
+        temp_dir = getDir(app.module_dir + 'temp')
         return send_from_directory(temp_dir, 'GIF.gif', as_attachment=True)
             
     return {"status": 'not found'}, 404
@@ -270,7 +267,7 @@ def get_running():
 @app.route('/remove_temp')
 def remove_temp():
     try:
-        shutil.rmtree(module_dir + 'temp')
+        shutil.rmtree(app.module_dir + 'temp')
     except:
         pass
     return {"status": "success"}, 200
@@ -286,7 +283,7 @@ def getDir(path):
         base_dir = os.path.dirname(sys.executable)
     else:
         # If running directly with Python, the base directory can be the current working directory
-        base_dir = module_dir
+        base_dir = app.module_dir
     
     return os.path.join(base_dir, path)
 
@@ -298,6 +295,13 @@ if __name__ == '__main__':
     Timer(1, open_browser).start()
     app.run(debug=False)
 
-def app_():
+def app_(test=False,tmp_path=""):
+    if(test):
+        print("**&&**",tmp_path)
+        app.module_dir = str(tmp_path)
+        if(not app.module_dir.endswith('/')): app.module_dir += '/'
+        scanbot.restart(run_mode='react',module_dir=app.module_dir)
+        return app
+    
     Timer(1, open_browser).start()
     app.run(debug=False)

@@ -1,3 +1,12 @@
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-6MK4DRHXWM"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'G-6MK4DRHXWM');
+</script>
 # Configuration
 When running Scanbot in browser, terminal, or Zulip modes, you must create the scanbot_config.ini configuration file which gets loaded from ~/scanbot on startup.
 <strong>When running Scanbot as web app, see [here](../web-app/#configuration)</strong>.

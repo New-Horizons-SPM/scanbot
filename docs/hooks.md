@@ -1,3 +1,12 @@
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-6MK4DRHXWM"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'G-6MK4DRHXWM');
+</script>
 # Hooks
 [Hooks](https://www.rswebsols.com/tutorials/programming/software-development-hook-hooking) allow you to add or replace key components of Scanbot's functionality where system-specific customisation is required.
 The ability to do this without rewriting source code means you can pull Scanbot updates without losing your custom functionality. For example, Scanbot monitors a camera feed when tracking the motion of the STM

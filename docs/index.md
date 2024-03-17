@@ -23,6 +23,7 @@ Scanbot is a collection of several automated STM and nc-AFM data acquisition com
 
 1. <details>
     <summary>Web App</summary>
+    <div>
     Scanbot has been implemented as a web application using [React](https://react.dev/).
     
     On Windows, the easiest way to use it is by [downloading and running the .exe](https://firebasestorage.googleapis.com/v0/b/scanbot-46390.appspot.com/o/scanbot-react%2FScanbot_V4.1.zip?alt=media&token=c0fca54e-619f-418c-9c06-f77d5ddc4ea6).
@@ -31,7 +32,7 @@ Scanbot is a collection of several automated STM and nc-AFM data acquisition com
 
     1. Clone the [nanonisTCP interface](https://github.com/New-Horizons-SPM/nanonisTCP), navigate to the root directory and run ```pip install .```
     2. Clone the [Scanbot repository](https://github.com/New-Horizons-SPM/scanbot)
-    3. Install node.js from [here](https://nodejs.org/en) or if you're using anaconda, run conda install conda-forge::nodejs
+    3. Install node.js from [here](https://nodejs.org/en) or if you're using anaconda, run ```conda install conda-forge::nodejs```
     4. Navigate to ```/scanbot/scanbot/App``` and run ```npm install```
     5. From the same directory, run ```npm run build```
     6. Navigate to the project root directory, and run ```pip install .```
@@ -42,10 +43,12 @@ Scanbot is a collection of several automated STM and nc-AFM data acquisition com
     <strong>Test Scanbot with the Nanonis V5 Simulator</strong> before integrating it with your STM by following [these instructions](./web-app-test).
 
     <strong>General user guide available [here](./web-app)</strong>.
+    </div>
   </details>
 
 2. <details>
     <summary>Terminal</summary>
+    <div>
     Running Scanbot from a terminal:
     <br><br>
     1. Clone the [nanonisTCP interface](https://github.com/New-Horizons-SPM/nanonisTCP), navigate to the root directory and run ```pip install .```
@@ -54,10 +57,12 @@ Scanbot is a collection of several automated STM and nc-AFM data acquisition com
 
     <br>
     For a full list of Scanbot commands, see [commands](./commands). Alternatively run the ```help``` command or, for help with a specific command, run ```help <command_name>```.
+    </div>
   </details>
 
 3. <details>
     <summary>Zulip</summary>
+    <div>
     Running via zulip is the most flexible implementation of Scanbot. You can send commands and receive data from anywhere and in real time via chat streams.
     <br><br>
     1. Clone the [nanonisTCP interface](https://github.com/New-Horizons-SPM/nanonisTCP), navigate to the root directory and run ```pip install .```
@@ -79,6 +84,7 @@ Scanbot is a collection of several automated STM and nc-AFM data acquisition com
 
     <br>
     For a full list of Scanbot commands, see [commands](./commands). Alternatively run the ```help``` command or, for help with a specific command, run ```help <command_name>```.
+    </div>
   </details>
 
 ## Usage

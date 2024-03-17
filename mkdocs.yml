@@ -21,4 +21,9 @@ plugins:
         is_video: True
         video_type: mp4
         video_loop: True
-        
+
+extra:
+  analytics:
+    provider: google
+    property: G-6MK4DRHXWM
+    

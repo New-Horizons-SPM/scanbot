@@ -18,7 +18,7 @@ Alternatively, you can install Scanbot from its source:
 
 1. Clone the [nanonisTCP interface](https://github.com/New-Horizons-SPM/nanonisTCP), navigate to the root directory and run ```pip install .```
 2. Clone the [Scanbot repository](https://github.com/New-Horizons-SPM/scanbot)
-3. Install node.js from [here](https://nodejs.org/en) or if you're using anaconda, run conda install conda-forge::nodejs
+3. Install node.js from [here](https://nodejs.org/en) or if you're using anaconda, run ```conda install conda-forge::nodejs```
 4. Navigate to ```/scanbot/scanbot/App``` and run ```npm install```
 5. From the same directory, run ```npm run build```
 6. Navigate to the project root directory, and run ```pip install .```

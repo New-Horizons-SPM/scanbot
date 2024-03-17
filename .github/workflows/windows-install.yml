@@ -39,3 +39,7 @@ jobs:
 
     - name: Verify Installation of the main application
       run: scanbot --version
+
+    - name: Complete unit tests
+      run: pytest
+    

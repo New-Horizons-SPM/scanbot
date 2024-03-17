@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "scanbot"
-version = "1.0.0"
+version = "4.1.0"
 description = "Collection of automated STM and nc-AFM commands compatible with Nanonis V5 SPM Controller"
 authors = ["Julian Ceddia <jdceddia@gmail.com>"]
 readme = "README.md"
@@ -26,6 +26,7 @@ zulip = "*"
 panel = "*"
 flask = "*"
 flask-cors = "*"
+pytest = "*"
 
 [tool.poetry.dev-dependencies]
 pytest = "*"  # Add other development dependencies as needed

@@ -27,6 +27,7 @@ panel = "*"
 flask = "*"
 flask-cors = "*"
 pytest = "*"
+nanonisTCP = "*"
 
 [tool.poetry.dev-dependencies]
 pytest = "*"  # Add other development dependencies as needed

@@ -44,5 +44,5 @@ export const positiveNumber = (test) => {
 }
 
 export const number = (test) => {
-    return /^-?\d+(\.\d+)?$/.test(test) || !(test)
+    return /^(-?\d+(\.\d*)?|\.\d+)?$/.test(test) || !(test) || test === '-'
 }

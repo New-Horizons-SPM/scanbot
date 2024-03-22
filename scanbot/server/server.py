@@ -16,9 +16,19 @@ from threading import Timer
 import argparse
 
 parser = argparse.ArgumentParser()
-parser.add_argument('--version', action='version', version='scanbot 4.1.0', help='show the version number and exit')
+parser.add_argument('--version', action='version', version='scanbot 4.2.0', help='show the version number and exit')
+parser.add_argument('-c', '--terminal', action='store_true', help='run scanbot in terminal')
+parser.add_argument('-z', '--zulip',    action='store_true', help='run scanbot in terminal')
 args = parser.parse_args()
 
+module_dir = str(os.path.dirname(os.path.abspath(__file__))).replace('\\','/')
+if(not module_dir.endswith('/')): module_dir += '/'
+
+run_mode = 'react'
+if(args.terminal):  run_mode = 'c'
+if(args.zulip):     run_mode = 'z'
+
+# if(run_mode == 'react'):
 # pyinstaller --onefile --icon=..\App\public\favicon.ico --add-data "..\App\build;static" --name scanbot_v4.1 server.py
 app = Flask(__name__, static_url_path='')
 
@@ -288,7 +298,7 @@ def getDir(path):
     return os.path.join(base_dir, path)
 
 def open_browser():
-      webbrowser.open_new('http://127.0.0.1:5000/')
+    webbrowser.open_new('http://127.0.0.1:5000/')
 
 # Running app
 if __name__ == '__main__':
@@ -296,8 +306,17 @@ if __name__ == '__main__':
     app.run(debug=False)
 
 def app_(test=False,tmp_path=""):
+    print("RUNMODE",run_mode)
+    
+    if(run_mode == 'c'):
+        scanbot_interface(run_mode=run_mode, module_dir=module_dir)
+        exit()
+
+    if(run_mode == 'z'):
+        scanbot_interface(run_mode=run_mode, module_dir=module_dir)
+        exit()
+        
     if(test):
-        print("**&&**",tmp_path)
         app.module_dir = str(tmp_path)
         if(not app.module_dir.endswith('/')): app.module_dir += '/'
         scanbot.restart(run_mode='react',module_dir=app.module_dir)

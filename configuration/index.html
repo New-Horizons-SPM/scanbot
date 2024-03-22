@@ -12,9 +12,12 @@
         <link href="../css/bootstrap.min.css" rel="stylesheet">
         <link href="../css/font-awesome.min.css" rel="stylesheet">
         <link href="../css/base.css" rel="stylesheet">
-        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/github.min.css">
-        <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/highlight.min.js"></script>
-        <script>hljs.highlightAll();</script> 
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/10.5.0/styles/github.min.css">
+
+        <script src="../js/jquery-1.10.2.min.js" defer></script>
+        <script src="../js/bootstrap.min.js" defer></script>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/10.5.0/highlight.min.js"></script>
+        <script>hljs.initHighlightingOnLoad();</script> 
     </head>
 
     <body>
@@ -137,7 +140,8 @@
 </div></div>
                     <div class="col-md-9" role="main">
 
-<html><head><script async src="https://www.googletagmanager.com/gtag/js?id=G-6MK4DRHXWM"></script>
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-6MK4DRHXWM"></script>
 <script>
   window.dataLayer = window.dataLayer || [];
   function gtag(){dataLayer.push(arguments);}
@@ -145,7 +149,7 @@
 
   gtag('config', 'G-6MK4DRHXWM');
 </script>
-</head><body><h1 id="configuration">Configuration</h1>
+<h1 id="configuration">Configuration</h1>
 <p>When running Scanbot in browser, terminal, or Zulip modes, you must create the scanbot_config.ini configuration file which gets loaded from ~/scanbot on startup.
 <strong>When running Scanbot as web app, see <a href="../web-app/#configuration">here</a></strong>.</p>
 <h2 id="tcp-connection">TCP Connection</h2>
@@ -189,7 +193,7 @@ piezo_z_max_F=&lt;max_Z_piezo_frequency&gt;   # Maximum frequency that can be ap
 piezo_z_min_F=&lt;min_Z_piezo_frequency&gt;   # Minimum frequency that can be applied to the Z piezo
 piezo_xy_max_F=&lt;max_XY_piezo_frequency&gt; # Maximum frequency that can be applied to the X or Y piezos
 piezo_xy_min_F=&lt;min_XY_piezo_frequency&gt; # Minimum frequency that can be applied to the X or Y piezos
-</code></pre></body></html></div>
+</code></pre></div>
             </div>
         </div>
 
@@ -197,13 +201,11 @@ piezo_xy_min_F=&lt;min_XY_piezo_frequency&gt; # Minimum frequency that can be ap
             <hr>
             <p>Documentation built with <a href="https://www.mkdocs.org/">MkDocs</a>.</p>
         </footer>
-        <script src="../js/jquery-3.6.0.min.js"></script>
-        <script src="../js/bootstrap.min.js"></script>
         <script>
             var base_url = "..",
                 shortcuts = {"help": 191, "next": 78, "previous": 80, "search": 83};
         </script>
-        <script src="../js/base.js"></script>
+        <script src="../js/base.js" defer></script>
 
         <div class="modal" id="mkdocs_keyboard_modal" tabindex="-1" role="dialog" aria-labelledby="keyboardModalLabel" aria-hidden="true">
     <div class="modal-dialog">

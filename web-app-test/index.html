@@ -12,9 +12,12 @@
         <link href="../css/bootstrap.min.css" rel="stylesheet">
         <link href="../css/font-awesome.min.css" rel="stylesheet">
         <link href="../css/base.css" rel="stylesheet">
-        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/github.min.css">
-        <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/highlight.min.js"></script>
-        <script>hljs.highlightAll();</script> 
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/10.5.0/styles/github.min.css">
+
+        <script src="../js/jquery-1.10.2.min.js" defer></script>
+        <script src="../js/bootstrap.min.js" defer></script>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/10.5.0/highlight.min.js"></script>
+        <script>hljs.initHighlightingOnLoad();</script> 
     </head>
 
     <body>
@@ -135,7 +138,8 @@
 </div></div>
                     <div class="col-md-9" role="main">
 
-<html><head><script async src="https://www.googletagmanager.com/gtag/js?id=G-6MK4DRHXWM"></script>
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-6MK4DRHXWM"></script>
 <script>
   window.dataLayer = window.dataLayer || [];
   function gtag(){dataLayer.push(arguments);}
@@ -143,14 +147,14 @@
 
   gtag('config', 'G-6MK4DRHXWM');
 </script>
-</head><body><h1 id="testing-scanbot-with-the-nanonis-v5-simulator">Testing Scanbot with the Nanonis V5 Simulator</h1>
+<h1 id="testing-scanbot-with-the-nanonis-v5-simulator">Testing Scanbot with the Nanonis V5 Simulator</h1>
 <p>This page provides detailed instructions about how you can try Scanbot using the Nanonis V5 Simulator.
 Completing all of these tests will take approximately one hour.</p>
 <p><strong>When navigating the web application, avoid using the browser back and forward buttons. To go back one page, use the buttons located in the top right.</strong></p>
 <h2 id="installation-5-min">Installation (5 min)</h2>
 <ol>
 <li>Download <a href="https://www.specs-group.com/nanonis/products/mimea/#c1265">Nanonis V5 Simulator</a></li>
-<li>Download the latest version of Scanbot: <a href="https://firebasestorage.googleapis.com/v0/b/scanbot-46390.appspot.com/o/scanbot-react%2FScanbot_V4.1.zip?alt=media&amp;token=c0fca54e-619f-418c-9c06-f77d5ddc4ea6">Scanbot_V4.1</a>
+<li>Download the latest version of Scanbot: <a href="https://firebasestorage.googleapis.com/v0/b/scanbot-46390.appspot.com/o/scanbot-react%2Fscanbot_V4.2.zip?alt=media&amp;token=f4136859-1fc8-42c6-b254-14c92f434e05">Scanbot_V4.2</a>
 <br>Note: If you prefer to run Scanbot from its source, follow the installation instructions <a href="../web-app/#installation">here</a>.
 <strong>If you want to install Scanbot from source and you want to test it using the simulator, you'll need to download <a href="https://firebasestorage.googleapis.com/v0/b/scanbot-46390.appspot.com/o/scanbot-react%2FDev.zip?alt=media&amp;token=3ec1f305-44c6-44c7-a4e1-a79850e9ae79">this folder</a>
 and extract it to /scanbot/scanbot/ before the installation</strong>. This folder contains dummy data used in demo modes.</li>
@@ -160,39 +164,39 @@ and extract it to /scanbot/scanbot/ before the installation</strong>. This folde
 <ol>
 <li>Open the Nanonis V5 Simulator</li>
 <li>In the 'Current' module, change the Gain to LN 10^9. <strong>If your version of the simulator does not have this setting you can ignore this step.</strong>
-<br><img alt="CurrenModule" src="../testing/gain109.png"><br></li>
+<br><img alt="CurrenModule" src="../testing/gain109.png" /><br></li>
 <li>In the Z-Controller module, turn on the Controller. Ensure the tip is 'tunnelling' at the correct setpoint.
 <br>
-<img alt="Z-ControllerModule" src="../testing/z-controller-on.png">
+<img alt="Z-ControllerModule" src="../testing/z-controller-on.png" />
 <br></li>
 <li>From the Scan Control module in Nanonis, ensure all images are being autosaved. <strong>This is essential for proper operation of Scanbot</strong>. It's also useful to turn on the auto-paste option too.
 <br>
-<img alt="autosave" src="../testing/saveall.png">
+<img alt="autosave" src="../testing/saveall.png" />
 <br></li>
 </ol>
 <h3 id="launch-scanbot">Launch Scanbot</h3>
 <ol>
 <li>Open Scanbot.exe. A terminal will open and you should see the server start.
 <br>
-<img alt="Scanbot-terminal" src="../testing/scanbot-terminal.png">
+<img alt="Scanbot-terminal" src="../testing/scanbot-terminal.png" />
 <br></li>
 <li>Scanbot should then open in a new browser tab. If it does not, then navigate to <a href="http://127.0.0.1:5000">http://127.0.0.1:5000</a>.
 When running Scanbot for the first time, you will see a warning letting you know that you have not yet reviewed the configuration.
 You may receive an additional warning message if Scanbot is unable to communicate to Nanonis. This will be solved in the next step.
 <br>
-<img alt="landing-page" src="../testing/top-level.png">
+<img alt="landing-page" src="../testing/top-level.png" />
 <br></li>
 </ol>
 <h2 id="configuration-2-min">Configuration (2 min)</h2>
 <ol>
 <li>In Nanonis, check the TCP ports from system =&gt; options =&gt; TCP Programming Interface.
 <br>
-<img alt="tcp-ports" src="../testing/tcp-ports.png">
+<img alt="tcp-ports" src="../testing/tcp-ports.png" />
 <br></li>
 <li>From the Scanbot landing page, navigate to the 'Configuration' page.</li>
 <li>Ensure that the comma-delimited ports in Scanbot match those configured in Nanonis.
 <br>
-<img alt="configuration-page" src="../testing/configuration-page.png">
+<img alt="configuration-page" src="../testing/configuration-page.png" />
 <br></li>
 <li>When running Scanbot using the simulator, the default configuration is ok. Accept the configuration. This will save the scanbot_config.ini file and your settings will be remembered.
 Accepting the configuration will also stop the warning message from being displayed.</li>
@@ -214,7 +218,7 @@ Alternatively, you can hover over any field to obtain its description. In summar
 <li>Once you're satisfied with the survey parameters, click 'Start Survey'. Acquired images will begin populating the empty grid.
 You can either wait for the survey to complete or stop it any time with the 'Stop' button.
 <br>
-<img alt="survey-page" src="../appim/survey.png">
+<img alt="survey-page" src="../appim/survey.png" />
 <br></li>
 </ol>
 <h2 id="automated-tip-shaping-10-min">Automated Tip Shaping (10 min)</h2>
@@ -234,13 +238,13 @@ In Summary:
 <li>From the landing page navigate to 'Data Acquisition' =&gt; 'Automation'.</li>
 <li>In Nanonis, from the 'Scan Control' module, open the 'Tip Shaper' module.
 <br>
-<img alt="tip-shaper-module" src="../testing/tip-shaper-module.png">
+<img alt="tip-shaper-module" src="../testing/tip-shaper-module.png" />
 <br></li>
 <li>In Nanonis, from 'Graphs', open the 'Signal Chart'. This can be used to monitor Scanbot's tip shaping actions (as well as looking at the parameters in the Tip Shaper module).
 Select the 'Current (A)' and 'Z (m)' channels. You can adjust the 'Averaging' slider to slow down the rate at which the curves move through the window.
 In the figure below, the tip was at an intial height of -2 nm, then moved 3 nm into the surface and retracted 8 nm before turning the feedback controller on. During this time, the current spiked to its maximum value of 10 nA.
 <br>
-<img alt="tip-shaping" src="../testing/tip-shaping.png">
+<img alt="tip-shaping" src="../testing/tip-shaping.png" />
 <br></li>
 <li><strong>When running with the Nanonis Simulator, please obey the following in the 'Automated Tip Shaping' settings:</strong>
 <br><ul>
@@ -260,7 +264,7 @@ The simulator scans are not flat, thus one can withdraw the tip to trick Scanbot
 <li>Scans of the tip's imprint, along with its calculated size and circularity, after each iteration will be shown in the browser.
 Remember that in demo mode, these scans are pulled from a pre-loaded file so they will look different to what's shown in the Nanonis Scan Control module.
 <br>
-<img alt="auto-tip-shaping" src="../appim/autotipshaping.png">
+<img alt="auto-tip-shaping" src="../appim/autotipshaping.png" />
 <br></li>
 <li>The process will finish when the tip imprint's area is smaller than the desired area <strong>and</strong> the circularity is larger than the desired.</li>
 </ol>
@@ -283,7 +287,7 @@ This is normally accomplished via a live camera feed, however in Demo mode, the 
 <li>A preview of the locations you have initialised will be shown. <strong>Press 'q' to close and finish the initialisation, otherwise the window will close by itself after 30 seconds.</strong>
     Your initialisation should look something like the figure below:
 <br>
-<img alt="initialised" src="../testing/initialised.png">
+<img alt="initialised" src="../testing/initialised.png" />
 <br>
 <strong>Note: the dotted line represents the path of the tip in the video recording.
 Placing the sample or metal coordinates outside the shaded region means that the tip will never reach them.
@@ -296,8 +300,8 @@ Placing the sample or metal coordinates outside the shaded region means that the
 <li>Review the settings in the 'Move Tip' group. In live mode, these must be configured appropriate to your setup. Since we're running this in demo mode, the defaults are ok.</li>
 <li>In Nanonis, from the Z-Controller, open the Auto Approach module
 <br>
-<img alt="autoapproach" src="../testing/autoapproach.png">
-<img alt="autoapproachmodule" src="../testing/autoapproachmodule.png">
+<img alt="autoapproach" src="../testing/autoapproach.png" />
+<img alt="autoapproachmodule" src="../testing/autoapproachmodule.png" />
 <br></li>
 <li>In Scanbot, click the 'Go to Metal' button</li>
 <li>A popup video feed will open showing the STM tip move from its current position to the clean metal. The red marker will track the tip as it moves towards its target.
@@ -316,7 +320,7 @@ This means the STM tip will not be at the location that Scanbot thinks it is, <s
 <li>Follow the initialisation steps in the previous test.
 <strong>Now that we're confident that the tip can be tracked via the camera feed, this time you can initialise the sample and metal coordinates as shown:</strong>
 <br>
-<img alt="quickinitialisation" src="../testing/quickinitialisation.png">
+<img alt="quickinitialisation" src="../testing/quickinitialisation.png" />
 <br>
 <strong>Setting the initial coordinates in this state lets the tip move back and forth between sample and metal locations without Scanbot losing track of the STM tip when the video recording restarts between movements.</strong></li>
 </ol>
@@ -342,7 +346,7 @@ The process for survey automation is as follows:</p>
 <li>In demo mode, this process will repeat indefinitely if the initialisation was completed as in the figure above.</li>
 </ol>
 <p><strong>Note:</strong> Scanbot is able to detect when the tip is unstable or 'noisy' during image acquisition. It cannot detect doubled tips.
-The built-in image classifier can be replaced with a custom one by using the <a href="../hooks/#hk_classifier">hk_classifier hook</a>.</p></body></html></div>
+The built-in image classifier can be replaced with a custom one by using the <a href="../hooks/#hk_classifier">hk_classifier hook</a>.</p></div>
             </div>
         </div>
 
@@ -350,13 +354,11 @@ The built-in image classifier can be replaced with a custom one by using the <a 
             <hr>
             <p>Documentation built with <a href="https://www.mkdocs.org/">MkDocs</a>.</p>
         </footer>
-        <script src="../js/jquery-3.6.0.min.js"></script>
-        <script src="../js/bootstrap.min.js"></script>
         <script>
             var base_url = "..",
                 shortcuts = {"help": 191, "next": 78, "previous": 80, "search": 83};
         </script>
-        <script src="../js/base.js"></script>
+        <script src="../js/base.js" defer></script>
 
         <div class="modal" id="mkdocs_keyboard_modal" tabindex="-1" role="dialog" aria-labelledby="keyboardModalLabel" aria-hidden="true">
     <div class="modal-dialog">

@@ -12,9 +12,12 @@
         <link href="../css/bootstrap.min.css" rel="stylesheet">
         <link href="../css/font-awesome.min.css" rel="stylesheet">
         <link href="../css/base.css" rel="stylesheet">
-        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/github.min.css">
-        <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/highlight.min.js"></script>
-        <script>hljs.highlightAll();</script> 
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/10.5.0/styles/github.min.css">
+
+        <script src="../js/jquery-1.10.2.min.js" defer></script>
+        <script src="../js/bootstrap.min.js" defer></script>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/10.5.0/highlight.min.js"></script>
+        <script>hljs.initHighlightingOnLoad();</script> 
     </head>
 
     <body>
@@ -125,7 +128,8 @@
 </div></div>
                     <div class="col-md-9" role="main">
 
-<html><head><script async src="https://www.googletagmanager.com/gtag/js?id=G-6MK4DRHXWM"></script>
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-6MK4DRHXWM"></script>
 <script>
   window.dataLayer = window.dataLayer || [];
   function gtag(){dataLayer.push(arguments);}
@@ -133,11 +137,11 @@
 
   gtag('config', 'G-6MK4DRHXWM');
 </script>
-</head><body><h1 id="featured">Featured</h1>
+<h1 id="featured">Featured</h1>
 <p><br></p>
 <h2 id="web-app">Web App</h2>
 <p>Scanbot has a fancy new front-end developed in React.js. Full documentation <a href="../web-app">here</a>
-<img alt="WebApp" src="../appim/top-level.png">
+<img alt="WebApp" src="../appim/top-level.png" />
 <br></p>
 <h2 id="scanbot-meets-chatgpt">Scanbot meets ChatGPT</h2>
 <p><br>
@@ -145,12 +149,12 @@ When preparing a new tip, Scanbot lightly crashes the apex into the surface and 
 In the example hk_tipShape below, the OpenAI API is used to send the size (in units of nm2) and circularity of the tip's imprint to ChatGPT. ChatGPT is instructed to respond with a suggestion for
 what tip-shaping parameters to try next. This has been surprisingly effective for the little effort it takes!
 See <a href="../hooks">here</a> for more details about how hooks work with Scanbot.</p>
-<p><img alt="ChatGPT" src="../ChatGPT.png"></p>
+<p><img alt="ChatGPT" src="../ChatGPT.png" /></p>
 <h3 id="hk_tipshapepy">hk_tipShape.py</h3>
 <pre><code class="language-Python">import openai # This example is compatible with openai version 0.27.4
 
 def run(cleanImage, tipImprint, tipShapeProps, target, actual, history):
-    """
+    &quot;&quot;&quot;
     This hook calls the ChatGPT API to seek guidance on how aggressive the next 
     tip shape should be. In this example, only the crash depth is considered, 
     but you can see how easily other parameters, such as bias or tip pulsing 
@@ -173,59 +177,59 @@ def run(cleanImage, tipImprint, tipShapeProps, target, actual, history):
     history : An in-out variable to keep track of past calls to this function.
               (In this example, history keeps a running record of the dialogue
                to ChatGPT)
-    """
+    &quot;&quot;&quot;
 
-    openai.organization = "org-ty5pA0i9NIRV1ZF0Trweflf1"                        # OpenAI
-    openai.api_key = "xx-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"      # Your OpenAI API key (see OpenAI API documentation for how to create a key)
+    openai.organization = &quot;org-ty5pA0i9NIRV1ZF0Trweflf1&quot;                        # OpenAI
+    openai.api_key = &quot;xx-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx&quot;      # Your OpenAI API key (see OpenAI API documentation for how to create a key)
 
     messages = history                                                          # Running dialogue with ChatGPT
     if(not len(messages)):                                                      # This must be the first time this hook was called
         # Give a prompt to ChatGPT to explain to it what it's role is...
-        systemPrompt  = "You are helping to condition an STM probe by deciding what tip shaping parameters should be used based on the size (in units of nm2) and circularity "
-        systemPrompt += "of the tip's imprint on a clean metal surface after it is intentionally crashed very delicately into the surface. I will provide you with the imprint's "
-        systemPrompt += "size and circularity. You will provide me with a response that states how far I should then crash the tip into "
-        systemPrompt += "the clean metal in order to reshape it. This iterative process will continue until the desired size and circularity are met. "
-        systemPrompt += "The maximum crash depth should never exceed 12 nm. Keep in mind that 12 nm is considered very aggressive. "
-        systemPrompt += "Your responses must be limited to a singular number in units of nm."
+        systemPrompt  = &quot;You are helping to condition an STM probe by deciding what tip shaping parameters should be used based on the size (in units of nm2) and circularity &quot;
+        systemPrompt += &quot;of the tip's imprint on a clean metal surface after it is intentionally crashed very delicately into the surface. I will provide you with the imprint's &quot;
+        systemPrompt += &quot;size and circularity. You will provide me with a response that states how far I should then crash the tip into &quot;
+        systemPrompt += &quot;the clean metal in order to reshape it. This iterative process will continue until the desired size and circularity are met. &quot;
+        systemPrompt += &quot;The maximum crash depth should never exceed 12 nm. Keep in mind that 12 nm is considered very aggressive. &quot;
+        systemPrompt += &quot;Your responses must be limited to a singular number in units of nm.&quot;
 
         # Sending a message like this first seems to improve future replies
         size = str(actual[0])
         symm = str(actual[1])
-        firstMessage  = "size=" + size + ", "
-        firstMessage += "circularity=" + symm + ". "
+        firstMessage  = &quot;size=&quot; + size + &quot;, &quot;
+        firstMessage += &quot;circularity=&quot; + symm + &quot;. &quot;
 
         targetSize = str(target[0])
         targetSymm = str(target[1])
-        firstMessage += "Desired maximum size = " + targetSize + ", "
-        firstMessage += "Desired minimum circularity = " + targetSymm + ". "
+        firstMessage += &quot;Desired maximum size = &quot; + targetSize + &quot;, &quot;
+        firstMessage += &quot;Desired minimum circularity = &quot; + targetSymm + &quot;. &quot;
 
-        firstMessage += "Format your replies exactly as follows (note the lack of expressed units): &lt;suggested crash depth&gt;"
+        firstMessage += &quot;Format your replies exactly as follows (note the lack of expressed units): &lt;suggested crash depth&gt;&quot;
 
-        messages.append({"role": "system", "content": systemPrompt})
-        messages.append({"role": "user", "content": firstMessage})
+        messages.append({&quot;role&quot;: &quot;system&quot;, &quot;content&quot;: systemPrompt})
+        messages.append({&quot;role&quot;: &quot;user&quot;, &quot;content&quot;: firstMessage})
     else:
-        # Build a message from the "user"
-        role    = "user"
-        content = "size=" + str(actual[0]) + "circularity=" + str(actual[1])
-        messages.append({"role": role, "content": content})                     # Send a message containing the measured size and symmetry of the imprint.
+        # Build a message from the &quot;user&quot;
+        role    = &quot;user&quot;
+        content = &quot;size=&quot; + str(actual[0]) + &quot;circularity=&quot; + str(actual[1])
+        messages.append({&quot;role&quot;: role, &quot;content&quot;: content})                     # Send a message containing the measured size and symmetry of the imprint.
 
     completion = openai.ChatCompletion.create(                                  # Send the message, along with the full message dialogue history and recieve response
-      model="gpt-4",
+      model=&quot;gpt-4&quot;,
       messages=messages
     )
 
     messages.append(completion.choices[0].message)                              # Append the latest message to the running dialogue history
     history = messages                                                          # Pass out the message history so it can be passed back in on the next call
 
-    z1 = float(completion.choices[0].message["content"]) * -1e-9                # Tip shape depth determined by ChatGPT
+    z1 = float(completion.choices[0].message[&quot;content&quot;]) * -1e-9                # Tip shape depth determined by ChatGPT
     z2 = -2*z1                                                                  # Tip lift is double the depth
     tipShapeProps[3] = z1                                                       # Amount to plunge the tip into the surface (m)
     tipShapeProps[7] = z2                                                       # Amount to pull tip out of the surface (m)
 
-    print("ChatGPT says tip shape z1 = " + str(z1*1e9) + " nm")
+    print(&quot;ChatGPT says tip shape z1 = &quot; + str(z1*1e9) + &quot; nm&quot;)
 
     return tipShapeProps,history                                                # Return the updated tip shaping properties and running history 
-</code></pre></body></html></div>
+</code></pre></div>
             </div>
         </div>
 
@@ -233,13 +237,11 @@ def run(cleanImage, tipImprint, tipShapeProps, target, actual, history):
             <hr>
             <p>Documentation built with <a href="https://www.mkdocs.org/">MkDocs</a>.</p>
         </footer>
-        <script src="../js/jquery-3.6.0.min.js"></script>
-        <script src="../js/bootstrap.min.js"></script>
         <script>
             var base_url = "..",
                 shortcuts = {"help": 191, "next": 78, "previous": 80, "search": 83};
         </script>
-        <script src="../js/base.js"></script>
+        <script src="../js/base.js" defer></script>
 
         <div class="modal" id="mkdocs_keyboard_modal" tabindex="-1" role="dialog" aria-labelledby="keyboardModalLabel" aria-hidden="true">
     <div class="modal-dialog">

@@ -12,9 +12,12 @@
         <link href="css/bootstrap.min.css" rel="stylesheet">
         <link href="css/font-awesome.min.css" rel="stylesheet">
         <link href="css/base.css" rel="stylesheet">
-        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/github.min.css">
-        <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/highlight.min.js"></script>
-        <script>hljs.highlightAll();</script> 
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/10.5.0/styles/github.min.css">
+
+        <script src="js/jquery-1.10.2.min.js" defer></script>
+        <script src="js/bootstrap.min.js" defer></script>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/10.5.0/highlight.min.js"></script>
+        <script>hljs.initHighlightingOnLoad();</script> 
     </head>
 
     <body class="homepage">
@@ -122,7 +125,7 @@
               <ul class="nav flex-column">
               </ul>
             </li>
-            <li class="nav-item" data-level="2"><a href="#usage" class="nav-link">Usage</a>
+            <li class="nav-item" data-level="2"><a href="#running" class="nav-link">Running:</a>
               <ul class="nav flex-column">
               </ul>
             </li>
@@ -145,7 +148,8 @@
 </div></div>
                     <div class="col-md-9" role="main">
 
-<html><head><script async src="https://www.googletagmanager.com/gtag/js?id=G-6MK4DRHXWM"></script>
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-6MK4DRHXWM"></script>
 <script>
   window.dataLayer = window.dataLayer || [];
   function gtag(){dataLayer.push(arguments);}
@@ -153,7 +157,7 @@
 
   gtag('config', 'G-6MK4DRHXWM');
 </script>
-</head><body><h1 id="scanbot">Scanbot       <a href="https://zenodo.org/badge/latestdoi/487719232"><img alt="DOI" src="https://zenodo.org/badge/487719232.svg"></a></h1>
+<h1 id="scanbot">Scanbot       <a href="https://zenodo.org/badge/latestdoi/487719232"><img alt="DOI" src="https://zenodo.org/badge/487719232.svg" /></a></h1>
 <h2 id="featured">Featured</h2>
 <ul>
 <li><a href="./featured/#web-app">React Implementation of Scanbot</a><br></li>
@@ -183,54 +187,50 @@
 </li>
 </ul>
 <h2 id="installation">Installation</h2>
+<p>There are several ways to install Scanbot:</p>
 <ol>
+<li><strong>Quick Start:</strong><br><br>
+    For a quick start <strong>on Windows</strong>, download and run the .exe file from <a href="https://firebasestorage.googleapis.com/v0/b/scanbot-46390.appspot.com/o/scanbot-react%2Fscanbot_V4.2.zip?alt=media&amp;token=f4136859-1fc8-42c6-b254-14c92f434e05">here</a>.
+    This method automatically sets up and launches the Scanbot web app.
+<br><br></li>
+<li><strong>Installing via pip:</strong><br><br>
+If you prefer using pip, you can install Scanbot directly with:
+<br>
+<code>pip install scanbot</code>
+<br><br></li>
 <li>
-<p><details>
-    <summary>Web App</summary>
-    <div>
-    Scanbot has been implemented as a web application using <a href="https://react.dev/">React</a>.
-<p>On Windows, the easiest way to use it is by <a href="https://firebasestorage.googleapis.com/v0/b/scanbot-46390.appspot.com/o/scanbot-react%2FScanbot_V4.1.zip?alt=media&amp;token=c0fca54e-619f-418c-9c06-f77d5ddc4ea6">downloading and running the .exe</a>.</p>
-<p>Alternatively, you can install Scanbot from its source:</p>
+<p><strong>Building from Source:</strong><br><br>
+    To install Scanbot from its source, particularly if you want the latest version or wish to contribute to its development, follow these steps:</p>
 <ol>
-<li>Clone the <a href="https://github.com/New-Horizons-SPM/nanonisTCP">nanonisTCP interface</a>, navigate to the root directory and run <code>pip install .</code></li>
 <li>Clone the <a href="https://github.com/New-Horizons-SPM/scanbot">Scanbot repository</a></li>
 <li>Install node.js from <a href="https://nodejs.org/en">here</a> or if you're using anaconda, run <code>conda install conda-forge::nodejs</code></li>
-<li>Navigate to <code>/scanbot/scanbot/App</code> and run <code>npm install</code></li>
+<li>Navigate to <code>scanbot/scanbot/App</code> and run <code>npm install</code></li>
 <li>From the same directory, run <code>npm run build</code></li>
 <li>Navigate to the project root directory, and run <code>pip install .</code></li>
 <li>Start Scanbot by running the command <code>scanbot</code></li>
 </ol>
-<p><br></p>
-<p><strong>Test Scanbot with the Nanonis V5 Simulator</strong> before integrating it with your STM by following <a href="./web-app-test">these instructions</a>.</p>
-<p><strong>General user guide available <a href="./web-app">here</a></strong>.
-</p></div>
-  </details></p>
 </li>
-<li>
-<p><details>
-    <summary>Terminal</summary>
-    <div>
-    Running Scanbot from a terminal:
-    <br><br>
-<ol>
-<li>Clone the <a href="https://github.com/New-Horizons-SPM/nanonisTCP">nanonisTCP interface</a>, navigate to the root directory and run <code>pip install .</code></li>
-<li>Clone the <a href="https://github.com/New-Horizons-SPM/scanbot">Scanbot repository</a>, navigate to the root directory, and run <code>pip install .</code></li>
-<li>Run <code>python scanbot_interface.py -c</code></li>
 </ol>
-<p><br>
-For a full list of Scanbot commands, see <a href="./commands">commands</a>. Alternatively run the <code>help</code> command or, for help with a specific command, run <code>help &lt;command_name&gt;</code>.
-</p></div>
-  </details></p>
-</li>
-<li>
-<p><details>
-    <summary>Zulip</summary>
-    <div>
-    Running via zulip is the most flexible implementation of Scanbot. You can send commands and receive data from anywhere and in real time via chat streams.
-    <br><br>
+<h2 id="running">Running:</h2>
+<p>Scanbot can be run as a web application, in a terminal, or via the open-source messaging platform, <a href="https://zulip.com/">Zulip</a>:</p>
 <ol>
-<li>Clone the <a href="https://github.com/New-Horizons-SPM/nanonisTCP">nanonisTCP interface</a>, navigate to the root directory and run <code>pip install .</code></li>
-<li>Clone the <a href="https://github.com/New-Horizons-SPM/scanbot">Scanbot repository</a>, navigate to the root directory, and run <code>pip install .</code></li>
+<li><strong>Web Application:</strong><br><br>
+    The web app can be launched by running the command: <code>scanbot</code>
+    <br><br>
+    You can <strong>test Scanbot with the Nanonis V5 Simulator</strong> before integrating it with your STM by following <a href="./web-app-test">these instructions</a>.
+    <br><br>
+    The general <strong>user guide</strong> is available <a href="./web-app">here</a></strong>.
+<br><br></li>
+<li><strong>Terminal:</strong><br><br>
+    Scanbot can run in a terminal after running: <code>scanbot -c</code>
+    <br><br>
+    For a full list of Scanbot commands, see <a href="./commands">here</a>. Alternatively run the <code>help</code> command or, for help with a specific command, run <code>help &lt;command_name&gt;</code>.
+<br><br></li>
+<li>
+<p><strong>Zulip:</strong><br><br>
+    Running via Zulip is the most flexible implementation of Scanbot. You can send commands and receive data from anywhere and in real time via chat streams.
+    You must follow a few additional steps first:</p>
+<ol>
 <li>
 <p>Install zulip and zulip_bots</p>
 <p><code>pip install zulip</code><br>
@@ -245,18 +245,14 @@ For a full list of Scanbot commands, see <a href="./commands">commands</a>. Alte
 <code>upload_method=zulip</code></p>
 </li>
 <li>
-<p>Run <code>python scanbot_interface.py -z</code></p>
-</li>
-<li>Run <a href="./commands">commands</a> by sending messages to the Zulip bot</li>
-</ol>
-<p><br>
-For a full list of Scanbot commands, see <a href="./commands">commands</a>. Alternatively run the <code>help</code> command or, for help with a specific command, run <code>help &lt;command_name&gt;</code>.
-</p></div>
-  </details></p>
+<p>Launch Scanbot by running: <code>scanbot -z</code>
+<br><br></p>
 </li>
 </ol>
-<h2 id="usage">Usage</h2>
-<p>Refer to the relevant user guide to see how Scanbot can help with data acquisition and probe conditioning in STM experiments.</p>
+<p>For a full list of Scanbot commands, see <a href="./commands">here</a>. Alternatively run the <code>help</code> command or, for help with a specific command, run <code>help &lt;command_name&gt;</code>.
+<br></p>
+</li>
+</ol>
 <h2 id="contributing">Contributing</h2>
 <p>If you would like to contribute to the Scanbot project you can do this through the GitHub <a href="https://github.com/New-Horizons-SPM/scanbot/issues">Issue Register</a>.
 If you come across a problem with Scanbot or would like to request new features, you can raise a <a href="https://github.com/New-Horizons-SPM/scanbot/issues/new">new issue</a>.
@@ -265,7 +261,7 @@ Alternatively, scan through our <a href="https://github.com/New-Horizons-SPM/sca
 <p>If you use Scanbot in your scientific research, please consider <a href="https://zenodo.org/badge/latestdoi/487719232">citing it</a>.</p>
 <h2 id="fleet">FLEET</h2>
 <p>Special thanks to <a href="https://www.fleet.org.au/">FLEET</a> for their contribution through the <a href="https://www.fleet.org.au/translation/#:~:text=A%20new%20FLEET%20program%20provides,translation%20skills%20in%20Centre%20membership.">FLEET Translation Program</a>.
-<img alt="FLEETLogo" src="fleet-logo.png"></p></body></html></div>
+<img alt="FLEETLogo" src="fleet-logo.png" /></p></div>
             </div>
         </div>
 
@@ -273,13 +269,11 @@ Alternatively, scan through our <a href="https://github.com/New-Horizons-SPM/sca
             <hr>
             <p>Documentation built with <a href="https://www.mkdocs.org/">MkDocs</a>.</p>
         </footer>
-        <script src="js/jquery-3.6.0.min.js"></script>
-        <script src="js/bootstrap.min.js"></script>
         <script>
             var base_url = ".",
                 shortcuts = {"help": 191, "next": 78, "previous": 80, "search": 83};
         </script>
-        <script src="js/base.js"></script>
+        <script src="js/base.js" defer></script>
 
         <div class="modal" id="mkdocs_keyboard_modal" tabindex="-1" role="dialog" aria-labelledby="keyboardModalLabel" aria-hidden="true">
     <div class="modal-dialog">
@@ -326,6 +320,6 @@ Alternatively, scan through our <a href="https://github.com/New-Horizons-SPM/sca
 </html>
 
 <!--
-MkDocs version : 1.5.3
-Build Date UTC : 2024-03-17 05:00:58.919866+00:00
+MkDocs version : 1.4.2
+Build Date UTC : 2024-03-22 03:35:08.364630+00:00
 -->

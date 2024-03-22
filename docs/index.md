@@ -30,75 +30,65 @@ Scanbot is a collection of several automated STM and nc-AFM data acquisition com
     
 ## Installation
 
-1. <details>
-    <summary>Web App</summary>
-    <div>
-    Scanbot has been implemented as a web application using [React](https://react.dev/).
-    
-    On Windows, the easiest way to use it is by [downloading and running the .exe](https://firebasestorage.googleapis.com/v0/b/scanbot-46390.appspot.com/o/scanbot-react%2FScanbot_V4.1.zip?alt=media&token=c0fca54e-619f-418c-9c06-f77d5ddc4ea6).
-    
-    Alternatively, you can install Scanbot from its source:
+There are several ways to install Scanbot:
 
-    1. Clone the [nanonisTCP interface](https://github.com/New-Horizons-SPM/nanonisTCP), navigate to the root directory and run ```pip install .```
-    2. Clone the [Scanbot repository](https://github.com/New-Horizons-SPM/scanbot)
-    3. Install node.js from [here](https://nodejs.org/en) or if you're using anaconda, run ```conda install conda-forge::nodejs```
-    4. Navigate to ```/scanbot/scanbot/App``` and run ```npm install```
-    5. From the same directory, run ```npm run build```
-    6. Navigate to the project root directory, and run ```pip install .```
-    5. Start Scanbot by running the command ```scanbot```
+1. <strong>Quick Start:</strong><br><br>
+    For a quick start <strong>on Windows</strong>, download and run the .exe file from [here](https://firebasestorage.googleapis.com/v0/b/scanbot-46390.appspot.com/o/scanbot-react%2Fscanbot_V4.2.zip?alt=media&token=f4136859-1fc8-42c6-b254-14c92f434e05).
+    This method automatically sets up and launches the Scanbot web app.
+<br><br>
+2. <strong>Installing via pip:</strong><br><br>
+If you prefer using pip, you can install Scanbot directly with:
+<br>
+```pip install scanbot```
+<br><br>
+3. <strong>Building from Source:</strong><br><br>
+    To install Scanbot from its source, particularly if you want the latest version or wish to contribute to its development, follow these steps:
 
-    <br>
-    
-    <strong>Test Scanbot with the Nanonis V5 Simulator</strong> before integrating it with your STM by following [these instructions](./web-app-test).
+    1. Clone the [Scanbot repository](https://github.com/New-Horizons-SPM/scanbot)
+    2. Install node.js from [here](https://nodejs.org/en) or if you're using anaconda, run ```conda install conda-forge::nodejs```
+    3. Navigate to ```scanbot/scanbot/App``` and run ```npm install```
+    4. From the same directory, run ```npm run build```
+    5. Navigate to the project root directory, and run ```pip install .```
+    6. Start Scanbot by running the command ```scanbot```
 
-    <strong>General user guide available [here](./web-app)</strong>.
-    </div>
-  </details>
 
-2. <details>
-    <summary>Terminal</summary>
-    <div>
-    Running Scanbot from a terminal:
+## Running:
+
+Scanbot can be run as a web application, in a terminal, or via the open-source messaging platform, [Zulip](https://zulip.com/):
+
+1. <strong>Web Application:</strong><br><br>
+    The web app can be launched by running the command: ```scanbot```
     <br><br>
-    1. Clone the [nanonisTCP interface](https://github.com/New-Horizons-SPM/nanonisTCP), navigate to the root directory and run ```pip install .```
-    2. Clone the [Scanbot repository](https://github.com/New-Horizons-SPM/scanbot), navigate to the root directory, and run ```pip install .```
-    3. Run ```python scanbot_interface.py -c```
-
-    <br>
-    For a full list of Scanbot commands, see [commands](./commands). Alternatively run the ```help``` command or, for help with a specific command, run ```help <command_name>```.
-    </div>
-  </details>
-
-3. <details>
-    <summary>Zulip</summary>
-    <div>
-    Running via zulip is the most flexible implementation of Scanbot. You can send commands and receive data from anywhere and in real time via chat streams.
+    You can <strong>test Scanbot with the Nanonis V5 Simulator</strong> before integrating it with your STM by following [these instructions](./web-app-test).
     <br><br>
-    1. Clone the [nanonisTCP interface](https://github.com/New-Horizons-SPM/nanonisTCP), navigate to the root directory and run ```pip install .```
-    2. Clone the [Scanbot repository](https://github.com/New-Horizons-SPM/scanbot), navigate to the root directory, and run ```pip install .```
-    3. Install zulip and zulip_bots
+    The general <strong>user guide</strong> is available [here](./web-app)</strong>.
+<br><br>
+2. <strong>Terminal:</strong><br><br>
+    Scanbot can run in a terminal after running: ```scanbot -c```
+    <br><br>
+    For a full list of Scanbot commands, see [here](./commands). Alternatively run the ```help``` command or, for help with a specific command, run ```help <command_name>```.
+<br><br>
+3. <strong>Zulip:</strong><br><br>
+    Running via Zulip is the most flexible implementation of Scanbot. You can send commands and receive data from anywhere and in real time via chat streams.
+    You must follow a few additional steps first:
+    
+    1. Install zulip and zulip_bots
         
         ```pip install zulip```<br>
         ```pip install zulip_bots```
         
-    4. [Create a zulip bot](https://zulip.com/help/add-a-bot-or-integration) and download the zuliprc file
+    2. [Create a zulip bot](https://zulip.com/help/add-a-bot-or-integration) and download the zuliprc file
 
-    5. Add the following lines to scanbot_config.ini:
+    3. Add the following lines to scanbot_config.ini:
         
         ```zuliprc=<path_to_zuliprc>```<br>
         ```upload_method=zulip```
-
-    6. Run ```python scanbot_interface.py -z```
-    7. Run [commands](./commands) by sending messages to the Zulip bot
-
-    <br>
-    For a full list of Scanbot commands, see [commands](./commands). Alternatively run the ```help``` command or, for help with a specific command, run ```help <command_name>```.
-    </div>
-  </details>
-
-## Usage
-
-Refer to the relevant user guide to see how Scanbot can help with data acquisition and probe conditioning in STM experiments.
+    
+    4. Launch Scanbot by running: ```scanbot -z```
+    <br><br>
+    
+    For a full list of Scanbot commands, see [here](./commands). Alternatively run the ```help``` command or, for help with a specific command, run ```help <command_name>```.
+<br>
 
 ## Contributing
 If you would like to contribute to the Scanbot project you can do this through the GitHub [Issue Register](https://github.com/New-Horizons-SPM/scanbot/issues).

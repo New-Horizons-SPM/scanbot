@@ -9,7 +9,7 @@
 </script>
 # Scanbot Web App
 
-Scanbot has been implemented as a web application using [React](https://react.dev/).
+Scanbot is available as a web application developed with [React](https://react.dev/).
 This application is still being developed, with the following features already fully implemented:
 
 * Sample Surveying
@@ -21,17 +21,29 @@ This application is still being developed, with the following features already f
 
 # Installation
 
-To use the web application, you can [download and run the .exe](https://firebasestorage.googleapis.com/v0/b/scanbot-46390.appspot.com/o/scanbot-react%2FScanbot_V4.1.zip?alt=media&token=c0fca54e-619f-418c-9c06-f77d5ddc4ea6)
-- it should automatically launch in a new browser tab. Note this only works on Windows at the moment.
-Alternatively, you can install Scanbot from its source:
 
-1. Clone the [nanonisTCP interface](https://github.com/New-Horizons-SPM/nanonisTCP), navigate to the root directory and run ```pip install .```
-2. Clone the [Scanbot repository](https://github.com/New-Horizons-SPM/scanbot)
-3. Install node.js from [here](https://nodejs.org/en) or if you're using anaconda, run ```conda install conda-forge::nodejs```
-4. Navigate to ```/scanbot/scanbot/App``` and run ```npm install```
-5. From the same directory, run ```npm run build```
-6. Navigate to the project root directory, and run ```pip install .```
-5. Start Scanbot by running the command ```scanbot```
+There are several ways to install Scanbot:
+
+1. For a quick start on Windows, download and run the .exe file from [here](https://firebasestorage.googleapis.com/v0/b/scanbot-46390.appspot.com/o/scanbot-react%2Fscanbot_V4.2.zip?alt=media&token=f4136859-1fc8-42c6-b254-14c92f434e05).
+This method automatically sets up and launches the Scanbot web app.
+
+2. Installing via pip
+If you prefer using pip, you can install Scanbot directly with the following command:
+<br>
+```pip install scanbot```
+<br><br>
+You can then launch Scanbot by running the command:
+<br>
+```scanbot```
+
+3. Building from Source:
+
+    1. Clone the [Scanbot repository](https://github.com/New-Horizons-SPM/scanbot)
+    2. Install node.js from [here](https://nodejs.org/en) or if you're using anaconda, run ```conda install conda-forge::nodejs```
+    3. Navigate to ```scanbot/scanbot/App``` and run ```npm install```
+    4. From the same directory, run ```npm run build```
+    5. Navigate to the project root directory, and run ```pip install .```
+    6. Start Scanbot by running the command ```scanbot```
 
 <br>
 

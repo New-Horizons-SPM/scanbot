@@ -157,7 +157,7 @@ def run_go_to_target():
 @app.route('/scanbot_config')
 def get_config():
     sbConfig = scanbot_config(module_dir=app.module_dir)
-    return {'config': sbConfig.config}
+    return {'config': sbConfig.config}, 200
 
 @app.route('/save_config', methods=['POST'])
 def save_config():

@@ -120,3 +120,102 @@ def test_demo_init(client, tmp_path):
         
         assert response.status_code == 200
         assert is_auto_init == True
+
+def test_go_to_sample(client):
+    data = {"target" : "sample",
+            "userArgs": []}
+
+    with patch('scanbot.server.scanbot.scanbot.moveTip') as mock_moveTip:
+        mock_moveTip.return_value = "Target Hit"
+        
+        response = client.post('/run_go_to_target', json=data)
+
+    assert response.status_code == 200
+
+def test_go_to_metal(client):
+    data = {"target" : "metal",
+            "userArgs": []}
+
+    with patch('scanbot.server.scanbot.scanbot.moveTip') as mock_moveTip:
+        mock_moveTip.return_value = "Target Hit"
+        
+        response = client.post('/run_go_to_target', json=data)
+
+    assert response.status_code == 200
+    
+# def test_auto_init_frames(client,tmp_path):
+#     dummy_frame = np.zeros((480, 640, 3), dtype=np.uint8)
+#     data = {'initialFrame': dummy_frame,
+#             'tipInFrame':   dummy_frame}
+    
+#     response = client.post('/run_go_to_target', json=data)
+
+#     has_initialFrame = os.path.isfile(tmp_path / "autoinit/initialFrame.png")
+#     has_tipInFrame   = os.path.isfile(tmp_path / "autoinit/tipInFrame.png")
+#     has_pk           = os.path.isfile(tmp_path / "autoinit/autoinit.pk")
+
+#     assert has_initialFrame
+#     assert has_tipInFrame
+#     assert has_pk
+
+#     # Next check that the initialisation went through
+#     response     = client.get('/is_auto_init')
+#     json_data    = response.json
+#     is_auto_init = json_data['status']
+    
+#     assert response.status_code == 200
+#     assert is_auto_init == True
+
+# def test_get_initialised_frame(client):
+#     response = client.get('/get_initialised_frame')
+    
+#     # See that send_from_directory returned correctly
+    
+#     assert response.status_code == 200
+
+
+def test_get_config(client):
+    response   = client.get('/scanbot_config')
+    json_data  = response.json
+    has_config = json_data['config']
+
+    assert response.status_code == 200
+    assert has_config
+
+def test_save_config(client,tmp_path):
+    config = [{"parameter": "ip",
+               "value": ['IP Address', 'IP address of the pc controlling nanonis', 'tcp', '127.0.0.1']}]
+    data = {"config":config}
+    response = client.post('/save_config', json=data)
+    assert response.status_code == 200
+    
+    config_saved = os.path.isfile(tmp_path / "scanbot_config.ini")
+    assert config_saved
+
+# def test_run_survey(client):
+#     userArgs = []
+    
+#     with (patch('nanonisTCP.nanonisTCP') as mock_nanonisTCP,
+#         #   patch('nanonisTCP.nanonisTCP.close_connection'),
+#           patch('nanonisTCP.Scan.Scan') as mock_Scan,
+#         #   patch('nanonisTCP.Scan.Scan.FrameGet') as mock_Scan_FrameGet,
+#         #   patch('nanonisTCP.Scan.Scan.FrameSet') as mock_Scan_FrameSet,
+#         #   patch('nanonisTCP.Scan.Scan.PropsGet') as mock_Scan_PropsGet,
+#         #   patch('nanonisTCP.Scan.Scan.PropsSet') as mock_Scan_PropsSet,
+#         #   patch('nanonisTCP.Scan.Scan.BufferGet') as mock_Scan_BufferGet,
+#         #   patch('nanonisTCP.Scan.Scan.BufferSet') as mock_Scan_BufferSet,
+#         #   patch('nanonisTCP.Scan.Scan.Action') as mock_Scan_Action,
+#         #   patch('nanonisTCP.Scan.Scan.WaitEndOfScan') as WaitEndOfScan,
+#         #   patch('nanonisTCP.Scan.Scan.FrameDataGrab') as FrameDataGrab,
+#           patch('nanonisTCP.Piezo.Piezo') as mock_Piezo,
+#           ):
+        
+#         dummy_frame = np.zeros((128,128))
+#         mock_nanonisTCP.return_value = True
+#         mock_Scan.FrameGet.return_value      = [0,0,20e-9,20e-9,0]
+#         mock_Scan.PropsGet.return_value      = ["N/A","N/A","N/A","series name","N/A"]
+#         mock_Scan.BufferGet.return_value     = ["N/A","N/A",128,128]
+#         mock_Scan.WaitEndOfScan.return_value = [False, "N/A", "file path"]
+#         mock_Scan.FrameDataGrab.return_value = ["N/A", dummy_frame, "N/A"]
+
+#         assert True

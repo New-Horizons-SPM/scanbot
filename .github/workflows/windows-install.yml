@@ -20,11 +20,6 @@ jobs:
     
     - name: Setup Node.js
       uses: actions/setup-node@v4
-          
-    - name: Install dependent repository
-      run: |
-        cd nanonisTCP
-        pip install .
         
     - name: Install node_modules and build the app
       env:

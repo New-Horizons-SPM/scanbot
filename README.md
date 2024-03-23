@@ -1,7 +1,9 @@
 # V4 Update!
 Scanbot has been implemented as a web application using [React](https://react.dev/).
     
-On Windows, the easiest way to use it is by [downloading and running the .exe](https://firebasestorage.googleapis.com/v0/b/scanbot-46390.appspot.com/o/scanbot-react%2FScanbot_V4.1.zip?alt=media&token=c0fca54e-619f-418c-9c06-f77d5ddc4ea6).
+On Windows, the easiest way to use it is by [downloading and running the .exe](https://firebasestorage.googleapis.com/v0/b/scanbot-46390.appspot.com/o/scanbot-react%2Fscanbot_V4.2.zip?alt=media&token=f4136859-1fc8-42c6-b254-14c92f434e05).
+
+Alternatively, Scanbot can be installed via ```pip install scanbot``` and launched with ```scanbot```
     
 Full documentation available [here](https://new-horizons-spm.github.io/scanbot/web-app/).
 

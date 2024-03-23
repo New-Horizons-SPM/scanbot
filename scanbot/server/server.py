@@ -16,7 +16,7 @@ from threading import Timer
 import argparse
 
 parser = argparse.ArgumentParser()
-parser.add_argument('--version', action='version', version='scanbot 4.1.0', help='show the version number and exit')
+parser.add_argument('--version', action='version', version='scanbot 4.2.0', help='show the version number and exit')
 args = parser.parse_args()
 
 # pyinstaller --onefile --icon=..\App\public\favicon.ico --add-data "..\App\build;static" --name scanbot_v4.1 server.py

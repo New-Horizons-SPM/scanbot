@@ -12,12 +12,9 @@
         <link href="../css/bootstrap.min.css" rel="stylesheet">
         <link href="../css/font-awesome.min.css" rel="stylesheet">
         <link href="../css/base.css" rel="stylesheet">
-        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/10.5.0/styles/github.min.css">
-
-        <script src="../js/jquery-1.10.2.min.js" defer></script>
-        <script src="../js/bootstrap.min.js" defer></script>
-        <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/10.5.0/highlight.min.js"></script>
-        <script>hljs.initHighlightingOnLoad();</script> 
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/github.min.css">
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/highlight.min.js"></script>
+        <script>hljs.highlightAll();</script> 
     </head>
 
     <body>
@@ -124,8 +121,7 @@
 </div></div>
                     <div class="col-md-9" role="main">
 
-<!-- Google tag (gtag.js) -->
-<script async src="https://www.googletagmanager.com/gtag/js?id=G-6MK4DRHXWM"></script>
+<html><head><script async src="https://www.googletagmanager.com/gtag/js?id=G-6MK4DRHXWM"></script>
 <script>
   window.dataLayer = window.dataLayer || [];
   function gtag(){dataLayer.push(arguments);}
@@ -133,12 +129,12 @@
 
   gtag('config', 'G-6MK4DRHXWM');
 </script>
-<h1 id="about">About</h1>
+</head><body><h1 id="about">About</h1>
 <p>This project automates STM probe conditioning and sample surveying as a first step towards full automation in STM experiments. It was made possible by <a href="https://www.fleet.org.au/">FLEET</a>
 through their <a href="https://www.fleet.org.au/translation/#:~:text=A%20new%20FLEET%20program%20provides,translation%20skills%20in%20Centre%20membership.">Research Translation Program</a>.
 <br></p>
 <h2 id="poster">Poster</h2>
-<p><img alt="scanbotposter" src="../scanbotposter.png" /></p></div>
+<p><img alt="scanbotposter" src="../scanbotposter.png"></p></body></html></div>
             </div>
         </div>
 
@@ -146,11 +142,13 @@ through their <a href="https://www.fleet.org.au/translation/#:~:text=A%20new%20F
             <hr>
             <p>Documentation built with <a href="https://www.mkdocs.org/">MkDocs</a>.</p>
         </footer>
+        <script src="../js/jquery-3.6.0.min.js"></script>
+        <script src="../js/bootstrap.min.js"></script>
         <script>
             var base_url = "..",
                 shortcuts = {"help": 191, "next": 78, "previous": 80, "search": 83};
         </script>
-        <script src="../js/base.js" defer></script>
+        <script src="../js/base.js"></script>
 
         <div class="modal" id="mkdocs_keyboard_modal" tabindex="-1" role="dialog" aria-labelledby="keyboardModalLabel" aria-hidden="true">
     <div class="modal-dialog">

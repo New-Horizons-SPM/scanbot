@@ -12,12 +12,9 @@
         <link href="../css/bootstrap.min.css" rel="stylesheet">
         <link href="../css/font-awesome.min.css" rel="stylesheet">
         <link href="../css/base.css" rel="stylesheet">
-        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/10.5.0/styles/github.min.css">
-
-        <script src="../js/jquery-1.10.2.min.js" defer></script>
-        <script src="../js/bootstrap.min.js" defer></script>
-        <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/10.5.0/highlight.min.js"></script>
-        <script>hljs.initHighlightingOnLoad();</script> 
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/github.min.css">
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/highlight.min.js"></script>
+        <script>hljs.highlightAll();</script> 
     </head>
 
     <body>
@@ -140,8 +137,7 @@
 </div></div>
                     <div class="col-md-9" role="main">
 
-<!-- Google tag (gtag.js) -->
-<script async src="https://www.googletagmanager.com/gtag/js?id=G-6MK4DRHXWM"></script>
+<html><head><script async src="https://www.googletagmanager.com/gtag/js?id=G-6MK4DRHXWM"></script>
 <script>
   window.dataLayer = window.dataLayer || [];
   function gtag(){dataLayer.push(arguments);}
@@ -149,7 +145,7 @@
 
   gtag('config', 'G-6MK4DRHXWM');
 </script>
-<h1 id="hooks">Hooks</h1>
+</head><body><h1 id="hooks">Hooks</h1>
 <p><a href="https://www.rswebsols.com/tutorials/programming/software-development-hook-hooking">Hooks</a> allow you to add or replace key components of Scanbot's functionality where system-specific customisation is required.
 The ability to do this without rewriting source code means you can pull Scanbot updates without losing your custom functionality. For example, Scanbot monitors a camera feed when tracking the motion of the STM
 head during automated operation; a task that may require a light to be switched on or off at times. Obviously, the code needed to achieve this will vary from system to system. This is where the user-written hook
@@ -169,14 +165,14 @@ hk_light.py must contain two functions: <code>turn_on</code> and <code>turn_off<
     # If unsuccessful:
         # Raise Exception
     # If successful:
-    print(&quot;Light on!&quot;)
+    print("Light on!")
 
 def turn_off():
     # Code to turn light off
     # If unsuccessful:
         # Raise Exception
     # If successful:
-    print(&quot;Light off!&quot;)
+    print("Light off!")
 </code></pre>
 <p><br></p>
 <h2 id="hk_survey">hk_survey</h2>
@@ -220,16 +216,16 @@ Its purpose is to use an alternative image classifier when assessing the quality
 
     # API call to external classifier (e.g. AI agent)
 
-    classification = {&quot;tipChanges&quot;: &lt;output from classifier&gt;,   # Example trait to keep track of
-                      &quot;unstable&quot;: &lt;output from classifier&gt;,     # Example trait to keep track of
-                      &quot;multipleTips&quot;: &lt;output from classifier&gt;, # Example trait to keep track of
+    classification = {"tipChanges": &lt;output from classifier&gt;,   # Example trait to keep track of
+                      "unstable": &lt;output from classifier&gt;,     # Example trait to keep track of
+                      "multipleTips": &lt;output from classifier&gt;, # Example trait to keep track of
 
     # Check the classification history to see if we've had a bad run of images
 
     if(num_bad_images &gt; threshold):
-        classification[&quot;tipShape&quot;] = True                       # Tell Scanbot to reshape the tip
+        classification["tipShape"] = True                       # Tell Scanbot to reshape the tip
     else:
-        classification[&quot;tipShape&quot;] = False                      # Tell Scanbot not to reshape the tip
+        classification["tipShape"] = False                      # Tell Scanbot not to reshape the tip
 
     return classification
 </code></pre>
@@ -264,10 +260,10 @@ Its purpose is to adjust the tip shaping parameters based on either the image of
     tipShapeProps[5] = agent.bias   # Bias applied while the tip is in the suface (V)
     tipShapeProps[7] = agent.z2     # Amount to pull tip out of the surface (m)
 
-    record = {&quot;z1&quot;: agent.z1,       # Make a record of this tip-shaping attempt
-              &quot;bias&quot;: agent.bias,
-              &quot;z2&quot;: agent.z2,
-              &quot;imprint&quot;: agent.imprint)
+    record = {"z1": agent.z1,       # Make a record of this tip-shaping attempt
+              "bias": agent.bias,
+              "z2": agent.z2,
+              "imprint": agent.imprint)
 
     history.append(record)          # Append it to the running history so it can be taken into account on the next iteration
 
@@ -304,7 +300,7 @@ class hk_commands(object):
                          }
 
     def changeBias(self,user_args,_help=False):
-        &quot;&quot;&quot;
+        """
         This function changes the bias in Nanonis. It performs this task
         without the use of multi-threading which means it cannot Scanbot will
         be busy until the task is complete. This is fine for commands that will
@@ -317,22 +313,22 @@ class hk_commands(object):
         Parameters
         ----------
         user_args : arguments passed in by the user when calling the command
-        _help     : flag set when user calls &quot;help change_bias&quot;
+        _help     : flag set when user calls "help change_bias"
 
-        &quot;&quot;&quot;
-        arg_dict = {'-V'    : ['0',        lambda x: float(x), &quot;(float) Set the tip bias.&quot;],
-                    '-arg2' : ['some str', lambda x: str(x),   &quot;(str) An example user argument that defaults to 'some str' is a string.&quot;]}
+        """
+        arg_dict = {'-V'    : ['0',        lambda x: float(x), "(float) Set the tip bias."],
+                    '-arg2' : ['some str', lambda x: str(x),   "(str) An example user argument that defaults to 'some str' is a string."]}
 
         if(_help): return arg_dict                                              # This will get called when the user runs the command 'help exUnthreaded'
 
         error,user_arg_dict = self.interface.userArgs(arg_dict,user_args)       # This will validate args V and arg2 as float() and str(), respectively
         if(error):
-            return error + &quot;\nRun ```help change_bias``` if you're unsure.&quot;     # Inform the user of any errors in their input
+            return error + "\nRun ```help change_bias``` if you're unsure."     # Inform the user of any errors in their input
 
         V,arg2 = self.interface.unpackArgs(user_arg_dict)                       # Unpack the arguments
 
         if(V == 0):                                                             # Validation
-            errorMessage = &quot;Cannot set bias to zero!&quot;
+            errorMessage = "Cannot set bias to zero!"
             return errorMessage                                                 # Return with error
 
         NTCP,connection_error = self.interface.scanbot.connect()                # Connect to nanonis via TCP
@@ -342,35 +338,35 @@ class hk_commands(object):
         biasModule = Bias(NTCP)                                                 # The NanonisTCP Bias module
         biasModule.Set(V)                                                       # Set the bias in Nanonis
 
-        self.interface.sendReply(&quot;Bias set to &quot; + str(V) + &quot;! arg2 = &quot; + arg2)  # This is how you send a reply.
+        self.interface.sendReply("Bias set to " + str(V) + "! arg2 = " + arg2)  # This is how you send a reply.
 
         self.interface.scanbot.disconnect(NTCP)                                 # Remember to free up the TCP port
 
         return                                                                  # Return None for success
 
     def changeBias2(self,user_args,_help=False):
-        &quot;&quot;&quot;
+        """
         This function will change the bias in Nanonis by threading the function
-        &quot;threadedFunction&quot; after validating user input. Only one threaded
+        "threadedFunction" after validating user input. Only one threaded
         function can run at a time. If the user tries to run a second threaded
         function, they will be presented with an error. This is handled by the
         global flags in global_. Threaded tasks run in the background and can
-        be stopped by the user running the &quot;stop&quot; command.
+        be stopped by the user running the "stop" command.
 
         Parameters
         ----------
         user_args : arguments passed in by the user when calling the command
-        _help     : flag set when user calls &quot;help change_bias2&quot;
+        _help     : flag set when user calls "help change_bias2"
 
-        &quot;&quot;&quot;
-        arg_dict = {'-V'    : ['0',  lambda x: float(x), &quot;(float) Set the tip bias.&quot;],
-                    '-wait' : ['10', lambda x: int(x),   &quot;(int) Seconds to wait after changing bias.&quot;]}
+        """
+        arg_dict = {'-V'    : ['0',  lambda x: float(x), "(float) Set the tip bias."],
+                    '-wait' : ['10', lambda x: int(x),   "(int) Seconds to wait after changing bias."]}
 
         if(_help): return arg_dict                                              # This will get called when the user runs the command 'help exUnthreaded'
 
         error,user_arg_dict = self.interface.userArgs(arg_dict,user_args)       # This will validate args V and wait as float() and int(), respectively
         if(error):
-            return error + &quot;\nRun ```help change_bias2``` if you're unsure.&quot;    # Inform the user of any errors in their input
+            return error + "\nRun ```help change_bias2``` if you're unsure."    # Inform the user of any errors in their input
 
         args = self.interface.unpackArgs(user_arg_dict)                         # Unpack the arguments
 
@@ -378,7 +374,7 @@ class hk_commands(object):
         return self.interface.threadTask(func)                                  # Return and thread the function
 
     def threadedFunction(self,V,wait):
-        &quot;&quot;&quot;
+        """
         This function changes the bias in Nanonis and then waits a specified
         amount of time.
 
@@ -394,9 +390,9 @@ class hk_commands(object):
         V    : Change the bias to this value
         wait : Wait this many seconds after changing the bias
 
-        &quot;&quot;&quot;
+        """
         if(V == 0):                                                             # Validation
-            errorMessage = &quot;Cannot set bias to zero!&quot;
+            errorMessage = "Cannot set bias to zero!"
             global_.running.clear()                                             # Free up the running flag. This must be done whenever exiting a threaded function
             return errorMessage                                                 # Return with error
 
@@ -408,25 +404,25 @@ class hk_commands(object):
         biasModule = Bias(NTCP)                                                 # The NanonisTCP Bias module
         biasModule.Set(V)                                                       # Set the bias in Nanonis
 
-        self.interface.sendReply(&quot;Bias set to &quot; + str(V))                       # This is how you send a reply.
+        self.interface.sendReply("Bias set to " + str(V))                       # This is how you send a reply.
 
-        self.interface.sendReply(&quot;Waiting &quot; + str(wait) + &quot; seconds...&quot;)        # This is how you send a reply.
+        self.interface.sendReply("Waiting " + str(wait) + " seconds...")        # This is how you send a reply.
 
         seconds = 0
         while(seconds &lt; wait):
             time.sleep(1)
             seconds += 1                                                        # Keep track of how many seconds have gone by
-            if(self.interface.scanbot.checkEventFlags() == True):               # Periodically check event flags when appropriate to see if the user has called &quot;stop&quot;
-                self.interface.sendReply(&quot;Stopping early!&quot;)                     # This is how you send a reply.
+            if(self.interface.scanbot.checkEventFlags() == True):               # Periodically check event flags when appropriate to see if the user has called "stop"
+                self.interface.sendReply("Stopping early!")                     # This is how you send a reply.
                 break
 
-        self.interface.sendReply(&quot;Done!&quot;)                                       # This is how you send a reply.
+        self.interface.sendReply("Done!")                                       # This is how you send a reply.
 
         self.interface.scanbot.disconnect(NTCP)                                 # Remember to free up the TCP port
         global_.running.clear()                                                 # Free up the running flag. This must be done whenever exiting a threaded function
 
         return
-</code></pre></div>
+</code></pre></body></html></div>
             </div>
         </div>
 
@@ -434,11 +430,13 @@ class hk_commands(object):
             <hr>
             <p>Documentation built with <a href="https://www.mkdocs.org/">MkDocs</a>.</p>
         </footer>
+        <script src="../js/jquery-3.6.0.min.js"></script>
+        <script src="../js/bootstrap.min.js"></script>
         <script>
             var base_url = "..",
                 shortcuts = {"help": 191, "next": 78, "previous": 80, "search": 83};
         </script>
-        <script src="../js/base.js" defer></script>
+        <script src="../js/base.js"></script>
 
         <div class="modal" id="mkdocs_keyboard_modal" tabindex="-1" role="dialog" aria-labelledby="keyboardModalLabel" aria-hidden="true">
     <div class="modal-dialog">

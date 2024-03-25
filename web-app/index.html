@@ -12,12 +12,9 @@
         <link href="../css/bootstrap.min.css" rel="stylesheet">
         <link href="../css/font-awesome.min.css" rel="stylesheet">
         <link href="../css/base.css" rel="stylesheet">
-        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/10.5.0/styles/github.min.css">
-
-        <script src="../js/jquery-1.10.2.min.js" defer></script>
-        <script src="../js/bootstrap.min.js" defer></script>
-        <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/10.5.0/highlight.min.js"></script>
-        <script>hljs.initHighlightingOnLoad();</script> 
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/github.min.css">
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/highlight.min.js"></script>
+        <script>hljs.highlightAll();</script> 
     </head>
 
     <body>
@@ -160,8 +157,7 @@
 </div></div>
                     <div class="col-md-9" role="main">
 
-<!-- Google tag (gtag.js) -->
-<script async src="https://www.googletagmanager.com/gtag/js?id=G-6MK4DRHXWM"></script>
+<html><head><script async src="https://www.googletagmanager.com/gtag/js?id=G-6MK4DRHXWM"></script>
 <script>
   window.dataLayer = window.dataLayer || [];
   function gtag(){dataLayer.push(arguments);}
@@ -169,7 +165,7 @@
 
   gtag('config', 'G-6MK4DRHXWM');
 </script>
-<h1 id="scanbot-web-app">Scanbot Web App</h1>
+</head><body><h1 id="scanbot-web-app">Scanbot Web App</h1>
 <p>Scanbot is available as a web application developed with <a href="https://react.dev/">React</a>.
 This application is still being developed, with the following features already fully implemented:</p>
 <ul>
@@ -178,12 +174,12 @@ This application is still being developed, with the following features already f
 <li>Tip Shaping</li>
 <li>End-To-End Survey Automation</li>
 </ul>
-<p><img alt="WebApp" src="../appim/top-level.png" /></p>
+<p><img alt="WebApp" src="../appim/top-level.png"></p>
 <h1 id="installation">Installation</h1>
 <p>There are several ways to install Scanbot:</p>
 <ol>
 <li>
-<p>For a quick start on Windows, download and run the .exe file from <a href="https://firebasestorage.googleapis.com/v0/b/scanbot-46390.appspot.com/o/scanbot-react%2Fscanbot_V4.2.zip?alt=media&amp;token=f4136859-1fc8-42c6-b254-14c92f434e05">here</a>.
+<p>For a quick start on Windows, download and run the .exe file from <a href="https://scanbot-46390.web.app" target="_blank">here</a>.
 This method automatically sets up and launches the Scanbot web app.</p>
 </li>
 <li>
@@ -209,19 +205,19 @@ You can then launch Scanbot by running the command:
 </li>
 </ol>
 <p><br></p>
-<p><strong>You can test Scanbot with the Nanonis V5 Simulator</strong> before integrating it with your STM by following <a href="../web-app-test">these instructions</a>.</strong></p>
+<p><strong>You can test Scanbot with the Nanonis V5 Simulator</strong> before integrating it with your STM by following <a href="../web-app-test">these instructions</a>.</p>
 <h1 id="configuration">Configuration</h1>
 <p>From the landing page, you can access Scanbot's configuration.
 It is recommended that you review the default settings before using any of the tools in Scanbot.
 Upon accepting the configuration, your scanbot_config.ini file will be saved automatically and your settings will be remembered.
 These settings can be updated any time. <strong>For a detailed description about the configurable parameters, see 
 <a href="../configuration">configuration</a>.</strong>
-<img alt="Config" src="../appim/configuration.png" /></p>
+<img alt="Config" src="../appim/configuration.png"></p>
 <h1 id="data-acquisition">Data Acquisition</h1>
 <p>From the landing page, you can access the data acquisition tools, including tools to help automate the STM.
-<img alt="DataAcquisition" src="../appim/data-acquisition.png" /></p>
+<img alt="DataAcquisition" src="../appim/data-acquisition.png"></p>
 <h2 id="survey">Survey</h2>
-<p><img alt="DataAcquisition" src="../appim/survey.png" /></p>
+<p><img alt="DataAcquisition" src="../appim/survey.png"></p>
 <p>When the Survey function is selected, the parameters in the table below can be configured.
 Note that answering <code>Yes</code> to <code>Auto tip shaping?</code>, is only possible after following a short
 <a href="#automation">initialisation procedure</a>. After completing this initialisation procedure, Scanbot can integrate the automated tip shaping with sample surveying. The process is as follows:
@@ -311,7 +307,7 @@ Note that answering <code>Yes</code> to <code>Auto tip shaping?</code>, is only 
 </table>
 <h2 id="bias-dependent-imaging">Bias Dependent Imaging</h2>
 <p>The bias dependent imaging function lets you take a series of drift-corrected images at different bias values. The plot area will show the latest image side-by-side with a GIF of all the previously acquired images in the set.
-<img alt="biasdepwindow" src="../appim/bias-dep.png" /></p>
+<img alt="biasdepwindow" src="../appim/bias-dep.png"></p>
 <p>When the Bias Dependent function is selected, the following parameters can be configured:</p>
 <table>
 <thead>
@@ -396,7 +392,7 @@ Note that answering <code>Yes</code> to <code>Auto tip shaping?</code>, is only 
 </ol>
 <p>When intitiated from the Automation screen, the plot area will show the latest tip imprint alongside a GIF of all previous tip imprints from the given run.
 This lets you observe how the geometry at the apex of the probe evolves with each iteration.</p>
-<p><img alt="autotipshape" src="../appim/autotipshaping.png" /></p>
+<p><img alt="autotipshape" src="../appim/autotipshaping.png"></p>
 <p>The following parameters can be configured for this action:</p>
 <table>
 <thead>
@@ -455,7 +451,7 @@ From the Automation screen, simply click the 'initialise' button, allow the brow
 Once these locations are initialised, you will be able to answer 'Yes' to the <code>Automated Tip Shaping?</code> field in the Survey screen.
 In the screenshot below, the red marker indicates the initial position for the tip's apex;
 the green markers show the locations of the sample and clean reference metal.</p>
-<p><img alt="initialisation" src="../appim/initialisation.png" /></p>
+<p><img alt="initialisation" src="../appim/initialisation.png"></p>
 <h2 id="move-tip">Move Tip</h2>
 <p>After initialising the tip, sample, and reference metal locations, you will be able to tell Scanbot to track and move the STM tip from its current position to either the sample or reference metal locations.
 <strong>Scanbot will always move the tip in the positive Z direction until the tip apex is above the target location. Only then will the X piezo be used to move the tip to its target.</strong>
@@ -471,7 +467,7 @@ The following rules have been applied to any command where the coarse piezos are
 <li>In the event of a crash, the tip will be retracted using the <code>Z+</code> piezo and operation will cease.</li>
 </ul>
 <p><strong>Please make sure to set appropriate piezo voltages and frequencies when using any of the commands that control the coarse piezos. You can configure appropriate safety settings from the Configuration screen.</strong>
-<br><br><br></p></div>
+<br><br><br></p></body></html></div>
             </div>
         </div>
 
@@ -479,11 +475,13 @@ The following rules have been applied to any command where the coarse piezos are
             <hr>
             <p>Documentation built with <a href="https://www.mkdocs.org/">MkDocs</a>.</p>
         </footer>
+        <script src="../js/jquery-3.6.0.min.js"></script>
+        <script src="../js/bootstrap.min.js"></script>
         <script>
             var base_url = "..",
                 shortcuts = {"help": 191, "next": 78, "previous": 80, "search": 83};
         </script>
-        <script src="../js/base.js" defer></script>
+        <script src="../js/base.js"></script>
 
         <div class="modal" id="mkdocs_keyboard_modal" tabindex="-1" role="dialog" aria-labelledby="keyboardModalLabel" aria-hidden="true">
     <div class="modal-dialog">

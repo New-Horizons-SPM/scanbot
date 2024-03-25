@@ -33,7 +33,7 @@ Scanbot is a collection of several automated STM and nc-AFM data acquisition com
 There are several ways to install Scanbot:
 
 1. <strong>Quick Start:</strong><br><br>
-    For a quick start <strong>on Windows</strong>, download and run the .exe file from [here](https://firebasestorage.googleapis.com/v0/b/scanbot-46390.appspot.com/o/scanbot-react%2Fscanbot_V4.2.zip?alt=media&token=f4136859-1fc8-42c6-b254-14c92f434e05).
+    For a quick start <strong>on Windows</strong>, download and run the .exe file from <a href="https://scanbot-46390.web.app" target="_blank">here</a>.
     This method automatically sets up and launches the Scanbot web app.
 <br><br>
 2. <strong>Installing via pip:</strong><br><br>

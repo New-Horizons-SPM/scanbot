@@ -24,7 +24,7 @@ This application is still being developed, with the following features already f
 
 There are several ways to install Scanbot:
 
-1. For a quick start on Windows, download and run the .exe file from [here](https://firebasestorage.googleapis.com/v0/b/scanbot-46390.appspot.com/o/scanbot-react%2Fscanbot_V4.2.zip?alt=media&token=f4136859-1fc8-42c6-b254-14c92f434e05).
+1. For a quick start on Windows, download and run the .exe file from <a href="https://scanbot-46390.web.app" target="_blank">here</a>.
 This method automatically sets up and launches the Scanbot web app.
 
 2. Installing via pip

@@ -25,6 +25,10 @@ Full documentation available [here](https://new-horizons-spm.github.io/scanbot/)
 * Hooks
     - Scanbot has a number of built-in [hooks](https://new-horizons-spm.github.io/scanbot/hooks/) to let you customise key functionality.
 
+## Contributing
+
+If you wish to contribute to Scanbot in any way, please refer to [these guidlines](https://new-horizons-spm.github.io/scanbot/#contributing).
+
 ## Citing
 
 If you use Scanbot in your scientific research, please consider [citing it](https://zenodo.org/badge/latestdoi/487719232).

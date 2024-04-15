@@ -125,6 +125,11 @@ You can update the documentation there and submit a separate pull request linked
 4. Submit a pull request for the documentation updates, ensuring it references the same issue as your code changes.
 5. Tag ceds92 in the pull request for the documentation as well, to ensure consistency and accuracy in both code and informational updates.
 
+### Support
+
+If you have questions or need assistance that the documentation doesn’t address, please don’t hesitate to open an issue in our [issue tracker](https://github.com/New-Horizons-SPM/scanbot/issues/new).
+We are committed to providing support and will do our best to assist you promptly!
+
 ## Citing
 
 If you use Scanbot in your scientific research, please consider [citing it](https://zenodo.org/badge/latestdoi/487719232).

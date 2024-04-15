@@ -91,9 +91,39 @@ Scanbot can be run as a web application, in a terminal, or via the open-source m
 <br>
 
 ## Contributing
-If you would like to contribute to the Scanbot project you can do this through the GitHub [Issue Register](https://github.com/New-Horizons-SPM/scanbot/issues).
-If you come across a problem with Scanbot or would like to request new features, you can raise a [new issue](https://github.com/New-Horizons-SPM/scanbot/issues/new).
-Alternatively, scan through our [existing issues](https://github.com/New-Horizons-SPM/scanbot/issues); if you find one you're interested in fixing/implementing, feel free to open a pull request.
+We welcome contributions from the community to Scanbot. Here's how you can contribute:
+
+### Issues
+Encounter a problem? Please report it by [opening a new issue](https://github.com/New-Horizons-SPM/scanbot/issues/new). If you're able to fix the issue yourself, feel free to submit a pull request.
+
+### Feature Requests
+Have an idea for a new feature? Submit it through our [issue tracker](https://github.com/New-Horizons-SPM/scanbot/issues/new). Please provide detailed information about your feature to help us understand your vision.
+
+### Develop New Scanbot Commands
+Interested in expanding Scanbot's capabilities? Follow these steps:
+
+1. Open a new issue detailing your proposed command.
+2. If approved, you can either develop your command using the [hk_commands hook](./hooks/#hk_commands) or by updating Scanbot's source directly.
+3. Submit a pull request for review.
+
+### Pull Requests
+If you're going to submit a pull request for any of the above please ensure the following:
+
+1. Changes are compatible with the latest version of the V4 branch
+2. Titles and summaries are clear, concise, and explain the rationale behind the changes, what issues they address, and any other relevant context.
+3. You have an open issue that can be linked to the pull request.
+4. All new code is well-documented and any new features or bug fixes include appropriate tests.
+5. Tag ceds92 for review as they are the main reviewer for this project. Include any other contributors who might be impacted by or interested in the changes.
+
+### Documentaion
+If your changes to Scanbot require updates to the documentation, please handle this on the mkdocs branch.
+You can update the documentation there and submit a separate pull request linked to the same issue:
+
+1. Check out the mkdocs branch from the main repository.
+2. Update or add documentation to reflect the changes made to the software. Ensure that all new features, configurations, or usage instructions are clearly documented.
+3. Use clear, concise language and format the documentation for easy reading. Include examples if applicable.
+4. Submit a pull request for the documentation updates, ensuring it references the same issue as your code changes.
+5. Tag ceds92 in the pull request for the documentation as well, to ensure consistency and accuracy in both code and informational updates.
 
 ## Citing
 

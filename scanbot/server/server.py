@@ -210,6 +210,20 @@ def run_biasdep():
         pass
     return {"status": "success"}, 200
 
+@app.route('/run_stsGrid', methods=['POST'])
+def run_stsGrid():
+    userArgs = request.json['userArgs']
+    error = scanbot.stsGrid(user_args=userArgs)
+    if(error):
+        print(error)
+        return {"status": error}, 503
+
+    try:
+        shutil.rmtree(app.module_dir + 'temp')
+    except:
+        pass
+    return {"status": "success"}, 200
+
 @app.route('/run_autotipshape', methods=['POST'])
 def run_autotipshape():
     userArgs = request.json['userArgs']
@@ -266,6 +280,27 @@ def get_gif():
         temp_dir = getDir(app.module_dir + 'temp')
         return send_from_directory(temp_dir, 'GIF.gif', as_attachment=True)
             
+    return {"status": 'not found'}, 404
+
+@app.route('/get_stsGrid', methods=['POST'])
+def get_stsGrid():
+    timestamp = request.json['timestamp']
+    try:
+        files = sorted([file for file in Path(app.module_dir + 'temp/gridData').iterdir() if file.suffix == '.pk'], key=os.path.getmtime)
+        latestFile = str(files[-1].name)
+        try:
+            latestTimestamp = float(latestFile.split('_')[0])*1000
+            if(latestTimestamp > timestamp):
+                temp_dir = getDir(app.module_dir + 'temp/gridData')
+                gridPk = pickle.load(open(temp_dir + '/gridData.pk','rb'))
+                return send_from_directory(temp_dir, str('GIF.gif'), as_attachment=True)
+        except Exception as e:
+            print(e)
+        
+        return {"status": 'not found'}, 404
+    except:
+        pass
+
     return {"status": 'not found'}, 404
 
 @app.route('/get_state')

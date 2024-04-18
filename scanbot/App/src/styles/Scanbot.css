@@ -41,6 +41,14 @@
   width: 80%;
 }
 
+.card-row-4 {
+  display: flex;
+  justify-content: space-around;
+  margin: 20px;
+  margin-left: 5%;
+  width: 90%;
+}
+
 .configuration-card {
   background-image: url('../img/config.png');
   background-color: rgb(220,228,230);
@@ -64,7 +72,17 @@
   background-size: 60%;
 }
 
+.sts-grid-card {
+  background-image: url('../img/bias-dep.png');
+  background-size: 60%;
+}
+
 .bias-dep-card:hover {
+  background-image: url('../img/bias-dep.gif');
+  background-size: 60%;
+}
+
+.sts-grid-card:hover {
   background-image: url('../img/bias-dep.gif');
   background-size: 60%;
 }

@@ -17,6 +17,10 @@
     background-size: 100%;
   }
 
+  .card-4 {
+    width: 15%;
+  }
+
   .card::before {
     content: '';
     position: absolute;

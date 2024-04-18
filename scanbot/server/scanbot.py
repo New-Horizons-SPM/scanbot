@@ -557,6 +557,8 @@ class scanbot():
         tdc  = params['-tdc']
         tbdc = params['-tbdc']
         path = params['-path']                                                  # Save the pickled grid array at this path
+        path = path.replace('\\','/')
+        if(not path.endswith('/')): path += '/'
         sufx = params['-s']
 
         gridType = "grid"                                                       # Only grid is support at the moment. Support for cloud and line will be added later
@@ -605,12 +607,12 @@ class scanbot():
             if(tbdc == 0): tbdc = 1
             scanModule.SpeedSet(fwd_line_time=tdc,speed_ratio=tbdc)
 
-        if(VDC == 0):  VDC = biasModule.Get()
-        if(IDC == 0):  IDC = zController.SetpntGet()
         if(Vset == 0): Vset = biasModule.Get()
         if(Iset == 0): Iset = zController.SetpntGet()
-        if(Vmov == 0): Vmov = biasModule.Get()
-        if(Imov == 0): Imov = zController.SetpntGet()
+        if(VDC == 0):  VDC = Vset
+        if(IDC == 0):  IDC = Iset
+        if(Vmov == 0): Vmov = Vset
+        if(Imov == 0): Imov = Iset
         
         seriesName = scanModule.PropsGet()[3]
         scanModule.PropsSet(continuous_scan=2,bouncy_scan=2,autosave=1,series_name=seriesName)
@@ -623,7 +625,9 @@ class scanbot():
 
         rowData  = {}
         gridData = {}
-        channels  = bspec.PropsGet()['channels']
+        bspecProps = bspec.PropsGet()
+        channels   = bspecProps['channels']
+        numPoints  = bspecProps['num_points']
         for channel in channels:
             gridData[channel] = []
 
@@ -635,12 +639,14 @@ class scanbot():
         time.sleep(0.1)
         self.rampBias(NTCP,Vmov)
         saveDict = {"meta" : params}
-        saveFilename = str(dt.now()).replace(':','-') + "-python-sts-" + gridType + "-" + sufx + ".pk"
+        saveFilename = path + str(dt.now()).replace(':','-') + "-python-sts-" + gridType + "-" + sufx + ".pk"
         for iy,y in enumerate(yy):
             for key in gridData.keys():
                 if(key == "sweep_signal"): continue
                 rowData[key] = list(np.zeros_like(xx))
-                gridData[key].append(rowData[key].copy())
+                for point in range(len(rowData[key])):
+                    rowData[key][point] = np.zeros(numPoints)
+                gridData[key].append(list(rowData[key].copy()))
 
             for ix,x in enumerate(xx):
                 if(NDC > 0 and count % NDC == 0):                                   # If drift correction is turned on, take a drift correction image
@@ -721,6 +727,8 @@ class scanbot():
             if(stop): break
 
         scanModule.PropsSet(series_name=seriesName)
+
+        self.interface.sendReply("STS-Grid Complete")
 
         self.disconnect(NTCP)                                                   # Close the TCP connection
         global_.running.clear()                                                 # Free up the running flag

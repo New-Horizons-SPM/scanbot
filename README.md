@@ -16,6 +16,8 @@ Full documentation available [here](https://new-horizons-spm.github.io/scanbot/)
 * STM
     - Bias dependent imaging with drift correction
     - Automated sample surveying (NxN grid)
+* STS
+    - STS Grids with drift correction
 * nc-AFM
     - z-dependent nc-AFM
     - nc-AFM registration

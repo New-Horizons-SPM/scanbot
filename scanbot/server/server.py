@@ -13,23 +13,30 @@ import sys
 import pickle
 import webbrowser
 from threading import Timer
-import argparse
 
+run_mode = 'react'
+
+# To create the .exe follow these steps:
+# pip install pyinstaller
+# Comment out the below ARGS section
+# Run the following command:
+# pyinstaller --onefile --icon=..\App\public\favicon.ico --add-data "..\App\build;static" --name scanbot_v4.3.0 server.py
+
+################# ARGS ##################
+import argparse
 parser = argparse.ArgumentParser()
-parser.add_argument('--version', action='version', version='scanbot 4.2.0', help='show the version number and exit')
+parser.add_argument('--version', action='version', version='scanbot 4.3.0', help='show the version number and exit')
 parser.add_argument('-c', '--terminal', action='store_true', help='run scanbot in terminal')
 parser.add_argument('-z', '--zulip',    action='store_true', help='run scanbot in terminal')
 args = parser.parse_args()
+if(args.terminal):  run_mode = 'c'
+if(args.zulip):     run_mode = 'z'
+################# ARGS ##################
 
 module_dir = str(os.path.dirname(os.path.abspath(__file__))).replace('\\','/')
 if(not module_dir.endswith('/')): module_dir += '/'
 
-run_mode = 'react'
-if(args.terminal):  run_mode = 'c'
-if(args.zulip):     run_mode = 'z'
-
 # if(run_mode == 'react'):
-# pyinstaller --onefile --icon=..\App\public\favicon.ico --add-data "..\App\build;static" --name scanbot_v4.1 server.py
 app = Flask(__name__, static_url_path='')
 
 # Determine if we're running in a PyInstaller bundle and adjust paths

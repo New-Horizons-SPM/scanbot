@@ -73,7 +73,7 @@
 }
 
 .sts-grid-card {
-  background-image: url('../img/bias-dep.png');
+  background-image: url('../img/sts-grid.png');
   background-size: 60%;
 }
 
@@ -83,7 +83,7 @@
 }
 
 .sts-grid-card:hover {
-  background-image: url('../img/bias-dep.gif');
+  background-image: url('../img/sts-grid.gif');
   background-size: 60%;
 }
 

@@ -6,6 +6,7 @@ import Configuration                    from './Configuration';
 import DataAcquisition                  from './DataAcquisition';
 import Survey                           from './Survey';
 import BiasDep                          from './BiasDep';
+import STSGrid                          from './STSGrid';
 import STMControl                       from './STMControl';
 import './styles/index.css';
 
@@ -18,6 +19,7 @@ root.render(
         <Route path="/data-acquisition" element={<DataAcquisition />} />
         <Route path="/survey"           element={<Survey />} />
         <Route path="/bias-dep"         element={<BiasDep />} />
+        <Route path="/sts-grid"         element={<STSGrid />} />
         <Route path="/stm-control"      element={<STMControl />} />
     </Routes>
   </BrowserRouter>

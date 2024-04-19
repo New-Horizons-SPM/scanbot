@@ -17,6 +17,8 @@ from nanonisTCP.Current import Current
 from nanonisTCP.FolMe import FolMe
 from nanonisTCP.Marks import Marks
 from nanonisTCP.TipShaper import TipShaper
+from nanonisTCP.Pattern import Pattern
+from nanonisTCP.BiasSpectr import BiasSpectr
 
 from scanbot.server import global_
 from scanbot.server import utilities
@@ -511,7 +513,226 @@ class scanbot():
         self.disconnect(NTCP)                                                   # Close the TCP connection
         global_.running.clear()                                                 # Free up the running flag
             
-            
+
+    def getGrid(self,gridFrame):
+        nx,ny,ox,oy,w,h,gridAngle = gridFrame
+
+        dx  = w/nx
+        xx  = np.arange(nx) - nx/2 + 0.5*((nx+1)%2)
+        xx *= dx
+        xx += ox + dx/2
+        
+        dy  = h/ny
+        yy  = np.arange(ny) - ny/2 + 0.5*((ny+1)%2)
+        yy *= dy
+        yy += oy + dy/2
+
+        return xx,yy
+    
+    def stsGrid(self, params, message=""):
+        """
+        This function obtains an STS grid with drift correction every n points.
+        The tip must be inside the scan frame to start
+        The grid centre must also be inside the scan frame to start
+
+        Process:
+            1. The existing grid in Nanonis is loaded
+            2. An image is taken in the upward scan direction as a reference to measure drift.
+            3. The Tip moves to the first location in the grid and STS setpoint is applied
+            4. STS is acquired
+            5. The tip moves to the next point in the grid
+            6. Repeat steps 4 and 5 until n spectra have been acquired
+            7. Take another image in the upward direction and compare with the first to measure the amount of drift
+            8. Move the scan frame and the grid centre according to detected drift
+            9. Repeat steps 5 to 9 until the grid completes
+        """
+        Vset = params['-Vset']                                                  # Bias at which the setpoint for STS is taken
+        Iset = params['-Iset']                                                  # Setpoint current for STS
+        Vmov = params['-Vmov']                                                  # Bias while the tip is moving between grid points
+        Imov = params['-Imov']                                                  # Setpoint current while the tip is moving between grid points
+        VDC  = params['-VDC']                                                   # Bias for drift correction images
+        IDC  = params['-IDC']                                                   # Bias for drift correction images
+        NDC  = params['-NDC']                                                   # Take a drift correction frame after every NDC STS acquisitions
+        pxdc = params['-pxdc']
+        tdc  = params['-tdc']
+        tbdc = params['-tbdc']
+        path = params['-path']                                                  # Save the pickled grid array at this path
+        path = path.replace('\\','/')
+        if(not path.endswith('/')): path += '/'
+        sufx = params['-s']
+
+        gridType = "grid"                                                       # Only grid is support at the moment. Support for cloud and line will be added later
+
+        self.currentAction["action"] = "stsgrid"
+        NTCP,connection_error = self.connect()                                  # Connect to nanonis via TCP
+        if(connection_error):
+            global_.running.clear()                                             # Free up the running flag
+            return connection_error                                             # Return error message if there was a problem connecting        
+        
+        scanModule = Scan(NTCP)
+        biasModule = Bias(NTCP)
+        zController = ZController(NTCP)
+        folme = FolMe(NTCP)
+        pattern = Pattern(NTCP)
+        bspec   = BiasSpectr(NTCP)
+        
+        tipPos    = folme.XYPosGet(Wait_for_newest_data=1)
+        scanFrame = scanModule.FrameGet()
+        if(not self.tipInFrame(tipPos,scanFrame)):
+            self.interface.sendReply("Tip must be in scan frame to get setpoint")
+            self.disconnect(NTCP)                                               # Close the TCP connection
+            global_.running.clear()                                             # Free up the running flag
+            return
+        
+        gridFrame = pattern.GridGet()
+        xx,yy = self.getGrid(gridFrame)
+    
+        gridCentre = np.array([gridFrame[2],gridFrame[3]])
+        if(not self.tipInFrame(tipPos=gridCentre,scanFrame=scanFrame)):
+            self.interface.sendReply("The grid centre must be within the scan frame")
+            self.disconnect(NTCP)                                               # Close the TCP connection
+            global_.running.clear()                                             # Free up the running flag
+            return
+
+        if(not len(xx)):
+            self.interface.sendReply("Stopping because grid is empty")
+            self.disconnect(NTCP)                                               # Close the TCP connection
+            global_.running.clear()                                             # Free up the running flag
+            return
+        
+        if(pxdc > 0):
+            pxdc = 16*int(pxdc/16)
+            scanModule.BufferSet(pixels=pxdc,lines=pxdc)
+        if(tdc > 0):
+            if(tbdc == 0): tbdc = 1
+            scanModule.SpeedSet(fwd_line_time=tdc,speed_ratio=tbdc)
+
+        if(Vset == 0): Vset = biasModule.Get()
+        if(Iset == 0): Iset = zController.SetpntGet()
+        if(VDC == 0):  VDC = Vset
+        if(IDC == 0):  IDC = Iset
+        if(Vmov == 0): Vmov = Vset
+        if(Imov == 0): Imov = Iset
+        
+        seriesName = scanModule.PropsGet()[3]
+        scanModule.PropsSet(continuous_scan=2,bouncy_scan=2,autosave=1,series_name=seriesName)
+
+        pxdc  = scanModule.BufferGet()[2]
+        dx    = scanFrame[2]/pxdc
+        dy    = scanFrame[3]/pxdc
+        dxy   = np.array([dx,dy])
+        ox,oy = np.array([0,0])
+
+        rowData  = {}
+        gridData = {}
+        bspecProps = bspec.PropsGet()
+        channels   = bspecProps['channels']
+        numPoints  = bspecProps['num_points']
+        for channel in channels:
+            gridData[channel] = []
+
+        stop  = False
+        count = 0
+        initialDC = np.zeros(10)
+        totalDrift = np.array([0,0])
+        zController.SetpntSet(Imov)
+        time.sleep(0.1)
+        self.rampBias(NTCP,Vmov)
+        saveDict = {"meta" : params}
+        saveFilename = path + str(dt.now()).replace(':','-') + "-python-sts-" + gridType + "-" + sufx + ".pk"
+        for iy,y in enumerate(yy):
+            for key in gridData.keys():
+                if(key == "sweep_signal"): continue
+                rowData[key] = list(np.zeros_like(xx))
+                for point in range(len(rowData[key])):
+                    rowData[key][point] = np.zeros(numPoints)
+                gridData[key].append(list(rowData[key].copy()))
+
+            for ix,x in enumerate(xx):
+                if(NDC > 0 and count % NDC == 0):                                   # If drift correction is turned on, take a drift correction image
+                    time.sleep(0.25)
+                    
+                    print("Changing setpoint to " + str(IDC))
+                    print("Ramping bias to " + str(VDC) + " and taking drift correction image.")
+                    zController.SetpntSet(IDC)
+                    time.sleep(0.1)
+                    self.rampBias(NTCP, VDC)
+                    if(self.checkEventFlags()): break                               # Check event flags
+                    time.sleep(0.25)
+                    
+                    basename_dc = "scanbot-DC-stsgrid"
+                    scanModule.PropsSet(series_name=basename_dc)                    # Set the basename for drift correction images
+                    scanModule.Action('start',scan_direction='up')
+                    _, _, filePath = scanModule.WaitEndOfScan()
+                    if(not filePath):                                               # If the scan was stopped manually before, stop here
+                        stop = True
+                        break
+                    if(self.checkEventFlags()):                                     # Check event flags
+                        stop = True
+                        break
+
+                    _,driftCorrection,_ = scanModule.FrameDataGrab(14, 1)
+
+                    pngFilename,scanDataPlaneFit = self.makePNG(driftCorrection, filePath,returnData=True,dpi=150) # Generate a png from the scan data
+                    self.interface.sendPNG(pngFilename,message=message)             # Send a png over zulip/save in react temp folder for front end
+                    
+                    if(np.sum(initialDC) == 0): initialDC = driftCorrection.copy()  # On the first run through, we will compare the initial drift correction frame with itself, so ox,oy = 0,0
+                    ox,oy = utilities.getFrameOffset(initialDC,driftCorrection,dxy,theta=-scanFrame[4]) # Frame offset for drift correction. passing negative scan angle because nanonis is backwards
+                    print("Frame offset correction offset: " + str([ox,oy]))
+                    
+                    scanFrame[0] -= ox
+                    scanFrame[1] -= oy
+                    scanModule.FrameSet(*scanFrame)                                 # Move the scan frame
+                    
+                    gridFrame[2] -= ox
+                    gridFrame[3] -= oy
+                    pattern.GridSet(*gridFrame)
+                    totalDrift = totalDrift - np.array([ox,oy])
+
+                zController.SetpntSet(Imov)
+                self.rampBias(NTCP,Vmov)
+                time.sleep(0.1)
+
+                folme.XYPosSet(x + totalDrift[0], y + totalDrift[1], Wait_end_of_move=True)
+
+                self.rampBias(NTCP,Vset)
+                zController.SetpntSet(Iset)
+                time.sleep(0.1)
+                spectrum = bspec.Start(get_data=1)
+
+                for key in spectrum['data_dict'].keys():
+                    if(key == "Bias calc (V)"):
+                        gridData["sweep_signal"] = np.array(spectrum['data_dict'][key])
+                        continue
+
+                    rowData[key][ix]  = np.array(spectrum['data_dict'][key])
+                    if(not iy%2):
+                        gridData[key][-1] = rowData[key].copy()
+                    if(iy%2):
+                        gridData[key][-1] = rowData[key][::-1]
+                
+                saveDict = {"data" : gridData}
+                pickle.dump(saveDict,open(saveFilename,'wb'))
+                
+                if(self.checkEventFlags()): break                               # Check event flags
+
+                count += 1
+
+            zController.SetpntSet(Imov)
+            self.rampBias(NTCP,Vmov)
+            time.sleep(0.1)
+
+            xx = np.flip(xx)
+
+            if(stop): break
+
+        scanModule.PropsSet(series_name=seriesName)
+
+        self.interface.sendReply("STS-Grid Complete")
+
+        self.disconnect(NTCP)                                                   # Close the TCP connection
+        global_.running.clear()                                                 # Free up the running flag
+
     def zdep(self,zi,zf,nz,iset,bset,dciset,bias,dcbias,ft,bt,dct,px,dcpx,lx,dclx,suffix,makeGIF,message=""):
         """
         This function performs a set of constant height scans at different tip 

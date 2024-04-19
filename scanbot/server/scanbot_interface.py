@@ -221,6 +221,7 @@ class scanbot_interface(object):
                          'survey'           : self.survey,                      # Take a survey within the current scan area.
                          'survey2'          : self.survey2,                     # Take several surveys at different macroscopic locations by moving the tip between each survey.
                          'bias_dep'         : self.biasDep,                     # Take a series of bias dependent images.
+                         'sts_grid'         : self.stsGrid,                     # Take a series of bias dependent images.
                          'zdep'             : self.zdep,                        # z-dependant scanning. Useful for nc-AFM or other constant height imaging
                          'afm_registration' : self.registration,                # Take a constant height scan and perform a tip-lift at a given line.
                         # Tip Actions
@@ -341,7 +342,36 @@ class scanbot_interface(object):
         
         func = lambda : self.scanbot.biasDep(*args,message=self.bot_message.copy())
         return self.threadTask(func)
+    
+    def stsGrid(self,user_args,_help=False):
+        arg_dict = {'-NDC' : ['5',          lambda x: int(x),   "(int) Take a drift correction image after every NDC STS acquisitions. 0 = off"],
+                    '-VDC' : ['-1',         lambda x: float(x), "(float) Bias of the drift correction images (V). 0 = dc off"],
+                    '-IDC' : ['10e-12',     lambda x: float(x), "(float) Bias of the drift correction images (V). 0 = dc off"],
+                    '-tdc' : ['0',          lambda x: float(x), "(float) Time per line for drift correction images (s). 0 = leave settings in nanonis"],
+                    '-tbdc': ['1',          lambda x: float(x), "(float) Backward direction speed multiplier for drift correct image. E.g. 1=same speed, 2=twice as fast, 0.5=half speed"],
+                    '-pxdc': ['0',          lambda x: int(x),   "(int) Number of pixels in drift correct images. 0 = leave settings in nanonis"],
+                    '-Vset': ['0',          lambda x: float(x), "(float) Bias applied to the tip when moving between grid points (V). 0 = do not change"],
+                    '-Iset': ['0',          lambda x: float(x), "(float) Setpoint current when the tip is moving between points (A). 0 = do not change"],
+                    '-Vmov': ['0',          lambda x: float(x), "(float) Bias applied to the tip when moving between grid points (V). 0 = do not change"],
+                    '-Imov': ['0',          lambda x: float(x), "(float) Setpoint current when the tip is moving between points (A). 0 = do not change"],
+                    '-path': ['',           lambda x: str(x),   "(str) Full path to save pickled grid data. Leave blank to use current nanonis path."],
+                    '-s'   : ['sb-stsgrid', lambda x: str(x),   "(str) Suffix for the saved filename"]}
         
+        if(_help): return arg_dict
+        
+        error,user_arg_dict = self.userArgs(arg_dict,user_args)
+        if(error): return error + "\nRun ```help bias_dep``` if you're unsure."
+        
+        args = self.unpackArgs(user_arg_dict,keep_as_dict=True)
+        
+        if(self.run_mode == 'react'):   # React interface passes currents in as units of pm. convert to m
+            args['-IDC']  *= 1e-12
+            args['-Iset'] *= 1e-12
+            args['-Imov'] *= 1e-12
+
+        func = lambda : self.scanbot.stsGrid(args,message=self.bot_message.copy())
+        return self.threadTask(func)
+
     def zdep(self,user_args,_help=False):
         arg_dict = {'-zi'       : ['-10e-12',  lambda x: float(x), "(float) Initial tip lift from setpoint (m)"],
                     '-zf'       : ['10e-12',   lambda x: float(x), "(float) Final tip lift from setpoint (m)"],
@@ -926,15 +956,23 @@ class scanbot_interface(object):
         
         return [error,arg_dict]
     
-    def unpackArgs(self,arg_dict):
+    def unpackArgs(self,arg_dict,keep_as_dict=False):
         args = []
+        if(keep_as_dict): args = arg_dict.copy()
         for key,value in arg_dict.items():
+            if(keep_as_dict):
+                try:
+                    print(key,arg_dict[key][1](value[0]))
+                    args[key] = arg_dict[key][1](value[0])
+                except:
+                    args[key] = value[0]
+                continue
+
             if(value[0] == "-default"):                                         # If the value is -default...
                 args.append("-default")                                         # leave it so the function can retrieve the value from nanonis
                 continue
             
             args.append(value[1](value[0]))                                     # Convert the string into data type
-        
         return args
     
     def uploadToCloud(self,filename):

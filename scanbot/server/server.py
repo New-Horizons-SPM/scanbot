@@ -13,23 +13,30 @@ import sys
 import pickle
 import webbrowser
 from threading import Timer
-import argparse
 
+run_mode = 'react'
+
+# To create the .exe follow these steps:
+# pip install pyinstaller
+# Comment out the below ARGS section
+# Run the following command:
+# pyinstaller --onefile --icon=..\App\public\favicon.ico --add-data "..\App\build;static" --name scanbot_v4.3.0 server.py
+
+################# ARGS ##################
+import argparse
 parser = argparse.ArgumentParser()
-parser.add_argument('--version', action='version', version='scanbot 4.2.0', help='show the version number and exit')
+parser.add_argument('--version', action='version', version='scanbot 4.3.0', help='show the version number and exit')
 parser.add_argument('-c', '--terminal', action='store_true', help='run scanbot in terminal')
 parser.add_argument('-z', '--zulip',    action='store_true', help='run scanbot in terminal')
 args = parser.parse_args()
+if(args.terminal):  run_mode = 'c'
+if(args.zulip):     run_mode = 'z'
+################# ARGS ##################
 
 module_dir = str(os.path.dirname(os.path.abspath(__file__))).replace('\\','/')
 if(not module_dir.endswith('/')): module_dir += '/'
 
-run_mode = 'react'
-if(args.terminal):  run_mode = 'c'
-if(args.zulip):     run_mode = 'z'
-
 # if(run_mode == 'react'):
-# pyinstaller --onefile --icon=..\App\public\favicon.ico --add-data "..\App\build;static" --name scanbot_v4.1 server.py
 app = Flask(__name__, static_url_path='')
 
 # Determine if we're running in a PyInstaller bundle and adjust paths
@@ -210,6 +217,20 @@ def run_biasdep():
         pass
     return {"status": "success"}, 200
 
+@app.route('/run_stsGrid', methods=['POST'])
+def run_stsGrid():
+    userArgs = request.json['userArgs']
+    error = scanbot.stsGrid(user_args=userArgs)
+    if(error):
+        print(error)
+        return {"status": error}, 503
+
+    try:
+        shutil.rmtree(app.module_dir + 'temp')
+    except:
+        pass
+    return {"status": "success"}, 200
+
 @app.route('/run_autotipshape', methods=['POST'])
 def run_autotipshape():
     userArgs = request.json['userArgs']
@@ -266,6 +287,27 @@ def get_gif():
         temp_dir = getDir(app.module_dir + 'temp')
         return send_from_directory(temp_dir, 'GIF.gif', as_attachment=True)
             
+    return {"status": 'not found'}, 404
+
+@app.route('/get_stsGrid', methods=['POST'])
+def get_stsGrid():
+    timestamp = request.json['timestamp']
+    try:
+        files = sorted([file for file in Path(app.module_dir + 'temp/gridData').iterdir() if file.suffix == '.pk'], key=os.path.getmtime)
+        latestFile = str(files[-1].name)
+        try:
+            latestTimestamp = float(latestFile.split('_')[0])*1000
+            if(latestTimestamp > timestamp):
+                temp_dir = getDir(app.module_dir + 'temp/gridData')
+                gridPk = pickle.load(open(temp_dir + '/gridData.pk','rb'))
+                return send_from_directory(temp_dir, str('GIF.gif'), as_attachment=True)
+        except Exception as e:
+            print(e)
+        
+        return {"status": 'not found'}, 404
+    except:
+        pass
+
     return {"status": 'not found'}, 404
 
 @app.route('/get_state')

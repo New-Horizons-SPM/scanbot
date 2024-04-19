@@ -118,6 +118,100 @@ When the Bias Dependent function is selected, the following parameters can be co
 | Backwards time per line multiplier                   | Sets the backward speed of the tip during drift correction scans. (0.5 = half the speed as the forward speed)                                                               |
 | Suffix                                               | Text to append to the .sxm filenames for all images in this set                                                                                                             |
 
+## STS Grid
+
+The STS Grid function lets you acquire a drift-corrected STS map.
+The plot area will show the latest drift-correction image alongside a gif of previous drift-correction images to keep track of overall drift during the experiment.
+The process of the experiment is as follows:
+
+1. The existing Pattern Grid is loaded in from Nanonis.
+2. A check is carried out to ensure the STM tip and the grid centre are both within the current scan frame. If not, the scan will not start.
+3. An image is taken in the upward scan direction as a reference to measure future drift. The image bias and setpoint can be configured in the settings.
+4. The bias and setpoint are adjusted to configured values, then tip moves to the first location in the grid.
+5. The STS setpoint current and bias is then applied before acquiring a spectrum.
+6. Steps 4 and 5 are repeated until a configurable number of spectra are taken. <strong>Note that the setpoint at which the tip moves between grid points can be different to that of the acquired spectra.<strong>
+7. A drift correction image is acquired and compared with the original frame. If any drift is detected, the scan frame and grid centre are updated to compensate. <strong>Note that the bias and setpoint current of the drift correction images can be configured differently to that of the acquired spectra.</strong>
+8. Steps 4 to 7 are repeated until the grid completes.
+
+The output grid data (apart from being autosaved as individual .dat files by Nanonis) will be saved in the specified directory in the form of a [pickled](https://www.geeksforgeeks.org/understanding-python-pickling-example/) Python dictionary with the following structure:
+```Python
+grid_data['sweep_signal'] # contains the sweep signal, in this case it is the nanonis "bias calc (V)" signal
+grid_data[<channel_name>] # contains a 3D matrix of the grid data, where axis 0 and 1 are the spatial axes, while axis 2 is the measured signal axis.
+```
+<strong>Note that <channel_name> can be any of the recorded channels highlighted in the Nanonis Bias Spectroscopy module.</strong>
+The output grid file is never locked and will be updated in real-time after each spectrum within the grid is acquired.
+
+![stsgridwindow](./appim/sts-grid.png)
+
+The following Python code shows how to visualise the output grid data:
+```Python
+# %%
+import pickle
+import matplotlib.pyplot as plt
+import numpy as np
+from scipy.signal import savgol_filter as savgol
+import matplotlib.animation as animation
+from scipy.ndimage import gaussian_filter as gaussian
+from scipy.stats import norm
+
+########## Parameters ##########
+path = "C:/Users/<path to your folder/"                                         # Path where the grid data file is saved
+filename = "scanbot-sts-grid.pk"                                                # Filename of the grid data to plot
+channel  = 'Current (A)'                                                        # Channel to plot
+deriv    = True                                                                 # Take the derivative of the signal? (e.g. dIdV from current)
+bias     = -0.1                                                                 # Bias slice to plot from the grid data
+makeGif  = True                                                                 # Turn data into gif. can take a long time.
+gif_n    = 10                                                                   # Take every gif_nth slice in the grid so the gif isn't so large
+########## Parameters ##########
+
+pk = pickle.load(open(path + filename,'rb'))                                    # Loads in the .pk grid file
+
+data  = pk['data']
+sweep = data['sweep_signal']                                                    # Sweep signal is the bias for bias spectroscopy
+grid  = np.flipud(np.array(data[channel]))                                      # Extract the signal for the selected channel. Use np.flipud because the first point in the grid is at the bottom.
+if(deriv):
+    # increasing the window_lenth increases the smoothing before taking the derivative
+    grid = savgol(grid, window_length=3, polyorder=1, deriv=1, axis=2)          # Take the derivative to get dI/dV
+
+index = np.argmin(abs(sweep - bias))                                            # Index of the bias we want to plot
+gridSlice = grid[:,:,index].copy()                                              # Take a slice out of the grid at the selected bias
+
+mask = gridSlice == 0
+gridSlice[mask] = np.nan                                                        # Make the zeros nan so they don't spoil the contrast when plotting
+
+# Plotting a slice of the grid
+fig = plt.figure()
+ax  = fig.add_subplot(111)
+ax.imshow(gridSlice)
+
+if(makeGif):                                                                    # Create and save a gif of the output grid
+    fig = plt.figure(1,figsize=(10,5))
+    ax = fig.add_subplot(111)
+    
+    ims = []                                                                    # Array of images to be turned into gif
+    for i in range(0,np.size(grid,2)):                                          # Loop through all of the slices in the grid
+        if(i%gif_n): continue                                                   # Only use every gif_nth frame in the gif to save time and space
+        image = grid[:,:,i]
+        
+        image = gaussian(image,1)                                               # Spatial filtering... Comment this line out if you don't want any spatial filtering
+        
+        #Define colour scale saturation
+        mu, sigma = norm.fit(image)
+        vmin = mu - 2*sigma
+        vmax = mu + 2*sigma
+             
+        #Plot
+        im = plt.imshow(image,cmap='magma',animated=True,origin='lower',vmin=vmin,vmax=vmax)
+        plt.axis('off')
+        ttl = plt.text(0.5, 1.01, "Bias = %f V" % sweep[i], horizontalalignment='center', verticalalignment='bottom', transform=ax.transAxes)
+        
+        ims.append([im,ttl])
+        
+    ani = animation.ArtistAnimation(fig,ims,interval=200,blit=True,repeat_delay=1000)
+    ani.save(path + filename + '.gif',writer='imagemagick')                     # save the gif
+    
+```
+
 # Automation
 
 From the Automation screen, you can initiate the following actions:

@@ -19,6 +19,8 @@ Scanbot is a collection of several automated STM and nc-AFM data acquisition com
 * STM
     - Bias dependent imaging with drift correction
     - Automated sample surveying (NxN grid)
+* STS
+    - STS grids with drift correction
 * nc-AFM
     - z-dependent nc-AFM
     - nc-AFM registration

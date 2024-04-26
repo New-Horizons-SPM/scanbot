@@ -348,8 +348,6 @@ if __name__ == '__main__':
     app.run(debug=False)
 
 def app_(test=False,tmp_path=""):
-    print("RUNMODE",run_mode)
-    
     if(run_mode == 'c'):
         scanbot_interface(run_mode=run_mode, module_dir=module_dir)
         exit()

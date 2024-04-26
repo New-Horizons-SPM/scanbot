@@ -201,10 +201,14 @@ class scanbot():
         if(stitch == 1):
             _,_,px,lines = scan.BufferGet()
             stitchedSurvey = np.zeros((lines*n,px*n))*np.nan
-        
+
         callAutoTipShape = False
         classificationHistory = []
         for idx,frame in enumerate(frames):
+            seriesName = scan.PropsGet()[3]
+            scan.PropsSet(continuous_scan=2,bouncy_scan=2,autosave=1,series_name=seriesName)
+            self.plotChannel(c=-1,a=14)
+
             if(idx < startAt-1): continue
             
             self.interface.sendReply('Running scan ' + str(idx + 1) + '/' + str(n**2),message=message) # Send a message that the next scan is starting
@@ -449,11 +453,15 @@ class scanbot():
         dy    = scanFrame[3]/lxdc
         dxy   = np.array([dx,dy])
         ox,oy = np.array([0,0])
-        
+
         GIF       = []
         biasList  = np.linspace(bi,bf,nb)
         initialDC = np.zeros((pxdc,pxdc))
         for idx,bias in enumerate(biasList):
+            seriesName = scanModule.PropsGet()[3]
+            scanModule.PropsSet(continuous_scan=2,bouncy_scan=2,autosave=1,series_name=seriesName)
+            self.plotChannel(c=-1,a=14)
+
             self.interface.sendReply("Scan " + str(idx+1) + "/" + str(nb))
             if(abs(dcbias) > 0):                                                # If drift correction is turned on, take a drift correction image
                 time.sleep(0.25)
@@ -613,9 +621,10 @@ class scanbot():
         if(IDC == 0):  IDC = Iset
         if(Vmov == 0): Vmov = Vset
         if(Imov == 0): Imov = Iset
-        
+
         seriesName = scanModule.PropsGet()[3]
         scanModule.PropsSet(continuous_scan=2,bouncy_scan=2,autosave=1,series_name=seriesName)
+        self.plotChannel(c=-1,a=14)
 
         pxdc  = scanModule.BufferGet()[2]
         dx    = scanFrame[2]/pxdc
@@ -657,7 +666,9 @@ class scanbot():
                     zController.SetpntSet(IDC)
                     time.sleep(0.1)
                     self.rampBias(NTCP, VDC)
-                    if(self.checkEventFlags()): break                               # Check event flags
+                    if(self.checkEventFlags()):
+                        stop = True
+                        break                                                       # Check event flags
                     time.sleep(0.25)
                     
                     basename_dc = "scanbot-DC-stsgrid"
@@ -688,7 +699,7 @@ class scanbot():
                     gridFrame[3] -= oy
                     pattern.GridSet(*gridFrame)
                     totalDrift = totalDrift - np.array([ox,oy])
-
+                
                 zController.SetpntSet(Imov)
                 self.rampBias(NTCP,Vmov)
                 time.sleep(0.1)
@@ -714,7 +725,9 @@ class scanbot():
                 saveDict = {"data" : gridData}
                 pickle.dump(saveDict,open(saveFilename,'wb'))
                 
-                if(self.checkEventFlags()): break                               # Check event flags
+                if(self.checkEventFlags()):
+                    stop = True
+                    break                                                       # Check event flags
 
                 count += 1
 
@@ -867,6 +880,10 @@ class scanbot():
         completionTime = dt.now() + timedelta(seconds=eta)
         self.interface.sendReply("Starting zdep.. ETA: " + str(completionTime))
         for idx,dz in enumerate(dzList):
+            seriesName = scanModule.PropsGet()[3]
+            scanModule.PropsSet(continuous_scan=2,bouncy_scan=2,autosave=1,series_name=seriesName)
+            self.plotChannel(c=-1,a=14)
+        
             self.interface.sendReply("Scan " + str(idx+1) + "/" + str(len(dzList)))
             print("doing dz = " + str(dz*1e9) + " nm")
             if(abs(dcbias) > 0):                                                # If drift correction is turned on, take a drift correction image
@@ -1025,6 +1042,10 @@ class scanbot():
         folme = FolMe(NTCP)
         marks = Marks(NTCP)
         
+        seriesName = scanModule.PropsGet()[3]
+        scanModule.PropsSet(continuous_scan=2,bouncy_scan=2,autosave=1,series_name=seriesName)
+        self.plotChannel(c=-1,a=14)
+
         tipPos    = folme.XYPosGet(Wait_for_newest_data=1)
         scanFrame = scanModule.FrameGet()
         if(not self.tipInFrame(tipPos,scanFrame)):
@@ -1957,6 +1978,9 @@ class scanbot():
                 demoData = pickle.load(open(pkpath,'rb'))                       # Load in dummy data for demo mode. This is just a few images of various tip imprints
             demoIDX = 0                                                         # Keep track of demo data file
             
+        seriesName = scanModule.PropsGet()[3]
+        scanModule.PropsSet(continuous_scan=2,bouncy_scan=2,autosave=1,series_name=seriesName)
+        self.plotChannel(c=-1,a=14)
         for frame in snakedGrid:
             scanModule.FrameSet(*frame)
             
@@ -1974,6 +1998,7 @@ class scanbot():
                 timedOut, _, filePath = scanModule.WaitEndOfScan(timeout=3000)  # Wait until the scan finishes or 3 sec, whichever occurs first
                 _,cleanImage,_ = scanModule.FrameDataGrab(14, 1)                # Image of the 'clean' surface
                 isClean = utilities.isClean(cleanImage,lxy=wh,threshold=0.3e-9,sensitivity=1) # Check if the scan so far is of a clean area
+                if(demo): isClean = True
             
             cleanImage = np.flipud(cleanImage)                                  # Flip because the scan direction is up
             if(not isClean):
@@ -2119,34 +2144,35 @@ class scanbot():
         signal_names,signal_indexes = signals.InSlotsGet()
         num_channels,channels,pixels,lines = scan.BufferGet()
         
-        helpStr  = "**Selected channel:**\n" + signal_names[self.channel] + "\n\n"
-        
-        helpStr += "**Channels in scan buffer:**\n"
-        helpStr += "Buffer idx | Signal idx | Signal name\n"
-        for idx,name in enumerate(signal_names):
-            if(idx in channels):
-                helpStr += str(idx).ljust(11) + '| ' + str(signal_indexes[idx]).ljust(11) + "| " + name + "\n"
-        
-        helpStr += "\n**Available channels:**\n"
-        helpStr += "Buffer idx | Signal idx | Signal name\n"
-        for idx,name in enumerate(signal_names):
-            helpStr += str(idx).ljust(11) + '| ' + str(signal_indexes[idx]).ljust(11) + "| " + name + "\n"
+        if(c == -1 and a == -1 and r == -1):
+            helpStr  = "**Selected channel:**\n" + signal_names[self.channel] + "\n\n"
             
-        helpStr = "```\n" + helpStr + "\n```"
-        
-        if(c == -1 and a == -1 and r == -1): self.disconnect(NTCP); return helpStr
+            helpStr += "**Channels in scan buffer:**\n"
+            helpStr += "Buffer idx | Signal idx | Signal name\n"
+            for idx,name in enumerate(signal_names):
+                if(idx in channels):
+                    helpStr += str(idx).ljust(11) + '| ' + str(signal_indexes[idx]).ljust(11) + "| " + name + "\n"
+            
+            helpStr += "\n**Available channels:**\n"
+            helpStr += "Buffer idx | Signal idx | Signal name\n"
+            for idx,name in enumerate(signal_names):
+                helpStr += str(idx).ljust(11) + '| ' + str(signal_indexes[idx]).ljust(11) + "| " + name + "\n"
+                
+            helpStr = "```\n" + helpStr + "\n```"
+            
+            self.disconnect(NTCP)
+            return helpStr
         
         # Validations first
         errmsg = ''
         if(c != -1 and not c in channels):  errmsg += "Invalid signal -c=" + str(c) + " is not in the buffer\n"
         if(a != -1 and not a in range(24)): errmsg += "Invalid signal -a=" + str(a) + "\n"
-        if(a != -1 and a in channels):      errmsg += "-a=" + str(a) + " is already in the buffer\n"
+        # if(a != -1 and a in channels):      errmsg += "-a=" + str(a) + " is already in the buffer\n"
         if(r != -1 and not r in channels):  errmsg += "-r=" + str(r) + " is not in the buffer\n"
         if(r == self.channel):              errmsg += "-r=" + str(r) + " cannot be removed while selected\n"
         
         if(errmsg):
             self.disconnect(NTCP)
-            errmsg += helpStr
             return errmsg
         
         # Then process

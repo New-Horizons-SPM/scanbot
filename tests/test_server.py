@@ -268,7 +268,7 @@ def test_run_survey(client,tmp_path):
 
         mock_Scan.return_value.FrameGet.return_value      = [0,0,20e-9,20e-9,0]
         mock_Scan.return_value.PropsGet.return_value      = ["N/A","N/A","N/A","series name","N/A"]
-        mock_Scan.return_value.BufferGet.return_value     = ["N/A","N/A",128,128]
+        mock_Scan.return_value.BufferGet.return_value     = ["N/A",['14'],128,128]
         mock_Scan.return_value.WaitEndOfScan.return_value = [False, "N/A", "file_path"]
         mock_Scan.return_value.FrameDataGrab.return_value = ["N/A", dummy_frame, "N/A"]
 
@@ -306,17 +306,17 @@ def test_run_bias_dep(client):
 
         mock_Scan.return_value.FrameGet.return_value      = [0,0,20e-9,20e-9,0]
         mock_Scan.return_value.PropsGet.return_value      = ["N/A","N/A","N/A","series name","N/A"]
-        mock_Scan.return_value.BufferGet.return_value     = ["N/A","N/A",128,128]
+        mock_Scan.return_value.BufferGet.return_value     = ["N/A",['14'],128,128]
         mock_Scan.return_value.WaitEndOfScan.return_value = [False, "N/A", "file_path"]
         mock_Scan.return_value.FrameDataGrab.return_value = ["N/A", dummy_frame, "N/A"]
         mock_Scan.return_value.SpeedGet.return_value      = ["N/A","N/A",0.3,"N/A","N/A","N/A"]
 
         mock_Bias.return_value.Get.return_value = 0
 
-        data = {"userArgs":["-n=1","-px=1"]}
+        data = {"userArgs":["-n=1","-px=16"]}
         response = client.post('/run_biasdep', json=data)
 
-        time.sleep(4)
+        time.sleep(6)
         assert response.status_code == 200
 
     data = {"timestamp":0}

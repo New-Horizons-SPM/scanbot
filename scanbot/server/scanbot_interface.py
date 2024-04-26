@@ -98,6 +98,8 @@ class scanbot_interface(object):
         self.zulipTopic   = initDict['zulip_topic']
         
         self.path         = initDict['path']
+        if(self.path):
+            self.path = self.path.replace('\\','/')
         
         self.uploadMethod = initDict['upload_method']
         

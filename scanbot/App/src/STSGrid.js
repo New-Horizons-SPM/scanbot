@@ -132,10 +132,10 @@ function STSGrid() {
             ]
         },
         {
-            title: "Drift correction",
+            title: "Save settings",
             inputs: [
-                { label: "Save path",   type: "text", id: "path", name: "path", value: allFormData[2]['path'], description: "(str) Full path of the desired save location of grid data. Leave blank to save in the current Nanonis Path"},
-                { label: "Save suffix", type: "text", id: "s",    name: "s",    value: allFormData[2]['s'],    description: "(str) Filename suffix for the saved grid data"},
+                { label: "Save path (absolute path)", type: "text", id: "path", name: "path", value: allFormData[2]['path'], description: "(str) Full path of the desired save location of grid data."},
+                { label: "Save suffix",               type: "text", id: "s",    name: "s",    value: allFormData[2]['s'],    description: "(str) Filename suffix for the saved grid data"},
             ]
         },
         {

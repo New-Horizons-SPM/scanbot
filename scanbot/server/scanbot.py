@@ -50,7 +50,8 @@ try: import pickle
 except: pass
 
 class scanbot():
-    channel      = 14                                                           # Default plot channel. Change this using plot_channel command
+    focusChannel = 'Z (m)'                                                      # Default plot channel. Change this using plot_channel command
+    zchannel     = 'Z (m)'                                                      # Name of the Z channel in the signals manager
     
     safeCurrent  = 5e-9                                                         # Current above this value is considered a tip crash.   Dummy value - this gets overridden by config.
     safeRetractV = 200                                                          # Voltage applied during safe retract.                  Dummy value - this gets overridden by config.
@@ -84,13 +85,13 @@ class scanbot():
 ###############################################################################
 # Data Acquisition
 ###############################################################################
-    def plot(self,channel=-1):
+    def plot(self,channel_name=""):
         """
         Return a plot of the currect scan frame
 
         Parameters
         ----------
-        channel : Channel in the buffer to plot. -1 means plot the channel 
+        channel : Channel name in the buffer to plot. "" means plot the channel 
                   currently in focus.
 
         """
@@ -98,18 +99,24 @@ class scanbot():
         if(connection_error): return connection_error                           # Return error message if there was a problem connecting        
         
         scan = Scan(NTCP)                                                       # Nanonis scan module
-        if(channel < 0): channel = self.channel                                 # Plot the default channel if -c param not passed in
+        if(not channel_name): channel_name = self.focusChannel                  # Plot the default channel if -c param not passed in
+        
+        channel_index = self.getChannelIndex(channel_name)
+        if(channel_index == -1):
+            self.disconnect(NTCP)                                               # Close the TCP connection
+            self.interface.reactToMessage("cross_mark")
+            return "Channel " + channel_name + " does not exist. Check the signal manager for available channels"
         
         _,channels,_,_ = scan.BufferGet()
-        if(channel not in channels):
+        if(channel_index not in channels):
+            self.disconnect(NTCP)                                               # Close the TCP connection
             self.interface.reactToMessage("cross_mark")
-            self.interface.sendReply("Available channels:\n" + "\n".join(str(c) for c in channels))
-            return
+            return "Channel " + channel_name + " is not in the scan buffer so there is no data for it. Add it using the plot_channel command"
         
-        _,scanData,_ = scan.FrameDataGrab(channel, 1)                           # Grab the data within the scan frame. Channel 14 is . 1 is forward data direction
+        _,scanData,_ = scan.FrameDataGrab(channel_index, 1)                     # Grab the data within the scan frame. Channel 14 is . 1 is forward data direction
         
         try:
-            pngFilename = 'im-c' + str(channel) + '.png'                        # All unsaved (incomplete) scans are saved as im.png
+            pngFilename = 'im-' + str(channel_name) + '.png'                    # All unsaved (incomplete) scans are saved as im.png
             pngFilename = self.makePNG(scanData,pngFilename=pngFilename)        # Generate a png from the scan data
             self.interface.sendPNG(pngFilename,notify=False)                    # Send a png over zulip
         except:
@@ -204,10 +211,11 @@ class scanbot():
 
         callAutoTipShape = False
         classificationHistory = []
+        focusChannel_index = self.getChannelIndex(self.focusChannel)
         for idx,frame in enumerate(frames):
             seriesName = scan.PropsGet()[3]
             scan.PropsSet(continuous_scan=2,bouncy_scan=2,autosave=1,series_name=seriesName)
-            self.plotChannel(c=-1,a=14)
+            self.plotChannel(a=self.zchannel)
 
             if(idx < startAt-1): continue
             
@@ -231,7 +239,7 @@ class scanbot():
                 
             if(not filePath): time.sleep(0.2); continue                         # If user stops the scan, filePath will be blank, then go to the next scan
             
-            _,scanData,_ = scan.FrameDataGrab(14, 1)                            # Grab the data within the scan frame. Channel 14 is . 1 is forward data direction
+            _,scanData,_ = scan.FrameDataGrab(focusChannel_index, 1)            # Grab the data within the scan frame
             
             dummyData = []
             if(autotip):                                                        # If auto tip shaping = Yes, we need to classify the scan to determine if it's time to reshape the tip
@@ -267,7 +275,7 @@ class scanbot():
                     print("auto tip shaping initate!")
                     callAutoTipShape = True
             
-            _,scanData,_ = scan.FrameDataGrab(self.channel, 1)                  # Grab the data related to our focused channel
+            _,scanData,_ = scan.FrameDataGrab(focusChannel_index, 1)            # Grab the data related to our focused channel
             if(dummyData): scanData = dummyData[idx]                            # This happens when in demo mode
 
             pngFilename,scanDataPlaneFit = self.makePNG(scanData, filePath,returnData=True,dpi=150) # Generate a png from the scan data
@@ -457,10 +465,12 @@ class scanbot():
         GIF       = []
         biasList  = np.linspace(bi,bf,nb)
         initialDC = np.zeros((pxdc,pxdc))
+        zchannel_index = self.getChannelIndex(self.zchannel)
+        focusChannel_index = self.getChannelIndex(self.focusChannel)
         for idx,bias in enumerate(biasList):
             seriesName = scanModule.PropsGet()[3]
             scanModule.PropsSet(continuous_scan=2,bouncy_scan=2,autosave=1,series_name=seriesName)
-            self.plotChannel(c=-1,a=14)
+            self.plotChannel(a=self.zchannel)
 
             self.interface.sendReply("Scan " + str(idx+1) + "/" + str(nb))
             if(abs(dcbias) > 0):                                                # If drift correction is turned on, take a drift correction image
@@ -480,7 +490,7 @@ class scanbot():
                 if(not filePath): break                                         # If the scan was stopped manually before, stop here
                 if(self.checkEventFlags()): break                               # Check event flags
 
-                _,driftCorrection,_ = scanModule.FrameDataGrab(14, 1)
+                _,driftCorrection,_ = scanModule.FrameDataGrab(zchannel_index, 1)
                 
                 if(np.sum(initialDC) == 0): initialDC = driftCorrection.copy()  # On the first run through, we will compare the initial drift correction frame with itself, so ox,oy = 0,0
                 ox,oy = utilities.getFrameOffset(initialDC,driftCorrection,dxy,theta=-scanFrame[4]) # Frame offset for drift correction. passing negative scan angle because nanonis is backwards
@@ -505,7 +515,7 @@ class scanbot():
             if(not filePath): break
             if(self.checkEventFlags()): break                                   # Check event flags
             
-            _,scanData,_ = scanModule.FrameDataGrab(self.channel, 1)            # 14 = z., 18 is Freq. shift
+            _,scanData,_ = scanModule.FrameDataGrab(focusChannel_index, 1)      # Grab the data for the current focus channel
             pngFilename = self.makePNG(scanData, filePath)                      # Generate a png from the scan data
             GIF.append(scanData)
             
@@ -520,7 +530,6 @@ class scanbot():
         
         self.disconnect(NTCP)                                                   # Close the TCP connection
         global_.running.clear()                                                 # Free up the running flag
-            
 
     def getGrid(self,gridFrame):
         nx,ny,ox,oy,w,h,gridAngle = gridFrame
@@ -624,7 +633,8 @@ class scanbot():
 
         seriesName = scanModule.PropsGet()[3]
         scanModule.PropsSet(continuous_scan=2,bouncy_scan=2,autosave=1,series_name=seriesName)
-        self.plotChannel(c=-1,a=14)
+        self.plotChannel(a=self.zchannel)
+        zchannel_index = self.getChannelIndex(self.zchannel)
 
         pxdc  = scanModule.BufferGet()[2]
         dx    = scanFrame[2]/pxdc
@@ -635,11 +645,17 @@ class scanbot():
         rowData  = {}
         gridData = {}
         bspecProps = bspec.PropsGet()
-        channels   = bspecProps['channels']
         numPoints  = bspecProps['num_points']
+        
+        channels = []
+        if(self.interface.nanonis_version < 11798):
+            channels = bspecProps['channels']
+        if(self.interface.nanonis_version >= 11798):
+            channels = bspec.ChsGet()[1]
+
         for channel in channels:
             gridData[channel] = []
-
+        
         stop  = False
         count = 0
         initialDC = np.zeros(10)
@@ -656,7 +672,7 @@ class scanbot():
                 for point in range(len(rowData[key])):
                     rowData[key][point] = np.zeros(numPoints)
                 gridData[key].append(list(rowData[key].copy()))
-
+            
             for ix,x in enumerate(xx):
                 if(NDC > 0 and count % NDC == 0):                                   # If drift correction is turned on, take a drift correction image
                     time.sleep(0.25)
@@ -681,13 +697,13 @@ class scanbot():
                     if(self.checkEventFlags()):                                     # Check event flags
                         stop = True
                         break
-
-                    _,driftCorrection,_ = scanModule.FrameDataGrab(14, 1)
+                    
+                    _,driftCorrection,_ = scanModule.FrameDataGrab(zchannel_index, 1)
 
                     pngFilename,scanDataPlaneFit = self.makePNG(driftCorrection, filePath,returnData=True,dpi=150) # Generate a png from the scan data
                     self.interface.sendPNG(pngFilename,message=message)             # Send a png over zulip/save in react temp folder for front end
                     
-                    if(np.sum(initialDC) == 0): initialDC = driftCorrection.copy()  # On the first run through, we will compare the initial drift correction frame with itself, so ox,oy = 0,0
+                    if(np.sum(initialDC) == 0.0): initialDC = driftCorrection.copy()  # On the first run through, we will compare the initial drift correction frame with itself, so ox,oy = 0,0
                     ox,oy = utilities.getFrameOffset(initialDC,driftCorrection,dxy,theta=-scanFrame[4]) # Frame offset for drift correction. passing negative scan angle because nanonis is backwards
                     print("Frame offset correction offset: " + str([ox,oy]))
                     
@@ -867,7 +883,6 @@ class scanbot():
         ox,oy = np.array([0,0])
         dzList = np.linspace(zi, zf, nz)
         initialDC = np.zeros((dcpx,dcpx))
-        print("dzList: " + str(dzList))
         
         scanTime  = lx*(ft + bt)
         delayTime = 4
@@ -879,10 +894,11 @@ class scanbot():
         eta = len(dzList)*(scanTime + delayTime)
         completionTime = dt.now() + timedelta(seconds=eta)
         self.interface.sendReply("Starting zdep.. ETA: " + str(completionTime))
+        zchannel_index = self.getChannelIndex(self.zchannel)
         for idx,dz in enumerate(dzList):
             seriesName = scanModule.PropsGet()[3]
             scanModule.PropsSet(continuous_scan=2,bouncy_scan=2,autosave=1,series_name=seriesName)
-            self.plotChannel(c=-1,a=14)
+            self.plotChannel(a=self.zchannel)
         
             self.interface.sendReply("Scan " + str(idx+1) + "/" + str(len(dzList)))
             print("doing dz = " + str(dz*1e9) + " nm")
@@ -909,7 +925,7 @@ class scanbot():
                 scanModule.Action('start',scan_direction='up')
                 _, _, filePath = scanModule.WaitEndOfScan()
                 if(not filePath): break                                         # If the scan was stopped before finishing, stop zdep
-                _,driftCorrection,_ = scanModule.FrameDataGrab(14, 1)
+                _,driftCorrection,_ = scanModule.FrameDataGrab(zchannel_index, 1)
                 
                 if(np.sum(initialDC) == 0): initialDC = driftCorrection
                 print("Scan Angle: " + str(scanFrame[4]))
@@ -975,7 +991,7 @@ class scanbot():
             _, _, filePath = scanModule.WaitEndOfScan()
             if(not filePath): break
             
-            _,scanData,_ = scanModule.FrameDataGrab(18, 1)                      # 14 = z., 18 is Freq. shift
+            _,scanData,_ = scanModule.FrameDataGrab(0, 1)                       # 0 = Current
             pngFilename = self.makePNG(scanData, filePath)                      # Generate a png from the scan data
             GIF.append(scanData)
             
@@ -1044,7 +1060,7 @@ class scanbot():
         
         seriesName = scanModule.PropsGet()[3]
         scanModule.PropsSet(continuous_scan=2,bouncy_scan=2,autosave=1,series_name=seriesName)
-        self.plotChannel(c=-1,a=14)
+        self.plotChannel(a=self.zchannel)
 
         tipPos    = folme.XYPosGet(Wait_for_newest_data=1)
         scanFrame = scanModule.FrameGet()
@@ -1157,7 +1173,7 @@ class scanbot():
                 global_.running.clear()                                         # Free up the running flag
                 return
                 
-            _,scanData,_ = scanModule.FrameDataGrab(0, 1)                       # 14 = z., 18 is Freq. shift
+            _,scanData,_ = scanModule.FrameDataGrab(0, 1)                       # 0 = Current
             scanData = np.sum(abs(scanData),axis=1)
             lines = sum(scanData > 0)
             if(lines > lz):
@@ -1171,7 +1187,7 @@ class scanbot():
         _, _, filePath = scanModule.WaitEndOfScan()
         if(not filePath): pass
         
-        _,scanData,_ = scanModule.FrameDataGrab(18, 1)                          # 14 = z., 18 is Freq. shift
+        _,scanData,_ = scanModule.FrameDataGrab(0, 1)                           # 0 = Current
         pngFilename = self.makePNG(scanData, filePath)                          # Generate a png from the scan data
         self.interface.sendPNG(pngFilename,notify=False,message=message)        # Send a png over zulip
             
@@ -1354,7 +1370,7 @@ class scanbot():
             
             while(autoApproach.OnOffGet()):
                 print("Still approaching...")
-                time.sleep(1)
+                time.sleep(2)
         
             time.sleep(1)
             if(zon): zController.OnOffSet(True)
@@ -1980,7 +1996,8 @@ class scanbot():
             
         seriesName = scanModule.PropsGet()[3]
         scanModule.PropsSet(continuous_scan=2,bouncy_scan=2,autosave=1,series_name=seriesName)
-        self.plotChannel(c=-1,a=14)
+        self.plotChannel(a=self.zchannel)
+        zchannel_index = self.getChannelIndex(self.zchannel)
         for frame in snakedGrid:
             scanModule.FrameSet(*frame)
             
@@ -1996,7 +2013,7 @@ class scanbot():
             timedOut = True
             while(timedOut and isClean):                                        # Periodically check if the current scan is of a clean region
                 timedOut, _, filePath = scanModule.WaitEndOfScan(timeout=3000)  # Wait until the scan finishes or 3 sec, whichever occurs first
-                _,cleanImage,_ = scanModule.FrameDataGrab(14, 1)                # Image of the 'clean' surface
+                _,cleanImage,_ = scanModule.FrameDataGrab(zchannel_index, 1)    # Image of the 'clean' surface
                 isClean = utilities.isClean(cleanImage,lxy=wh,threshold=0.3e-9,sensitivity=1) # Check if the scan so far is of a clean area
                 if(demo): isClean = True
             
@@ -2025,7 +2042,7 @@ class scanbot():
             scanModule.Action(scan_action="start",scan_direction="up")          # Start an upward scan
             _, _, filePath = scanModule.WaitEndOfScan()                         # Wait until the scan finishes
             if(not filePath): break                                             # If the scan was stopped before finishing, stop program
-            _,tipImprint,_ = scanModule.FrameDataGrab(14, 1)                    # Image of the tip's crater after very light tip shape action
+            _,tipImprint,_ = scanModule.FrameDataGrab(zchannel_index, 1)        # Image of the tip's crater after very light tip shape action
             cleanImage = np.flipud(cleanImage)                                  # Flip because the scan direction is up
             
             # Probably do something here to periodically check scan area (as
@@ -2112,7 +2129,43 @@ class scanbot():
 ###############################################################################
 # Config
 ###############################################################################
-    def plotChannel(self,c=-1,a=-1,r=-1):
+    def getChannelIndex(self,channel_name):
+        """
+        This function takes in a channel name and returns its index.
+        For older versions of Nanonis (<R), the slot number is returned.
+        For newer versions of Nanonis, the RT Index is returned.
+
+        Parameters
+        ----------
+        channel_name : Name of the channel as listed in the signals manager.
+
+        Returns
+        -------
+        channel_index: RT Index (slot number) of the channel_name for new (old)
+                       version of Nanonis. Returns -1 if the channel is not in 
+                       the list of available channels
+        """
+        NTCP,connection_error = self.connect()                                  # Connect to nanonis via TCP
+        if(connection_error): return connection_error                           # Return error message if there was a problem connecting        
+        
+        signals = Signals(NTCP)                                                 # Nanonis Signals module
+        
+        all_channel_names = signals.NamesGet()                                  # Get all of the signal names
+        
+        try:
+            available_channel_names,_ = signals.InSlotsGet()                    # Fails on newer versions of Nanonis
+        except:
+            available_channel_names = all_channel_names
+        
+        try:
+            channel_index = available_channel_names.index(channel_name)
+        except:
+            channel_index = -1
+
+        self.disconnect(NTCP)
+        return channel_index
+
+    def plotChannel(self,c='',a='',r=''):
         """
         This function handles reading and configuring the signals in Nanonis. 
         The selected channel is what Scanbot uses when sending plots back to 
@@ -2124,9 +2177,9 @@ class scanbot():
 
         Parameters
         ----------
-        c : Index of a signal in the buffer to take focus. -1 = no change
-        a : Index of a signal to be added to the buffer
-        r : Index of a signal to be removed from the buffer
+        c : Name of a signal in the buffer to take focus. -1 = no change
+        a : Name of a signal to be added to the buffer
+        r : Name of a signal to be removed from the buffer
 
         Returns
         -------
@@ -2135,55 +2188,60 @@ class scanbot():
         errmsg  : Error message if there was an error
 
         """
+        if(not c and not a and not r):
+            helpStr  = "See the Nanonis signals manager for a list of available signals"
+            return helpStr
+        
         NTCP,connection_error = self.connect()                                  # Connect to nanonis via TCP
         if(connection_error): return connection_error                           # Return error message if there was a problem connecting        
         
-        scan = Scan(NTCP)
-        signals = Signals(NTCP)
+        scan = Scan(NTCP)                                                       # Nanonis Scan module
+        signals = Signals(NTCP)                                                 # Nanonis Signals module
         
-        signal_names,signal_indexes = signals.InSlotsGet()
-        num_channels,channels,pixels,lines = scan.BufferGet()
+        all_channel_names = signals.NamesGet()                                  # Get all of the signal names
+        buffer_channels = scan.BufferGet()[1]                                   # See which channels are currently selected
         
-        if(c == -1 and a == -1 and r == -1):
-            helpStr  = "**Selected channel:**\n" + signal_names[self.channel] + "\n\n"
-            
-            helpStr += "**Channels in scan buffer:**\n"
-            helpStr += "Buffer idx | Signal idx | Signal name\n"
-            for idx,name in enumerate(signal_names):
-                if(idx in channels):
-                    helpStr += str(idx).ljust(11) + '| ' + str(signal_indexes[idx]).ljust(11) + "| " + name + "\n"
-            
-            helpStr += "\n**Available channels:**\n"
-            helpStr += "Buffer idx | Signal idx | Signal name\n"
-            for idx,name in enumerate(signal_names):
-                helpStr += str(idx).ljust(11) + '| ' + str(signal_indexes[idx]).ljust(11) + "| " + name + "\n"
-                
-            helpStr = "```\n" + helpStr + "\n```"
-            
-            self.disconnect(NTCP)
-            return helpStr
+        try:
+            available_channel_names,_ = signals.InSlotsGet()    # Fails on newer versions of Nanonis
+        except:
+            available_channel_names = all_channel_names
         
-        # Validations first
-        errmsg = ''
-        if(c != -1 and not c in channels):  errmsg += "Invalid signal -c=" + str(c) + " is not in the buffer\n"
-        if(a != -1 and not a in range(24)): errmsg += "Invalid signal -a=" + str(a) + "\n"
-        # if(a != -1 and a in channels):      errmsg += "-a=" + str(a) + " is already in the buffer\n"
-        if(r != -1 and not r in channels):  errmsg += "-r=" + str(r) + " is not in the buffer\n"
-        if(r == self.channel):              errmsg += "-r=" + str(r) + " cannot be removed while selected\n"
+        errmsg = ""
+        if(c and not c in available_channel_names): errmsg += "Invalid channel " + str(c) + ". Check the signals manager\n"
+        if(a and not a in available_channel_names): errmsg += "Invalid channel " + str(a) + ". Check the signals manager\n"
+        if(r and not r in available_channel_names): errmsg += "Invalid channel " + str(r) + ". Check the signals manager\n"
+        if(r == self.focusChannel):                 errmsg += "Channel " + r + " cannot be removed while selected for focus\n"
         
         if(errmsg):
             self.disconnect(NTCP)
             return errmsg
         
-        # Then process
         setBuf = False
-        if(c != -1): self.channel = c
-        if(a != -1): channels.append(a); setBuf = True
-        if(r != -1): channels.remove(r); setBuf = True
+        if(c):
+            c_channel = available_channel_names.index(c)
+            if(not c_channel in buffer_channels):               # If the user wants a channel to take focus which is not in the buffer...
+                buffer_channels.append(c_channel)               # Add it to the buffer
+                setBuf = True                                   # and trigger the update
+            self.focusChannel = c                               # Set the focus channel with the index of the intended focus channel
         
-        if(setBuf): scan.BufferSet(channel_indexes=channels)
-        
-        self.disconnect(NTCP); 
+        if(a):
+            a_channel = available_channel_names.index(a)
+            if(not a_channel in buffer_channels):
+                buffer_channels.append(a_channel)               # Only add this to the list if it's not already there
+                setBuf = True                                   # Trigger the update
+
+        if(r):
+            r_channel = available_channel_names.index(r)
+            if(r_channel in buffer_channels):
+                buffer_channels.remove(r_channel)              # Only remove this from the list if it's currently in there
+                setBuf = True                                  # Trigger the update
+
+        if(setBuf):
+            scan.BufferSet(channel_indexes=buffer_channels)     # Only set the buffer if there's a change we need to make
+
+        buffer_channels = scan.BufferGet()[1]                   # See which channels are currently selected
+
+        self.disconnect(NTCP)
         
         self.interface.reactToMessage("+1")
     
@@ -2310,7 +2368,7 @@ class scanbot():
         
         if(zhold): zController.OnOffSet(True)                                   # Turn the controller back on if we need to
         
-    def makePNG(self,scanData,filePath='',pngFilename='im.png',returnData=False,fit=True,process=True,dpi=150):
+    def makePNG(self,data,filePath='',pngFilename='im.png',returnData=False,fit=True,process=True,dpi=150):
         """
         This function generates a .png file from scanData. It replaces nan's 
         with the mean value of scanData.
@@ -2332,6 +2390,7 @@ class scanbot():
         """
         fig, ax = plt.subplots(1,1)
         
+        scanData = data.copy()
         if(process):
             mask = np.isnan(scanData)                                               # Mask the Nan's
             scanData[mask == True] = np.nanmean(scanData)                           # Replace the Nan's with the mean so it doesn't affect the plane fit
@@ -2513,7 +2572,7 @@ class scanbot():
         try:                                                                    # Try to connect to nanonis via TCP
             if(not IP):   IP   = self.interface.IP
             if(not PORT): PORT = self.interface.portList.pop()
-            NTCP = nanonisTCP(IP, PORT)
+            NTCP = nanonisTCP(IP, PORT, version=self.interface.nanonis_version)
             return [NTCP,0]
         except Exception as e:
             if(len(self.interface.portList)): return [0,str(e)]                 # If there are ports available then return the exception message

@@ -25,7 +25,7 @@ run_mode = 'react'
 ################# ARGS ##################
 import argparse
 parser = argparse.ArgumentParser()
-parser.add_argument('--version', action='version', version='scanbot 4.3.0', help='show the version number and exit')
+parser.add_argument('--version', action='version', version='scanbot 4.4.0', help='show the version number and exit')
 parser.add_argument('-c', '--terminal', action='store_true', help='run scanbot in terminal')
 parser.add_argument('-z', '--zulip',    action='store_true', help='run scanbot in terminal')
 args = parser.parse_args()

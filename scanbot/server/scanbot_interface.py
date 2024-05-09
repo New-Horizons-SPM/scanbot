@@ -74,7 +74,8 @@ class scanbot_interface(object):
                     'piezo_z_min_F'             : '500',                        # Minimum frequency that can be applied to the Z piezo
                     'piezo_xy_max_F'            : '5000',                       # Maximum frequency that can be applied to the X or Y piezos
                     'piezo_xy_min_F'            : '500',                        # Minimum frequency that can be applied to the X or Y piezos
-                    'hk_commands'               : '0'}                          # Flag to look for customised commands in hk_commands
+                    'hk_commands'               : '0',                          # Flag to look for customised commands in hk_commands
+                    'nanonis_version'           : '99999999'}                   # Version of the host nanonis. See nanonis > help > info and take the RT Engine version number. Defaults to the latest version
         
         try:
             with open(self.module_dir + 'scanbot_config.ini','r') as f:         # Go through the config file to see what defaults need to be overwritten
@@ -93,6 +94,11 @@ class scanbot_interface(object):
         except:
             print("Config file not found, using defaults...")
         
+        version = initDict['nanonis_version']
+        if(version.startswith('R')):
+            version = version.split('R')[1]
+        self.nanonis_version = int(version)
+
         self.zuliprc      = initDict['zuliprc']
         self.zulipStream  = initDict['zulip_stream']
         self.zulipTopic   = initDict['zulip_topic']
@@ -244,7 +250,7 @@ class scanbot_interface(object):
 # Data Acquisition
 ###############################################################################
     def plot(self,user_args,_help=False):
-        arg_dict = {'-c' : ['-1', lambda x: int(x), "(int) Channel to plot. -1 plots the default channel which can be set using plot_channel"]}
+        arg_dict = {'-c' : ['', lambda x: str(x), "(str) Channel to plot. '' plots the default channel which can be set using plot_channel"]}
         
         if(_help): return arg_dict
         
@@ -659,9 +665,9 @@ class scanbot_interface(object):
             return str(e)
         
     def plotChannel(self,user_args,_help=False):
-        arg_dict = {'-c' : ['-1', lambda x: int(x), "(int) Set default channel for scanbot to look at. -1 means no change. Run without options to see available channels"],
-                    '-a' : ['-1', lambda x: int(x), "(int) Add channel to the scan buffer. -1 means no change. Run without options to see available channels"],
-                    '-r' : ['-1', lambda x: int(x), "(int) Remove channel from the scan buffer. -1 means no change. Run without options to see available channels"]}
+        arg_dict = {'-c' : ['', lambda x: str(x), "(str) Set default channel for scanbot to look at. '' means no change. Run without options to see available channels"],
+                    '-a' : ['', lambda x: str(x), "(str) Add channel to the scan buffer. '' means no change. Run without options to see available channels"],
+                    '-r' : ['', lambda x: str(x), "(str) Remove channel from the scan buffer. '' means no change. Run without options to see available channels"]}
         
         if(_help): return arg_dict
         
@@ -734,6 +740,8 @@ class scanbot_interface(object):
             
         command = messageContent.split(' ')[0].lower()
         args    = messageContent.split(' ')[1:]
+        if(args and '=' in args[0]):
+            args = ['-' + arg for arg in messageContent.split(' -')[1:]]
         
         if(self.hk_commands and command in self.hk_commands.commands):
             reply = self.hk_commands.commands[command](args)
@@ -964,7 +972,6 @@ class scanbot_interface(object):
         for key,value in arg_dict.items():
             if(keep_as_dict):
                 try:
-                    print(key,arg_dict[key][1](value[0]))
                     args[key] = arg_dict[key][1](value[0])
                 except:
                     args[key] = value[0]

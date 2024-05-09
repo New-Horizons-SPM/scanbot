@@ -31,6 +31,7 @@ class scanbot_config():
                         'piezo_xy_max_F'            : ['Max XY Piezo Frequency (Hz)',   'Maximum frequency that Scanbot can apply to the XY piezos',                        'safety',   '5000'],
                         'piezo_xy_min_F'            : ['Min XY Piezo Frequency (Hz)',   'Minimum frequency that Scanbot can apply to the XY piezos',                        'safety',   '500'],
                         # 'hk_commands'               : ['0']                         # Flag to look for customised commands in hk_commands
+                        'nanonis_version'           : ['Nanonis Version Number',        'Version of the host nanonis. See nanonis > help > info and take the RT Engine version number. Defaults to the latest version', 'tcp', '99999999'],
                       })
         
         try:

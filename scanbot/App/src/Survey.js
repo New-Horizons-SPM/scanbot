@@ -18,7 +18,7 @@ function Survey() {
         3: {autotip: 0, hk_survey: 0, hk_classifier: 0}
     });
     const [surveyRunning, setSurveyRunning] = useState(false);
-    const [surveyImages,  setSurveyImages]  = useState([
+    const emptyGrid = [
         { src: emptyFrameIcon, alt: "blank image", width: 300, height: 300},
         { src: emptyFrameIcon, alt: "blank image", width: 300, height: 300},
         { src: emptyFrameIcon, alt: "blank image", width: 300, height: 300},
@@ -28,7 +28,8 @@ function Survey() {
         { src: emptyFrameIcon, alt: "blank image", width: 300, height: 300},
         { src: emptyFrameIcon, alt: "blank image", width: 300, height: 300},
         { src: emptyFrameIcon, alt: "blank image", width: 300, height: 300},
-    ]);
+    ]
+    const [surveyImages,  setSurveyImages]  = useState(emptyGrid);
     const [surveyIndex, setSurveyIndex]             = useState(0);
     // const [surveyFinalIndex, setSurveyFinalIndex]   = useState(1);
     const [surveyTimestamp, setSurveyTimestamp]     = useState(0);
@@ -272,7 +273,7 @@ function Survey() {
     useEffect(() => {
         const pollingCallback = async () => {
             const timestamp = surveyTimestamp
-            const index = surveyIndex
+            let index = surveyIndex
             const response = await fetch('/image_updates', {
                 method: 'POST',
                 headers: {
@@ -285,9 +286,16 @@ function Survey() {
                 const blob = await response.blob()
                 const url = URL.createObjectURL(blob);
                 
+                const n = parseInt(allFormData[0]['n'])
+                if(index === n*n){
+                    index = 0
+                    setSurveyImages(emptyGrid)
+                }
+
                 var images = surveyImages
                 images[index]['src'] = url
                 setSurveyImages(images)
+                
                 setSurveyIndex(index + 1)
                 setSurveyTimestamp(Date.now())
             }

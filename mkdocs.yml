@@ -7,10 +7,10 @@ nav:
     - Featured: 'featured.md'
     - 'Configuration':
         - Web App: 'web-app/#configuration'
-        - Terminal/Zulip: 'configuration.md'
+        - Terminal: 'configuration.md'
     - 'User Guide':
         - Web App: 'web-app.md'
-        - Terminal/Zulip: 'commands.md'
+        - Terminal: 'commands.md'
     - Automation: 'automation.md'
     - Hooks: 'hooks.md'
     - About: 'about.md'

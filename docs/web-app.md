@@ -9,7 +9,9 @@
 </script>
 # Scanbot Web App
 
-Scanbot is available as a web application developed with [React](https://react.dev/).
+![WebApp](./appim/top-level.png)
+
+Scanbot is available as a web application built with [React](https://react.dev/).
 This application is still being developed, with the following features already fully implemented:
 
 * Sample Surveying
@@ -17,7 +19,8 @@ This application is still being developed, with the following features already f
 * Tip Shaping
 * End-To-End Survey Automation
 
-![WebApp](./appim/top-level.png)
+This page describes the function and parameters for all features accessible in the web application.
+Note that in the application you can also hover over any of the parameters to obtain a detailed description about it.
 
 # Installation
 
@@ -51,11 +54,19 @@ You can then launch Scanbot by running the command:
 
 # Configuration
 From the landing page, you can access Scanbot's configuration.
-It is recommended that you review the default settings before using any of the tools in Scanbot.
 Upon accepting the configuration, your scanbot_config.ini file will be saved automatically and your settings will be remembered.
-These settings can be updated any time. <strong>For a detailed description about the configurable parameters, see 
-[configuration](../configuration).</strong>
-![Config](./appim/configuration.png)
+These settings can be updated any time.
+
+| Parameter                                                | Default Value                          | Description |
+| -------------------------------------------------------- | -------------------------------------- | ----------- |
+| IP Adress                                                | 127.0.0.1                              | IP address of the computer hosting Nanonis. If running Scanbot on the same machine, use the default local host IP                                                                                                                                                                                                                                      |
+| TCP Ports                                                | 6501,6502,6503,6504                    | Comma-delimited ports for TCP connection. See Nanonis > System > Options > TCP Programming Interface                                                                                                                                                                                                                                                   |
+| Nanonis Version Number                                   | 99999999                               | Check your Nanonis version number in Nanonis > help > info. Default value represents the latest version                                                                                                                                                                                                                                                |
+| Crash Current (A)                                        | 5e9                                    | Threshold current that is considered a tip crash when moving the Piezos. The tip will automatically retract until the current is below this current if a crash is detected.                                                                                                                                                                            |
+| Crash Retract Frequency (Hz)                             | 1500                                   | Frequency applied to retract the coarse Z piezo in the event of a crash                                                                                                                                                                                                                                                                                |
+| Crash Retract Voltage (V)                                | 200                                    | Voltage applied to retract the coarse piezo in the event of a crash                                                                                                                                                                                                                                                                                    |
+| Topo basename                                            |                                        | Base name for saved sxm files acquired by scanbot. Leave empty to keep settings in Nanonis                                                                                                                                                                                                                                                             |
+
 
 # Data Acquisition
 From the landing page, you can access the data acquisition tools, including tools to help automate the STM.
@@ -276,9 +287,9 @@ The following rules have been applied to any command where the coarse piezos are
 <br>
 
 - Scanbot can never move the tip in the ```Z-``` direction (down) when using the coarse piezo. Instead, auto approach is used.
-- When moving in ```X``` or ```Y``` directions, the tunnelling current must be monitored after every 10 steps.
-- A tunnelling current greater than the threshold set in the configuration is considered a crash (see [Tip Crash Safety](../configuration/#tip-crash-safety)).
+- When moving in ```X``` or ```Y``` directions, <strong>the tunnelling current must be monitored after every 10 steps</strong>.
+- A tunnelling current greater than the threshold set in the [configuration](#configuration) is considered a crash.
 - In the event of a crash, the tip will be retracted using the ```Z+``` piezo and operation will cease.
 
-**Please make sure to set appropriate piezo voltages and frequencies when using any of the commands that control the coarse piezos. You can configure appropriate safety settings from the Configuration screen.**
+**Please make sure to set appropriate piezo voltages and frequencies when using any of the commands that control the coarse piezos.**
 <br><br><br>

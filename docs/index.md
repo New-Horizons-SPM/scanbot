@@ -21,7 +21,7 @@ Scanbot is a collection of several automated STM and nc-AFM data acquisition com
     - Automated sample surveying (NxN grid)
 * STS
     - STS grids with drift correction
-* nc-AFM
+* nc-AFM (Not yet available in the web application)
     - z-dependent nc-AFM
     - nc-AFM registration
 * Automation
@@ -56,7 +56,7 @@ If you prefer using pip, you can install Scanbot directly with:
 
 ## Running:
 
-Scanbot can be run as a web application, in a terminal, or via the open-source messaging platform, [Zulip](https://zulip.com/):
+Scanbot can be run as a web application or in a terminal:
 
 1. <strong>Web Application:</strong><br><br>
     The web app can be launched by running the command: ```scanbot```
@@ -70,27 +70,6 @@ Scanbot can be run as a web application, in a terminal, or via the open-source m
     <br><br>
     For a full list of Scanbot commands, see [here](./commands). Alternatively run the ```help``` command or, for help with a specific command, run ```help <command_name>```.
 <br><br>
-3. <strong>Zulip:</strong><br><br>
-    Running via Zulip is the most flexible implementation of Scanbot. You can send commands and receive data from anywhere and in real time via chat streams.
-    You must follow a few additional steps first:
-    
-    1. Install zulip and zulip_bots
-        
-        ```pip install zulip```<br>
-        ```pip install zulip_bots```
-        
-    2. [Create a zulip bot](https://zulip.com/help/add-a-bot-or-integration) and download the zuliprc file
-
-    3. Add the following lines to scanbot_config.ini:
-        
-        ```zuliprc=<path_to_zuliprc>```<br>
-        ```upload_method=zulip```
-    
-    4. Launch Scanbot by running: ```scanbot -z```
-    <br><br>
-    
-    For a full list of Scanbot commands, see [here](./commands). Alternatively run the ```help``` command or, for help with a specific command, run ```help <command_name>```.
-<br>
 
 ## Contributing
 We welcome contributions from the community to Scanbot. Here's how you can contribute:

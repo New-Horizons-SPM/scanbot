@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "scanbot"
-version = "4.4.1"
+version = "4.4.2"
 description = "Collection of automated STM and nc-AFM commands compatible with Nanonis V5 SPM Controller"
 authors = ["Julian Ceddia <jdceddia@gmail.com>"]
 readme = "README.md"

@@ -45,7 +45,7 @@
 </li>
                                     
 <li>
-    <a href="../configuration/" class="dropdown-item">Terminal/Zulip</a>
+    <a href="../configuration/" class="dropdown-item">Terminal</a>
 </li>
                                 </ul>
                             </li>
@@ -58,7 +58,7 @@
 </li>
                                     
 <li>
-    <a href="../commands/" class="dropdown-item">Terminal/Zulip</a>
+    <a href="../commands/" class="dropdown-item">Terminal</a>
 </li>
                                 </ul>
                             </li>
@@ -170,7 +170,8 @@
   gtag('config', 'G-6MK4DRHXWM');
 </script>
 </head><body><h1 id="scanbot-web-app">Scanbot Web App</h1>
-<p>Scanbot is available as a web application developed with <a href="https://react.dev/">React</a>.
+<p><img alt="WebApp" src="../appim/top-level.png"></p>
+<p>Scanbot is available as a web application built with <a href="https://react.dev/">React</a>.
 This application is still being developed, with the following features already fully implemented:</p>
 <ul>
 <li>Sample Surveying</li>
@@ -178,7 +179,8 @@ This application is still being developed, with the following features already f
 <li>Tip Shaping</li>
 <li>End-To-End Survey Automation</li>
 </ul>
-<p><img alt="WebApp" src="../appim/top-level.png"></p>
+<p>This page describes the function and parameters for all features accessible in the web application.
+Note that in the application you can also hover over any of the parameters to obtain a detailed description about it.</p>
 <h1 id="installation">Installation</h1>
 <p>There are several ways to install Scanbot:</p>
 <ol>
@@ -212,11 +214,54 @@ You can then launch Scanbot by running the command:
 <p><strong>You can test Scanbot with the Nanonis V5 Simulator</strong> before integrating it with your STM by following <a href="../web-app-test">these instructions</a>.</p>
 <h1 id="configuration">Configuration</h1>
 <p>From the landing page, you can access Scanbot's configuration.
-It is recommended that you review the default settings before using any of the tools in Scanbot.
 Upon accepting the configuration, your scanbot_config.ini file will be saved automatically and your settings will be remembered.
-These settings can be updated any time. <strong>For a detailed description about the configurable parameters, see 
-<a href="../configuration">configuration</a>.</strong>
-<img alt="Config" src="../appim/configuration.png"></p>
+These settings can be updated any time.</p>
+<table>
+<thead>
+<tr>
+<th>Parameter</th>
+<th>Default Value</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>IP Adress</td>
+<td>127.0.0.1</td>
+<td>IP address of the computer hosting Nanonis. If running Scanbot on the same machine, use the default local host IP</td>
+</tr>
+<tr>
+<td>TCP Ports</td>
+<td>6501,6502,6503,6504</td>
+<td>Comma-delimited ports for TCP connection. See Nanonis &gt; System &gt; Options &gt; TCP Programming Interface</td>
+</tr>
+<tr>
+<td>Nanonis Version Number</td>
+<td>99999999</td>
+<td>Check your Nanonis version number in Nanonis &gt; help &gt; info. Default value represents the latest version</td>
+</tr>
+<tr>
+<td>Crash Current (A)</td>
+<td>5e9</td>
+<td>Threshold current that is considered a tip crash when moving the Piezos. The tip will automatically retract until the current is below this current if a crash is detected.</td>
+</tr>
+<tr>
+<td>Crash Retract Frequency (Hz)</td>
+<td>1500</td>
+<td>Frequency applied to retract the coarse Z piezo in the event of a crash</td>
+</tr>
+<tr>
+<td>Crash Retract Voltage (V)</td>
+<td>200</td>
+<td>Voltage applied to retract the coarse piezo in the event of a crash</td>
+</tr>
+<tr>
+<td>Topo basename</td>
+<td></td>
+<td>Base name for saved sxm files acquired by scanbot. Leave empty to keep settings in Nanonis</td>
+</tr>
+</tbody>
+</table>
 <h1 id="data-acquisition">Data Acquisition</h1>
 <p>From the landing page, you can access the data acquisition tools, including tools to help automate the STM.
 <img alt="DataAcquisition" src="../appim/data-acquisition.png"></p>
@@ -554,11 +599,11 @@ The following rules have been applied to any command where the coarse piezos are
 <br></p>
 <ul>
 <li>Scanbot can never move the tip in the <code>Z-</code> direction (down) when using the coarse piezo. Instead, auto approach is used.</li>
-<li>When moving in <code>X</code> or <code>Y</code> directions, the tunnelling current must be monitored after every 10 steps.</li>
-<li>A tunnelling current greater than the threshold set in the configuration is considered a crash (see <a href="../configuration/#tip-crash-safety">Tip Crash Safety</a>).</li>
+<li>When moving in <code>X</code> or <code>Y</code> directions, <strong>the tunnelling current must be monitored after every 10 steps</strong>.</li>
+<li>A tunnelling current greater than the threshold set in the <a href="#configuration">configuration</a> is considered a crash.</li>
 <li>In the event of a crash, the tip will be retracted using the <code>Z+</code> piezo and operation will cease.</li>
 </ul>
-<p><strong>Please make sure to set appropriate piezo voltages and frequencies when using any of the commands that control the coarse piezos. You can configure appropriate safety settings from the Configuration screen.</strong>
+<p><strong>Please make sure to set appropriate piezo voltages and frequencies when using any of the commands that control the coarse piezos.</strong>
 <br><br><br></p></body></html></div>
             </div>
         </div>

@@ -45,7 +45,7 @@
 </li>
                                     
 <li>
-    <a href="../configuration/" class="dropdown-item">Terminal/Zulip</a>
+    <a href="../configuration/" class="dropdown-item">Terminal</a>
 </li>
                                 </ul>
                             </li>
@@ -58,7 +58,7 @@
 </li>
                                     
 <li>
-    <a href="../commands/" class="dropdown-item">Terminal/Zulip</a>
+    <a href="../commands/" class="dropdown-item">Terminal</a>
 </li>
                                 </ul>
                             </li>
@@ -156,26 +156,24 @@ Completing all of these tests will take approximately one hour.</p>
 and extract it to scanbot/scanbot/ before the installation</strong>. This folder contains dummy data used in demo modes.</li>
 </ol>
 <h2 id="launching-scanbot-5-min">Launching Scanbot (5 min)</h2>
-<h3 id="nanonis-v5-simulator">Nanonis V5 Simulator</h3>
+<h3 id="1-opening-the-nanonis-v5-simulator">1. Opening the Nanonis V5 Simulator</h3>
 <ol>
 <li>Open the Nanonis V5 Simulator</li>
-<li>In the 'Current' module, change the Gain to LN 10^9. <strong>If your version of the simulator does not have this setting you can ignore this step.</strong>
-<br><img alt="CurrenModule" src="../testing/gain109.png"><br></li>
-<li>In the Z-Controller module, turn on the Controller. Ensure the tip is 'tunnelling' at the correct setpoint.
+<li>From the Z-Controller module, enter a reasonable setpoint (10 pA - 100 pA) and turn the Controller on.
 <br>
-<img alt="Z-ControllerModule" src="../testing/z-controller-on.png">
-<br></li>
-<li>From the Scan Control module in Nanonis, ensure all images are being autosaved. <strong>This is essential for proper operation of Scanbot</strong>. It's also useful to turn on the auto-paste option too.
-<br>
-<img alt="autosave" src="../testing/saveall.png">
+<img alt="Z-ControllerModule" src="../testing/z-controller-on.png"></li>
+<li>If the tip height indicator does not approach to the correct setpoint, it may be because the gain setting is incorrect.
+In the 'Current' module, try changing the Gain to LN 10^9.
+<br><img alt="CurrenModule" src="../testing/gain109.png"><br>
 <br></li>
 </ol>
-<h3 id="launch-scanbot">Launch Scanbot</h3>
+<h3 id="2-launch-scanbot">2. Launch Scanbot</h3>
 <ol>
 <li>Open Scanbot.exe. A terminal will open and you should see the server start.
+Alternatively, <strong>if you installed Scanbot using pip or from source, run <code>scanbot</code><strong>
 <br>
 <img alt="Scanbot-terminal" src="../testing/scanbot-terminal.png">
-<br></li>
+<br></strong></strong></li>
 <li>Scanbot should then open in a new browser tab. If it does not, then navigate to <a href="http://127.0.0.1:5000">http://127.0.0.1:5000</a>.
 When running Scanbot for the first time, you will see a warning letting you know that you have not yet reviewed the configuration.
 You may receive an additional warning message if Scanbot is unable to communicate to Nanonis. This will be solved in the next step.
@@ -189,13 +187,15 @@ You may receive an additional warning message if Scanbot is unable to communicat
 <br>
 <img alt="tcp-ports" src="../testing/tcp-ports.png">
 <br></li>
-<li>From the Scanbot landing page, navigate to the 'Configuration' page.</li>
-<li>Ensure that the comma-delimited ports in Scanbot match those configured in Nanonis.
+<li>Take note of the Nanonis version you're running from Nanonis &gt; help &gt; info
+<img alt="check-nanonis-version" src="../testing/version-help.png"></li>
+<li>In Scanbot, from the landing page, navigate to the 'Configuration' page.</li>
+<li>Ensure that the comma-delimited ports in Scanbot match those configured in Nanonis and the version numbers match.
 <br>
 <img alt="configuration-page" src="../testing/configuration-page.png">
 <br></li>
-<li>When running Scanbot using the simulator, the default configuration is ok. Accept the configuration. This will save the scanbot_config.ini file and your settings will be remembered.
-Accepting the configuration will also stop the warning message from being displayed.</li>
+<li>Accept the configuration. This will save the scanbot_config.ini file and your settings will be remembered.
+Accepting the configuration will also stop the warning message from being displayed. For details about the rest of the configuration, see the <a href="../web-app/#configuration">user guide</a></li>
 </ol>
 <h2 id="sample-surveying-10-min">Sample Surveying (10 min)</h2>
 <ol>
@@ -226,9 +226,10 @@ In Summary:
 <li>A tip-shaping action will be performed in the centre of the scan frame.</li>
 <li>A downward scan will acquire an image of the imprint left behind.</li>
 <li>From this image, the imprint size and circularity will be calculated.</li>
-<li>If the imprint size and circularity do not meet the desired criteria, a more aggressive tip-shaping action will be performed and the process repeats.
-<br></li>
+<li>If the imprint size and circularity do not meet the desired criteria, a more aggressive tip-shaping action will be performed and the process repeats.</li>
 </ol>
+<p><strong>Note:</strong> In demo mode, Step 1 always passes.
+<br></p>
 <p><strong>With Scanbot:</strong></p>
 <ol>
 <li>From the landing page navigate to 'Data Acquisition' =&gt; 'Automation'.</li>
@@ -253,10 +254,6 @@ In the figure below, the tip was at an intial height of -2 nm, then moved 3 nm i
 </ul>
 </li>
 <li>Click 'Start'</li>
-<li><strong>You may find that the scan frame repeatedly moves before a scan is able to complete.</strong>
-This is because Scanbot ensures that the area is flat before performing a tip-shaping action.
-If the area is not flat, Scanbot will continue searching for a region appropriate for tip shaping.
-The simulator scans are not flat, thus one can withdraw the tip to trick Scanbot into thinking the region being scanned is flat and appropriate for tip shaping.</li>
 <li>Scans of the tip's imprint, along with its calculated size and circularity, after each iteration will be shown in the browser.
 Remember that in demo mode, these scans are pulled from a pre-loaded file so they will look different to what's shown in the Nanonis Scan Control module.
 <br>
@@ -293,11 +290,7 @@ Placing the sample or metal coordinates outside the shaded region means that the
 </ol>
 <h3 id="tip-tracking-test">Tip Tracking Test</h3>
 <ol>
-<li>Review the settings in the 'Move Tip' group. In live mode, these must be configured appropriate to your setup. Since we're running this in demo mode, the defaults are ok.</li>
-<li>In Nanonis, from the Z-Controller, open the Auto Approach module
-<br>
-<img alt="autoapproach" src="../testing/autoapproach.png">
-<img alt="autoapproachmodule" src="../testing/autoapproachmodule.png">
+<li>Review the settings in the 'Move Tip' group. In live mode, these must be configured appropriate to your setup. Since we're running this in demo mode, the defaults are ok.
 <br></li>
 <li>In Scanbot, click the 'Go to Metal' button</li>
 <li>A popup video feed will open showing the STM tip move from its current position to the clean metal. The red marker will track the tip as it moves towards its target.
@@ -305,7 +298,9 @@ Placing the sample or metal coordinates outside the shaded region means that the
 <br>
 <strong>Note:</strong> This is programmed so that the tip retracts in Z+ until its Z-coordinate is above the target Z-coordinate.
 Once the tip apex is above the target location, it then starts moving in the X direction towards the target (with the requirement that Z<sub>tip</sub> &gt; Z<sub>target</sub> at all times when moving in X).
-Once the X-coordinate of the tip matches the X-coordinate of the target, it has reached its destination <strong>and Scanbot will initiate auto approach</strong>.</li>
+Once the X-coordinate of the tip matches the X-coordinate of the target, it has reached its destination <strong>and Scanbot will initiate auto approach</strong>.
+This may result in weird behaviour in demo mode where the tip will retract further than it needs to before moving in the X-direction towards the target.
+This is a limitation with using a movie instead of a live camera feed, however <strong>you can monitor the terminal to see which direction Scanbot is trying to move the tip</strong>.</li>
 </ol>
 <h2 id="survey-automation-with-tip-tracking-and-shaping-15-min">Survey Automation with Tip Tracking and Shaping (15 min)</h2>
 <p>Normally, Scanbot will remember the location of the STM tip after any such movement performed in the previous step.
@@ -339,7 +334,7 @@ The process for survey automation is as follows:</p>
 <li>After approaching on arrival, the auto tip shaping procedure will be initiated.</li>
 <li>After acquiring a 'good tip', Scanbot will move the tip back to the sample.</li>
 <li>A new survey will begin.</li>
-<li>In demo mode, this process will repeat indefinitely if the initialisation was completed as in the figure above.</li>
+<li>In demo mode, this process will repeat indefinitely if the initialisation was completed as in the figure above. Click stop survey to end the process.</li>
 </ol>
 <p><strong>Note:</strong> Scanbot is able to detect when the tip is unstable or 'noisy' during image acquisition. It cannot detect doubled tips.
 The built-in image classifier can be replaced with a custom one by using the <a href="../hooks/#hk_classifier">hk_classifier hook</a>.</p></body></html></div>

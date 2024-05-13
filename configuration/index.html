@@ -8,7 +8,7 @@
         <meta name="author" content="Julian Ceddia">
         
         <link rel="shortcut icon" href="../img/favicon.ico">
-        <title>Terminal/Zulip - Scanbot</title>
+        <title>Terminal - Scanbot</title>
         <link href="../css/bootstrap.min.css" rel="stylesheet">
         <link href="../css/font-awesome.min.css" rel="stylesheet">
         <link href="../css/base.css" rel="stylesheet">
@@ -45,7 +45,7 @@
 </li>
                                     
 <li>
-    <a href="./" class="dropdown-item active">Terminal/Zulip</a>
+    <a href="./" class="dropdown-item active">Terminal</a>
 </li>
                                 </ul>
                             </li>
@@ -58,7 +58,7 @@
 </li>
                                     
 <li>
-    <a href="../commands/" class="dropdown-item">Terminal/Zulip</a>
+    <a href="../commands/" class="dropdown-item">Terminal</a>
 </li>
                                 </ul>
                             </li>
@@ -108,7 +108,7 @@
     <div id="toc-collapse" class="navbar-collapse collapse card bg-secondary">
         <ul class="nav flex-column">
             
-            <li class="nav-item" data-level="1"><a href="#configuration" class="nav-link">Configuration</a>
+            <li class="nav-item" data-level="1"><a href="#configuration-terminal-mode" class="nav-link">Configuration (Terminal Mode)</a>
               <ul class="nav flex-column">
             <li class="nav-item" data-level="2"><a href="#tcp-connection" class="nav-link">TCP Connection</a>
               <ul class="nav flex-column">
@@ -123,10 +123,6 @@
               </ul>
             </li>
             <li class="nav-item" data-level="2"><a href="#tip-crash-safety" class="nav-link">Tip Crash Safety</a>
-              <ul class="nav flex-column">
-              </ul>
-            </li>
-            <li class="nav-item" data-level="2"><a href="#piezo-safety" class="nav-link">Piezo Safety</a>
               <ul class="nav flex-column">
               </ul>
             </li>
@@ -145,50 +141,28 @@
 
   gtag('config', 'G-6MK4DRHXWM');
 </script>
-</head><body><h1 id="configuration">Configuration</h1>
-<p>When running Scanbot in browser, terminal, or Zulip modes, you must create the scanbot_config.ini configuration file which gets loaded from ~/scanbot on startup.
+</head><body><h1 id="configuration-terminal-mode">Configuration (Terminal Mode)</h1>
+<p>When running Scanbot in a terminal, you must create the scanbot_config.ini configuration file which gets loaded from ~/scanbot on startup.
 <strong>When running Scanbot as web app, see <a href="../web-app/#configuration">here</a></strong>.</p>
 <h2 id="tcp-connection">TCP Connection</h2>
 <p>For communicating with Nanonis V5 software, you must configure the TCP settings.
 Scanbot requires at least two ports to perform correctly</p>
-<pre><code>ip=&lt;IP Adress&gt;          # IP adress of the machine running Nanonis. Defaults to local host 127.0.0.1
-port_list=&lt;P1,P2,...&gt;   # Available ports. See Nanonis =&gt; Main Options =&gt; TCP Programming Interface.
+<pre><code>ip=&lt;IP Adress&gt;                  # IP adress of the machine running Nanonis. Defaults to local host 127.0.0.1
+port_list=&lt;P1,P2,...&gt;           # Available ports. See Nanonis =&gt; Main Options =&gt; TCP Programming Interface.
 </code></pre>
 <h2 id="data-storage">Data Storage</h2>
-<p>Data acquired during Scanbot's operation can be saved in a few ways by setting the <code>upload_method</code> field.</p>
-<ol>
-<li><code>upload_method=path</code> configures Scanbot to convert acquired images to PNG format and save them locally to a path specified by <code>path=&lt;path&gt;</code>.</li>
-<li><code>upload_method=zulip</code> configures Scanbot to send PNGs via <a href="https://zulip.com/">Zulip</a>. The <a href="https://zulip.com/api/running-bots">zuliprc</a> file must be included in the config as <code>zuliprc=&lt;path_to_zuliprc&gt;</code></li>
-<li><code>upload_method=firebase</code> configures Scanbot to upload PNGs to <a href="https://firebase.google.com/docs/storage">Google Firebase Storage</a>. 
-If using firebase, set the <code>firebase_storage_bucket=&lt;bucket&gt;</code> field. Then then <code>path=&lt;path&gt;</code> field is used as the destination on Firebase.
-For Zulip users, this Firebase link would be sent in lieu of a PNG file.</li>
-<li><code>upload_method=no_upload</code> prevents Scanbot from converting and saving the images it takes. <strong>This is the default setting.</strong></li>
-</ol>
-<p>Alternatively, Scanbot can <a href="https://en.wikipedia.org/wiki/Secure_copy_protocol">SCP</a> data to a server by setting the following field:</p>
-<pre><code>scp_path=&lt;user@host:path&gt;   # ssh key must be set up for this to work
+<p>Scanbot can SCP data to a server by setting the following field:</p>
+<pre><code>scp_path=&lt;user@host:path&gt;       # ssh key must be set up for this to work
 </code></pre>
 <h2 id="nanonis-configuration">Nanonis Configuration</h2>
 <p>The following optional fields relate to Nanonis configuration</p>
 <pre><code>topo_basename=&lt;.sxm basename&gt;   # base filename used when saving .sxm files. Defaults to whatever is in Nanonis if not provided. 
-temp_calibration_curve=&lt;path&gt;   # Path to the temperature calibration curve so Scanbot can read STM temperature.
 </code></pre>
 <h2 id="tip-crash-safety">Tip Crash Safety</h2>
 <p>The following fields set the parameters of the Z piezo when retracting the tip after a crash is detected.</p>
 <pre><code>safe_current=&lt;current&gt;              # A tunnelling current above this threshold is considered a tip crash
 safe_retract_V=&lt;Z_piezo_voltage&gt;    # Voltage applied to the Z piezo when the tip is automatically retracted after a crash is detected
 safe_retract_F=&lt;Z_piezo_frequency&gt;  # Frequency applied to the Z piezo when the tip is automatically retracted after a crash is detected
-</code></pre>
-<h2 id="piezo-safety">Piezo Safety</h2>
-<p>The following fields configure the piezo voltage and frequency limits</p>
-<pre><code>piezo_z_max_V=&lt;max_Z_piezo_voltage&gt;     # Maximum voltage that can be applied to the Z piezo
-piezo_z_min_V=&lt;min_Z_piezo_voltage&gt;     # Minimum voltage that can be applied to the Z piezo
-piezo_xy_max_V=&lt;max_XY_piezo_voltage&gt;   # Maximum voltage that can be applied to the X or Y piezos
-piezo_xy_min_V=&lt;min_XY_piezo_voltage&gt;   # Minimum voltage that can be applied to the X or Y piezos
-
-piezo_z_max_F=&lt;max_Z_piezo_frequency&gt;   # Maximum frequency that can be applied to the Z piezo
-piezo_z_min_F=&lt;min_Z_piezo_frequency&gt;   # Minimum frequency that can be applied to the Z piezo
-piezo_xy_max_F=&lt;max_XY_piezo_frequency&gt; # Maximum frequency that can be applied to the X or Y piezos
-piezo_xy_min_F=&lt;min_XY_piezo_frequency&gt; # Minimum frequency that can be applied to the X or Y piezos
 </code></pre></body></html></div>
             </div>
         </div>

@@ -45,7 +45,7 @@
 </li>
                                     
 <li>
-    <a href="configuration/" class="dropdown-item">Terminal/Zulip</a>
+    <a href="configuration/" class="dropdown-item">Terminal</a>
 </li>
                                 </ul>
                             </li>
@@ -58,7 +58,7 @@
 </li>
                                     
 <li>
-    <a href="commands/" class="dropdown-item">Terminal/Zulip</a>
+    <a href="commands/" class="dropdown-item">Terminal</a>
 </li>
                                 </ul>
                             </li>
@@ -171,7 +171,7 @@
 <li>STS grids with drift correction</li>
 </ul>
 </li>
-<li>nc-AFM<ul>
+<li>nc-AFM (Not yet available in the web application)<ul>
 <li>z-dependent nc-AFM</li>
 <li>nc-AFM registration</li>
 </ul>
@@ -212,7 +212,7 @@ If you prefer using pip, you can install Scanbot directly with:
 </li>
 </ol>
 <h2 id="running">Running:</h2>
-<p>Scanbot can be run as a web application, in a terminal, or via the open-source messaging platform, <a href="https://zulip.com/">Zulip</a>:</p>
+<p>Scanbot can be run as a web application or in a terminal:</p>
 <ol>
 <li><strong>Web Application:</strong><br><br>
     The web app can be launched by running the command: <code>scanbot</code>
@@ -226,32 +226,6 @@ If you prefer using pip, you can install Scanbot directly with:
     <br><br>
     For a full list of Scanbot commands, see <a href="./commands">here</a>. Alternatively run the <code>help</code> command or, for help with a specific command, run <code>help &lt;command_name&gt;</code>.
 <br><br></li>
-<li>
-<p><strong>Zulip:</strong><br><br>
-    Running via Zulip is the most flexible implementation of Scanbot. You can send commands and receive data from anywhere and in real time via chat streams.
-    You must follow a few additional steps first:</p>
-<ol>
-<li>
-<p>Install zulip and zulip_bots</p>
-<p><code>pip install zulip</code><br>
-<code>pip install zulip_bots</code></p>
-</li>
-<li>
-<p><a href="https://zulip.com/help/add-a-bot-or-integration">Create a zulip bot</a> and download the zuliprc file</p>
-</li>
-<li>
-<p>Add the following lines to scanbot_config.ini:</p>
-<p><code>zuliprc=&lt;path_to_zuliprc&gt;</code><br>
-<code>upload_method=zulip</code></p>
-</li>
-<li>
-<p>Launch Scanbot by running: <code>scanbot -z</code>
-<br><br></p>
-</li>
-</ol>
-<p>For a full list of Scanbot commands, see <a href="./commands">here</a>. Alternatively run the <code>help</code> command or, for help with a specific command, run <code>help &lt;command_name&gt;</code>.
-<br></p>
-</li>
 </ol>
 <h2 id="contributing">Contributing</h2>
 <p>We welcome contributions from the community to Scanbot. Here's how you can contribute:</p>
@@ -354,5 +328,5 @@ We are committed to providing support and will do our best to assist you promptl
 
 <!--
 MkDocs version : 1.5.3
-Build Date UTC : 2024-04-21 02:02:58.790557+00:00
+Build Date UTC : 2024-05-13 04:07:19.994675+00:00
 -->

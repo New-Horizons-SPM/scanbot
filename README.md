@@ -1,3 +1,6 @@
+04/06/2024
+Note: There are currently some issues that might arise due to incompatibilites of the NanonisTCP interface and different versions of Nanonis V5 software. I will be working through these over the next couple of weeks. Please open an issue if you experience such problems, thanks!
+
 # V4 Update!
 Scanbot has been implemented as a web application using [React](https://react.dev/).
     

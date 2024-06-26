@@ -123,8 +123,8 @@ function STSGrid() {
         {
             title: "Drift Correction Settings",
             inputs: [
-                { label: "Drift correction after N points", type: "text", id: "NDC",  name: "NDC",  value: allFormData[1]['NDC'],  description: "(int) Perform drift correction after this many points in the grid have been acquired" },
-                { label: "Setpoint currect (pA)",           type: "text", id: "IDC",  name: "IDC",  value: allFormData[1]['IDC'],  description: "(float) Change the setpoint current to this value when acquiring images for drift correction (pA). 0 = do not change"},
+                { label: "Drift correction after N points", type: "text", id: "NDC",  name: "NDC",  value: allFormData[1]['NDC'],  description: "(int) Perform drift correction after this many points in the grid have been acquired. 0 = No drift correction" },
+                { label: "Setpoint current (pA)",           type: "text", id: "IDC",  name: "IDC",  value: allFormData[1]['IDC'],  description: "(float) Change the setpoint current to this value when acquiring images for drift correction (pA). 0 = do not change"},
                 { label: "Image bias (V)",                  type: "text", id: "VDC",  name: "VDC",  value: allFormData[1]['VDC'],  description: "(float) Change the bias to this value when acquiring images for drift correction (V). 0 = do not change"},
                 { label: "Number of pixels",                type: "text", id: "pxdc", name: "pxdc", value: allFormData[1]['pxdc'], description: "(int) Number of pixels in the drift correction images. 0 = nanonis current setting" },
                 { label: "Fwd speed (s/line)",              type: "text", id: "tdc",  name: "tdc",  value: allFormData[1]['tdc'],  description: "(float) Drift correction image speed - Time per line (forward direction) (s). 0 = nanonis current setting" },

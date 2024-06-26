@@ -20,12 +20,12 @@ run_mode = 'react'
 # pip install pyinstaller
 # Comment out the below ARGS section
 # Run the following command from /scanbot/server:
-# pyinstaller --onefile --icon=..\App\public\favicon.ico --add-data "..\App\build;static" --name scanbot_v4.4.2 server.py
+# pyinstaller --onefile --icon=..\App\public\favicon.ico --add-data "..\App\build;static" --name scanbot_v4.4.3 server.py
 
 ################# ARGS ##################
 import argparse
 parser = argparse.ArgumentParser()
-parser.add_argument('--version', action='version', version='scanbot 4.4.2', help='show the version number and exit')
+parser.add_argument('--version', action='version', version='scanbot 4.4.3', help='show the version number and exit')
 parser.add_argument('-c', '--terminal', action='store_true', help='run scanbot in terminal')
 parser.add_argument('-z', '--zulip',    action='store_true', help='run scanbot in terminal')
 args = parser.parse_args()

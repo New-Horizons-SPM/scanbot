@@ -179,7 +179,7 @@ pk = pickle.load(open(path + filename,'rb'))                                    
 
 data  = pk['data']
 sweep = data['sweep_signal']                                                    # Sweep signal is the bias for bias spectroscopy
-grid  = np.flipud(np.array(data[channel]))                                      # Extract the signal for the selected channel. Use np.flipud because the first point in the grid is at the bottom.
+grid  = np.array(data[channel])                                                 # Extract the signal for the selected channel. Use np.flipud because the first point in the grid is at the bottom.
 if(deriv):
     # increasing the window_lenth increases the smoothing before taking the derivative
     grid = savgol(grid, window_length=3, polyorder=1, deriv=1, axis=2)          # Take the derivative to get dI/dV

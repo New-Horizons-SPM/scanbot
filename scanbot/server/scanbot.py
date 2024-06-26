@@ -642,19 +642,7 @@ class scanbot():
         dxy   = np.array([dx,dy])
         ox,oy = np.array([0,0])
 
-        rowData  = {}
         gridData = {}
-        bspecProps = bspec.PropsGet()
-        numPoints  = bspecProps['num_points']
-        
-        channels = []
-        if(self.interface.nanonis_version < 11798):
-            channels = bspecProps['channels']
-        if(self.interface.nanonis_version >= 11798):
-            channels = bspec.ChsGet()[1]
-
-        for channel in channels:
-            gridData[channel] = []
         
         stop  = False
         count = 0
@@ -666,13 +654,7 @@ class scanbot():
         saveDict = {"meta" : params}
         saveFilename = path + str(dt.now()).replace(':','-') + "-python-sts-" + gridType + "-" + sufx + ".pk"
         for iy,y in enumerate(yy):
-            for key in gridData.keys():
-                if(key == "sweep_signal"): continue
-                rowData[key] = list(np.zeros_like(xx))
-                for point in range(len(rowData[key])):
-                    rowData[key][point] = np.zeros(numPoints)
-                gridData[key].append(list(rowData[key].copy()))
-            
+            rowData  = {}
             for ix,x in enumerate(xx):
                 if(NDC > 0 and count % NDC == 0):                                   # If drift correction is turned on, take a drift correction image
                     time.sleep(0.25)
@@ -731,6 +713,13 @@ class scanbot():
                     if(key == "Bias calc (V)"):
                         gridData["sweep_signal"] = np.array(spectrum['data_dict'][key])
                         continue
+
+                    if(not key in gridData):
+                        gridData[key] = []
+
+                    if(not key in rowData):
+                        rowData[key] = list(np.zeros_like(xx))
+                        gridData[key].append(rowData)
 
                     rowData[key][ix]  = np.array(spectrum['data_dict'][key])
                     if(not iy%2):

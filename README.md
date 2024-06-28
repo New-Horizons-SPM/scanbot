@@ -1,19 +1,14 @@
-04/06/2024
-Note: There are currently some issues that might arise due to incompatibilites of the NanonisTCP interface and different versions of Nanonis V5 software. I will be working through these over the next couple of weeks. Please open an issue if you experience such problems, thanks!
+# Scanbot v4.5.0      [![DOI](https://zenodo.org/badge/487719232.svg)](https://zenodo.org/badge/latestdoi/487719232)
 
-# V4 Update!
-Scanbot has been implemented as a web application using [React](https://react.dev/).
-    
+Scanbot is a collection of several automated STM and nc-AFM data acquisition commands compatible with Nanonis V5 and V5e STM control software.
+
+Full documentation available [here](https://new-horizons-spm.github.io/scanbot/).
+
+## Quick Start
+
 On Windows, the easiest way to use it is by downloading the <a href="https://scanbot-46390.web.app" target="_blank">executable</a>.
 
 Alternatively, Scanbot can be installed via ```pip install scanbot``` and launched with ```scanbot```
-    
-Full documentation available [here](https://new-horizons-spm.github.io/scanbot/web-app/).
-
-# Scanbot       [![DOI](https://zenodo.org/badge/487719232.svg)](https://zenodo.org/badge/latestdoi/487719232)
-
-Scanbot is a collection of several automated STM and nc-AFM data acquisition commands compatible with Nanonis V5 SPM control software.
-Full documentation available [here](https://new-horizons-spm.github.io/scanbot/).
 
 ### Functional Overview
 * STM
@@ -21,12 +16,11 @@ Full documentation available [here](https://new-horizons-spm.github.io/scanbot/)
     - Automated sample surveying (NxN grid)
 * STS
     - STS Grids with drift correction
-* nc-AFM
+* nc-AFM (coming soon in the web app)
     - z-dependent nc-AFM
     - nc-AFM registration
 * Automation
     - Tip shaping
-    - Full control over the course motors
 * Hooks
     - Scanbot has a number of built-in [hooks](https://new-horizons-spm.github.io/scanbot/hooks/) to let you customise key functionality.
 

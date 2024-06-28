@@ -177,8 +177,6 @@ class scanbot_interface(object):
            from hk_commands import hk_commands
            self.hk_commands = hk_commands(self)
         
-        self.loadWhitelist()
-        
     def firebaseInit(self):
         try:
             import firebase_admin
@@ -192,16 +190,6 @@ class scanbot_interface(object):
             print("Firebase not initialised...")
             print(e)
         
-    def loadWhitelist(self):
-        self.whitelist = []
-        try:
-            print("Loading whitelist.txt...")
-            with open('whitelist.txt', 'r') as f:
-                d = f.read()
-                self.whitelist = d.split('\n')[:-1]
-        except:
-            print('No whitelist found... create one with add_user')
-    
     def initGlobals(self):
         global_.tasks   = []
         global_.running = threading.Event()                                     # event to stop threads
@@ -217,8 +205,6 @@ class scanbot_interface(object):
                          'get_portlist'     : lambda args: self.portList,       # Return the list of ports scanbot is configured to use
                          'set_upload_method': self.setUploadMethod,             # Set which upload method to use when uploading pngs
                          'get_upload_method': lambda args: self.uploadMethod,   # View the upload method
-                         'add_user'         : self.addUser,                     # Add a user to the whitelist (by email - zulip only)
-                         'get_users'        : lambda args: str(self.whitelist), # Get the list of users allowed to talk to scanbot (zulip only)
                          'set_path'         : self.setPath,                     # Changes the directory pngs are saved in. Creates the directory if it doesn't exist.
                          'get_path'         : lambda args: self.path,           # Path to save scan pngs (saves the channel of focus which can be set using plot_channel)
                          'plot_channel'     : self.plotChannel,                 # Read/select the current channel of focus
@@ -627,22 +613,6 @@ class scanbot_interface(object):
         self.uploadMethod = uploadMethod
         self.reactToMessage('all_good')
         
-    def addUser(self,user,_help=False):
-        arg_dict = {'' : ['', 0, "(string) Add user email to whitelist (one at a time)"]}
-        
-        if(_help): return arg_dict
-        
-        if(len(user) != 1): self.reactToMessage("cross_mark"); return
-        if(' ' in user[0]): self.reactToMessage("cross_mark"); return           # Replace this with proper email validation
-        try:
-            self.whitelist.append(user[0])
-            with open('whitelist.txt', 'w') as f:
-                for w in self.whitelist:
-                    f.write(w+'\n')
-            self.reactToMessage('all_good')
-        except Exception as e:
-            return str(e)
-    
     def setPath(self,path,_help=False):
         arg_dict = {'' : ['', 0, "(string) Sets upload path. Creates the directory if path does not exist"]}
         
@@ -729,12 +699,7 @@ class scanbot_interface(object):
         messageContent   = message
         self.bot_message = []
         self.bot_handler = bot_handler
-        if(bot_handler):                                                        # If there's a bot_handler, we're communicating via zulip
-            if message['sender_email'] not in self.whitelist and self.whitelist:
-                self.sendReply(message['sender_email'])
-                self.sendReply('access denied')
-                return
-            
+        if(bot_handler):                                                        # If there's a bot_handler, we're communicating via zulip    
             self.bot_message = message
             messageContent = message['content']
             

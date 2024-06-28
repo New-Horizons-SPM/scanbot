@@ -13,6 +13,8 @@ import sys
 import pickle
 import webbrowser
 from threading import Timer
+import urllib.request
+import json
 
 run_mode = 'react'
 
@@ -20,12 +22,12 @@ run_mode = 'react'
 # pip install pyinstaller
 # Comment out the below ARGS section
 # Run the following command from /scanbot/server:
-# pyinstaller --onefile --icon=..\App\public\favicon.ico --add-data "..\App\build;static" --name scanbot_v4.4.3 server.py
+# pyinstaller --onefile --icon=..\App\public\favicon.ico --add-data "..\App\build;static" --name scanbot_v4.5.0 server.py
 
 ################# ARGS ##################
 import argparse
 parser = argparse.ArgumentParser()
-parser.add_argument('--version', action='version', version='scanbot 4.4.3', help='show the version number and exit')
+parser.add_argument('--version', action='version', version='scanbot 4.5.0', help='show the version number and exit')
 parser.add_argument('-c', '--terminal', action='store_true', help='run scanbot in terminal')
 parser.add_argument('-z', '--zulip',    action='store_true', help='run scanbot in terminal')
 args = parser.parse_args()
@@ -341,6 +343,28 @@ def getDir(path):
 
 def open_browser():
     webbrowser.open_new('http://127.0.0.1:5000/')
+
+def getLatestVersion(url):
+    try:
+        with urllib.request.urlopen(url) as response:
+            data = json.loads(response.read().decode())
+            version = data.get('version')
+            return version
+    except:
+        return '0.0.0'
+
+@app.route('/check_updates')
+def check_updates():
+    currentVersion = '4.5.0'
+    latestVersion  = getLatestVersion('https://us-central1-scanbot-46390.cloudfunctions.net/getVersion')
+
+    update = False
+    for n,v in enumerate(currentVersion.split('.')):
+        if(int(latestVersion.split('.')[n]) > int(v)):
+            update = True
+            break
+        
+    return {"status": not update}, 200
 
 # Running app
 if __name__ == '__main__':

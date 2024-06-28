@@ -6,6 +6,7 @@ import "./styles/Scanbot.css";
 function Scanbot() {
 	const [configFound, setConfigFound] = useState(true)
 	const [isConnected, setIsConnected] = useState(true)
+	const [is2Update,    setIsUp2date]  = useState(true)
 
 	const CardRow = () => (
 		<div className="card-row">
@@ -24,10 +25,16 @@ function Scanbot() {
 		const hasConnection = await getResponse('/test_connection')
 		setIsConnected(hasConnection)
 	}
+	
+	const checkUpdates = async () => {
+		const isUpdated = await getResponse('/check_updates')
+		setIsUp2date(isUpdated)
+	}
 
 	useEffect(() => {
 		checkConfig()
 		testConnection()
+		checkUpdates()
 	// eslint-disable-next-line react-hooks/exhaustive-deps
 	}, []);
 
@@ -39,6 +46,7 @@ function Scanbot() {
 				</header>
 				{isConnected ? <div/> : <p className='config-warning'><strong>Warning:</strong> Could not connect to Nanonis. Please check configured IP and ports and make sure Nanonis V5 is running.</p>}
 				{configFound ? <div/> : <p className='config-warning'><strong>Warning:</strong> A configuration file has not been found - using default parameters. Accept configuration to remove this warning.</p>}
+				{is2Update   ? <div/> : <p className='config-warning'>A newer version of Scanbot is available.</p>}
 				<div className="scanbot-body">
 					<CardRow />
 				</div>

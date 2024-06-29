@@ -1,32 +1,52 @@
-# Scanbot v4.5.0      [![DOI](https://zenodo.org/badge/487719232.svg)](https://zenodo.org/badge/latestdoi/487719232)
+# Scanbot       [![DOI](https://zenodo.org/badge/487719232.svg)](https://zenodo.org/badge/latestdoi/487719232)
 
-Scanbot is a collection of several automated STM and nc-AFM data acquisition commands compatible with Nanonis V5 and V5e STM control software.
+Scanbot is a collection of several automated STM and nc-AFM data acquisition commands compatible with Nanonis V5 and V5e SPM control software (stable with R12280 and later).
 
-Full documentation available [here](https://new-horizons-spm.github.io/scanbot/).
+<strong>Full documentation available [here](https://new-horizons-spm.github.io/scanbot/web-app/).</strong>
 
-## Quick Start
-
-On Windows, the easiest way to use it is by downloading the <a href="https://scanbot-46390.web.app" target="_blank">executable</a>.
-
-Alternatively, Scanbot can be installed via ```pip install scanbot``` and launched with ```scanbot```
-
-### Functional Overview
+## Functional Overview
 * STM
     - Bias dependent imaging with drift correction
     - Automated sample surveying (NxN grid)
 * STS
     - STS Grids with drift correction
-* nc-AFM (coming soon in the web app)
+* nc-AFM (coming soon in the web app version)
     - z-dependent nc-AFM
     - nc-AFM registration
 * Automation
     - Tip shaping
+    - Full control over the course motors
 * Hooks
     - Scanbot has a number of built-in [hooks](https://new-horizons-spm.github.io/scanbot/hooks/) to let you customise key functionality.
 
+## Quick Start
+### Download and Run on Windows
+On Windows, you can download and run the <a href="https://scanbot-46390.web.app" target="_blank">Scanbot executable</a>.
+
+### Install with pip
+Alternatively, Scanbot can be installed with pip:
+
+```pip install scanbot```
+
+#### Launch as a Web Application
+To launch Scanbot as a web application, run:
+
+```scanbot```
+
+It should automatically open and run in a new browser tab. If it doesn't, head to http://127.0.0.1:5000.
+
+#### Launch in Console Mode
+You can launch Scanbot in a console mode with the -c option:
+
+```scanbot -c```
+
+In console mode, run ```help``` to see a full list of commands. To get help with a specific command, run ```help <command name>```
+
+For more details, refer to the [documentation](https://new-horizons-spm.github.io/scanbot/)
+
 ## Contributing
 
-If you wish to contribute to Scanbot in any way, please refer to [these guidlines](https://new-horizons-spm.github.io/scanbot/#contributing).
+If you wish to contribute to Scanbot in any way, please refer to [these guidleines](https://new-horizons-spm.github.io/scanbot/#contributing).
 
 ## Citing
 

@@ -650,7 +650,7 @@ class scanbot():
         totalDrift = np.array([0,0])
         zController.SetpntSet(Imov)
         time.sleep(0.1)
-        self.rampBias(NTCP,Vmov)
+        self.rampBias(NTCP,Vmov,zhold=False)
         saveDict = {"meta" : params}
         saveFilename = path + str(dt.now()).replace(':','-') + "-python-sts-" + gridType + "-" + sufx + ".pk"
         for iy,y in enumerate(yy):
@@ -663,7 +663,7 @@ class scanbot():
                     print("Ramping bias to " + str(VDC) + " and taking drift correction image.")
                     zController.SetpntSet(IDC)
                     time.sleep(0.1)
-                    self.rampBias(NTCP, VDC)
+                    self.rampBias(NTCP,VDC,zhold=False)
                     if(self.checkEventFlags()):
                         stop = True
                         break                                                       # Check event flags
@@ -699,12 +699,12 @@ class scanbot():
                     totalDrift = totalDrift - np.array([ox,oy])
                 
                 zController.SetpntSet(Imov)
-                self.rampBias(NTCP,Vmov)
+                self.rampBias(NTCP,Vmov,zhold=False)
                 time.sleep(0.1)
 
                 folme.XYPosSet(x + totalDrift[0], y + totalDrift[1], Wait_end_of_move=True)
 
-                self.rampBias(NTCP,Vset)
+                self.rampBias(NTCP,Vset,zhold=False)
                 zController.SetpntSet(Iset)
                 time.sleep(0.1)
                 spectrum = bspec.Start(get_data=1)
@@ -737,7 +737,7 @@ class scanbot():
                 count += 1
 
             zController.SetpntSet(Imov)
-            self.rampBias(NTCP,Vmov)
+            self.rampBias(NTCP,Vmov,zhold=False)
             time.sleep(0.1)
 
             xx = np.flip(xx)

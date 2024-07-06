@@ -46,12 +46,12 @@ when scanning over debris or excessively rough areas, necessitating additional t
 
 Here, we present Scanbot, a program that fully automates common STM
 data acquisition techniques, as well as tip-shaping and sample surveying.
-Scanbot relies on a dual sample holder (DSH; figure 1), where a sample of interest is
+Scanbot relies on a dual sample holder (DSH; \autoref{fig:1}), where a sample of interest is
 mounted alongside a clean reference metal surface, which is ideal for tip preparation. 
 Scanbot is able to analyse STM images and identify when the probe requires conditioning, subsequently moving it from the sample of interest to the 
 clean reference metal, where it will prepare a scanning probe capable of obtaining high-quality STM images.
 This is accomplished using built-in piezoceramic scanners to maneuver the STM tip while tracking its position through a camera
-feed; figure 1b). Once Scanbot determines that the probe has been conditioned adequately, it moves the tip back to the sample of interest and STM data acquisition resumes.
+feed; \autoref{fig:1}b). Once Scanbot determines that the probe has been conditioned adequately, it moves the tip back to the sample of interest and STM data acquisition resumes.
 
 ![Tracking and maneuvering the STM probe above the dual sample holder (DSH).
 **a)** Schematic of the STM tip over the dual sample holder setup.
@@ -61,7 +61,7 @@ where it can be refined. The red (green) marker indicates the probe apex positio
 See Scanbot [documentation](https://new-horizons-spm.github.io/scanbot/automation/) for a video example.
 \label{fig:1}](TipTracking.png)
 
-Figure 2 demonstrates Scanbot's ability to recondition a 'bad' tip on a clean reference metal surface. 
+\autoref{fig:2} demonstrates Scanbot's ability to recondition a 'bad' tip on a clean reference metal surface. 
 Scanbot can gently impinge the scanning probe apex onto a clean, flat region of the metal surface, which results in an imprint associated
 with the geometry of the tip. This imprint can then be scanned, and the resulting image is similar to
 the auto-correlation function of the tip's apex. The quality of the tip can be assessed by measuring the area and circularity of the imprint.

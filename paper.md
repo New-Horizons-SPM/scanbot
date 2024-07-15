@@ -39,8 +39,8 @@ This is achieved by scanning an atomically sharp probe across the surface of the
 electric current. However, the quality of STM data relies heavily on the atomic-scale geometry and composition
 of the scanning probe apex, as well as the roughness and cleanliness of the scanned region. For instance, blunt tips
 result in blurry images while contaminated tips can lead to noisy images due to interactions with the sample. 
-As a result, optimal STM data acquisition commonly requires time-consuming tasks such as probe conditioning - i.e.
-sharpening via "tip-shaping", where the apex of the probe can be refined by poking it into a clean metal surface - and
+As a result, optimal STM data acquisition commonly requires time-consuming tasks such as probe conditioning---i.e.,
+sharpening via "tip-shaping", where the apex of the probe can be refined by poking it into a clean metal surface---and
 identification of areas of interest of the sample. Moreover, the quality of the probe can vary during a scan, especially 
 when scanning over debris or excessively rough areas, necessitating additional tip-shaping.
 
@@ -80,14 +80,14 @@ implemented to automate specific tasks. For instance, Wang et al. created a Pyth
 automates probe conditioning for Scanning Tunneling Spectroscopy [@Wang_2021]. However, this package
 still requires manual preparation of the tip such that it can acquire clean images.
 Some researchers have employed the use of machine learning algorithms to analyse
-acquired images and determine when a probe needs refining [@Gordon_2020], [@Rashidi_2018], then Reinforcement Learning (RL) agents can
+acquired images and determine when a probe needs refining [@Gordon_2020; @Rashidi_2018], then Reinforcement Learning (RL) agents can
 condition the probe accordingly [@Schiffrin_2020]. Although these approaches have significantly advanced
 automation in STM experiments, they are often tailored to specific surfaces and STM equipment, making it
 challenging to transfer them directly to other labs studying different kinds of samples or working with different
 STM systems.
 
 To overcome these limitations, we have developed Scanbot, a Python robot that is compatible with
-a broader range of STMs, specifically those compatible with the Nanonis V5 software [@Nanonis_2015], [@Ceddia_2022]. Additionally,
+a broader range of STMs, specifically those compatible with the Nanonis V5 software [@Nanonis_2015; @Ceddia_2022]. Additionally,
 our package incorporates Scanbot's distinctive approach to tip shaping, which involves monitoring
 the tip's motion above a dual sample holder. This method is particularly beneficial in experiments
 where the sample's properties might make it challenging to achieve a high-quality scanning probe
@@ -100,7 +100,7 @@ rewriting Scanbot's source code. This has the advantage of being able to update 
 losing customised code. Such hooks can also be used to improve Scanbot's existing functionality or test potential new features. For instance,
 Scanbot's algorithmic approach to automated tip shaping might benefit the integration of an RL agent. This could be achieved by
 leveraging the hook [hk_tipShape](https://new-horizons-spm.github.io/scanbot/hooks/#hk_tipshape), where important parameters related to tip shaping can be adjusted based on images of the tip's imprint.
-Complete documentation for Scanbot, including how such hooks can be leveraged, can be found at https://new-horizons-spm.github.io/scanbot.
+Complete documentation for Scanbot, including how such hooks can be leveraged, can be found at <https://new-horizons-spm.github.io/scanbot>.
 
 # Acknowledgements
 

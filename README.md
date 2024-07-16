@@ -51,7 +51,26 @@ If you wish to contribute to Scanbot in any way, please refer to [these guidlein
 
 ## Citing
 
+### APA
+```
 Ceddia, J., Hellerstedt, J., Lowe, B., & Schiffrin, A. (2024). Scanbot: An STM Automation Bot. Journal of Open Source Software, 9(99), 6028. https://doi.org/10.21105/joss.06028
+```
+
+### BibTeX
+```
+@article{Ceddia_Scanbot_An_STM_2024,
+author = {Ceddia, Julian and Hellerstedt, Jack and Lowe, Benjamin and Schiffrin, Agustin},
+doi = {10.21105/joss.06028},
+journal = {Journal of Open Source Software},
+month = jul,
+number = {99},
+pages = {6028},
+title = {{Scanbot: An STM Automation Bot}},
+url = {https://joss.theoj.org/papers/10.21105/joss.06028},
+volume = {9},
+year = {2024}
+}
+```
 
 ## Acknowledgements
 Special thanks to [FLEET](https://www.fleet.org.au/) for their contribution through the [FLEET Translation Program](https://www.fleet.org.au/translation/#:~:text=A%20new%20FLEET%20program%20provides,translation%20skills%20in%20Centre%20membership.).

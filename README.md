@@ -1,4 +1,5 @@
-# Scanbot       [![DOI](https://zenodo.org/badge/487719232.svg)](https://zenodo.org/badge/latestdoi/487719232)
+# Scanbot       <a href="https://new-horizons-spm.github.io/scanbot/"><img alt="Static Badge" src="https://img.shields.io/badge/documentation-mkdocs-00adff?logo=GitBook&logoColor=white"></a> [![DOI](https://joss.theoj.org/papers/10.21105/joss.06028/status.svg)](https://doi.org/10.21105/joss.06028) 
+
 
 Scanbot is a collection of several automated STM and nc-AFM data acquisition commands compatible with Nanonis V5 and V5e SPM control software (stable with R12280 and later).
 
@@ -50,7 +51,7 @@ If you wish to contribute to Scanbot in any way, please refer to [these guidlein
 
 ## Citing
 
-If you use Scanbot in your scientific research, please consider [citing it](https://zenodo.org/badge/latestdoi/487719232).
+Ceddia, J., Hellerstedt, J., Lowe, B., & Schiffrin, A. (2024). Scanbot: An STM Automation Bot. Journal of Open Source Software, 9(99), 6028. https://doi.org/10.21105/joss.06028
 
-## FLEET
+## Acknowledgements
 Special thanks to [FLEET](https://www.fleet.org.au/) for their contribution through the [FLEET Translation Program](https://www.fleet.org.au/translation/#:~:text=A%20new%20FLEET%20program%20provides,translation%20skills%20in%20Centre%20membership.).

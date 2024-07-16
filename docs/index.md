@@ -7,9 +7,10 @@
 
   gtag('config', 'G-6MK4DRHXWM');
 </script>
-# Scanbot       [![DOI](https://zenodo.org/badge/487719232.svg)](https://zenodo.org/badge/latestdoi/487719232)
+# Scanbot       <a href="https://github.com/New-Horizons-SPM/scanbot"><img alt="Static Badge" src="https://img.shields.io/badge/repository-scanbot-00adff?logo=GitHub"></a> [![DOI](https://joss.theoj.org/papers/10.21105/joss.06028/status.svg)](https://doi.org/10.21105/joss.06028)
 
 ## Featured
+* [Scanbot Paper](./featured/#scanbot-paper)<br>
 * [React Implementation of Scanbot](./featured/#web-app)<br>
 * [Scanbot meets ChatGPT](./featured/#scanbot-meets-chatgpt)
 
@@ -54,7 +55,7 @@ If you prefer using pip, you can install Scanbot directly with:
     6. Start Scanbot by running the command ```scanbot```
 
 
-## Running:
+## Running
 
 Scanbot can be run as a web application or in a terminal:
 
@@ -113,8 +114,28 @@ We are committed to providing support and will do our best to assist you promptl
 
 ## Citing
 
-If you use Scanbot in your scientific research, please consider [citing it](https://zenodo.org/badge/latestdoi/487719232).
+### APA
+```bibtex
+Ceddia, J., Hellerstedt, J., Lowe, B., & Schiffrin, A. (2024). Scanbot: An STM Automation Bot. Journal of Open Source Software, 9(99), 6028. https://doi.org/10.21105/joss.06028
+```
 
-## FLEET
+### BibTeX
+```bibtex
+@article{Ceddia_Scanbot_An_STM_2024,
+author = {Ceddia, Julian and Hellerstedt, Jack and Lowe, Benjamin and Schiffrin, Agustin},
+doi = {10.21105/joss.06028},
+journal = {Journal of Open Source Software},
+month = jul,
+number = {99},
+pages = {6028},
+title = {{Scanbot: An STM Automation Bot}},
+url = {https://joss.theoj.org/papers/10.21105/joss.06028},
+volume = {9},
+year = {2024}
+}
+```
+
+
+## Acknowledgements
 Special thanks to [FLEET](https://www.fleet.org.au/) for their contribution through the [FLEET Translation Program](https://www.fleet.org.au/translation/#:~:text=A%20new%20FLEET%20program%20provides,translation%20skills%20in%20Centre%20membership.).
 ![FLEETLogo](fleet-logo.png)

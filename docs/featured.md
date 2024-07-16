@@ -9,6 +9,13 @@
 </script>
 # Featured
 <br>
+## Scanbot Paper
+![JOSS](./misc/joss.png)
+We're proud to announce that Scanbot has officially been accepted and published in the [Journal of Open Source Software](https://joss.theoj.org/about)!
+You can read the manuscript here: [https://doi.org/10.21105/joss.06028](https://doi.org/10.21105/joss.06028).
+Thanks to [@zhubonan](https://github.com/zhubonan), [@ziatdinovmax](https://github.com/ziatdinovmax), and [@KoenImdea](https://github.com/KoenImdea) for [reviewing](https://github.com/openjournals/joss-reviews/issues/6028) this work!
+
+<br>
 ## Web App
 Scanbot has a fancy new front-end developed in React.js. Full documentation [here](../web-app)
 ![WebApp](./appim/top-level.png)

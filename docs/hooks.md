@@ -12,7 +12,7 @@
 The ability to do this without rewriting source code means you can pull Scanbot updates without losing your custom functionality. For example, Scanbot monitors a camera feed when tracking the motion of the STM
 head during automated operation; a task that may require a light to be switched on or off at times. Obviously, the code needed to achieve this will vary from system to system. This is where the user-written hook
 ```hk_light.py``` would be called by Scanbot to perform such a task. This page details all the hooks currently available to Scanbot. Feel free to raise an issue on the GitHub page if you require a hook at a certain
-point in Scanbot's source code. All hooks must be saved in the directory ~/scanbot/scanbot/
+point in Scanbot's source code. All hooks must be saved in the directory ```~/scanbot/scanbot/``` prior to running ```pip install .``` from the top level directory.
 
 ## hk_light
 This hook is called by any function that requires control over the STM light when monitoring the camera feed.
@@ -131,7 +131,7 @@ def run(cleanImage, tipImprint, tipShapeProps, target, actual, history):
     return tipShapeProps, history   # Return the updated tip shaping properties
 ```
 
-## hk_commands
+## hk_commands (coming soon to web app version)
 This hook is used to implement custom written commands into Scanbot. To enable it, set ```hk_commands=1``` in ```scanbot_config.ini```.
 Commands in hk_commands.py that have the same name as any existing Scanbot command will take priority.
 

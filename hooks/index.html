@@ -126,7 +126,7 @@
               <ul class="nav flex-column">
               </ul>
             </li>
-            <li class="nav-item" data-level="2"><a href="#hk_commands" class="nav-link">hk_commands</a>
+            <li class="nav-item" data-level="2"><a href="#hk_commands-coming-soon-to-web-app-version" class="nav-link">hk_commands (coming soon to web app version)</a>
               <ul class="nav flex-column">
               </ul>
             </li>
@@ -150,7 +150,7 @@
 The ability to do this without rewriting source code means you can pull Scanbot updates without losing your custom functionality. For example, Scanbot monitors a camera feed when tracking the motion of the STM
 head during automated operation; a task that may require a light to be switched on or off at times. Obviously, the code needed to achieve this will vary from system to system. This is where the user-written hook
 <code>hk_light.py</code> would be called by Scanbot to perform such a task. This page details all the hooks currently available to Scanbot. Feel free to raise an issue on the GitHub page if you require a hook at a certain
-point in Scanbot's source code. All hooks must be saved in the directory ~/scanbot/scanbot/</p>
+point in Scanbot's source code. All hooks must be saved in the directory <code>~/scanbot/scanbot/</code> prior to running <code>pip install .</code> from the top level directory.</p>
 <h2 id="hk_light">hk_light</h2>
 <p>This hook is called by any function that requires control over the STM light when monitoring the camera feed.</p>
 <ul>
@@ -269,7 +269,7 @@ Its purpose is to adjust the tip shaping parameters based on either the image of
 
     return tipShapeProps, history   # Return the updated tip shaping properties
 </code></pre>
-<h2 id="hk_commands">hk_commands</h2>
+<h2 id="hk_commands-coming-soon-to-web-app-version">hk_commands (coming soon to web app version)</h2>
 <p>This hook is used to implement custom written commands into Scanbot. To enable it, set <code>hk_commands=1</code> in <code>scanbot_config.ini</code>.
 Commands in hk_commands.py that have the same name as any existing Scanbot command will take priority.</p>
 <p>Structure: hk_commands.py must contain the class <code>hk_commands</code> and contain the class variable <code>commands</code>. <code>commands</code> is a python dictionary

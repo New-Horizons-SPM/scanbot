@@ -296,8 +296,8 @@ For a list of available commands on the fly, run <code>help</code>, or for help 
 </tr>
 <tr>
 <td>survey2</td>
-<td><code>-bias</code>: (float) Scan bias. Default: <code>nanonis settings</code><br><code>-n</code>: (int) Size of the nxn grid of scans within each survey. Default: <code>5</code><br><code>-i</code>: (int) Start the grid from this index. Default: <code>1</code><br><code>-s</code>: (str) Suffix at the end of autosaved sxm files. Default: <code>scanbot</code><br><code>-xy</code>: (float) Length and width of the scan frame (m). Default: <code>nanonis settings</code><br><code>-dx</code>: (float) Scan grid spacing (m). Default: <code>nanonis settings</code><br><code>-px</code>: (int) Number of pixels. Default: <code>nanonis settings</code><br><code>-st</code>: (float) Drift compensation time (s). Default: <code>10</code><br><code>-stitch</code>: (int) Return the stitched survey after completion. 1: Yes, else No. Default: <code>1</code><br><code>-hook</code>: (int) Flag to call a custom python script after each image. Script must be ~/scanbot/scanbot/hk_survey.py. 0=Don't call, 1=Call. Default: <code>0</code><br><code>-autotip</code>: (int) Automatic tip shaping. 0=off, 1=on. Properties for the auto tip shaper should be set with auto_tip_shaper command. Default: <code>0</code><br><code>-nx</code>: (int) Size of the nx x ny grid of surveys. This sets up nx x ny surveys each taken after moving -x/yStep motor steps. Default: <code>2</code><br><code>-ny</code>: (int) Size of the nx x ny grid of surveys. This sets up nx x ny surveys each taken after moving -x/yStep motor steps. Default: <code>2</code><br><code>-xStep</code>: (int) Number of motor steps between surveys in the X direction. Negative value snakes course grid in opposite direction. Default: <code>20</code><br><code>-yStep</code>: (int) Number of motor steps between surveys in the Y+ direction. Negative value reverses to Y- direction. Default: <code>20</code><br><code>-zStep</code>: (int) Number of motor steps to move in +Z (upwards) before moving the tip in x/y. Default: <code>500</code><br><code>-xyV</code>: (float) Piezo voltage when moving motor steps in xy direction. Default: <code>120</code><br><code>-zV</code>: (float) Piezo voltage when moving motor steps in z direction. Default: <code>180</code><br><code>-xyF</code>: (float) Piezo frequency when moving motor steps in xy direction. Default: <code>1100</code><br><code>-zF</code>: (float) Piezo frequency when moving motor steps in z direction. Default: <code>1100</code></td>
-<td>Conduct several surveys as above, moving the course motor between each one.<br>nx x ny surveys are acquired</td>
+<td><code>-bias</code>: (float) Scan bias. Default: <code>nanonis settings</code><br><code>-n</code>: (int) Size of the nxn grid of scans within each survey. Default: <code>5</code><br><code>-i</code>: (int) Start the grid from this index. Default: <code>1</code><br><code>-s</code>: (str) Suffix at the end of autosaved sxm files. Default: <code>scanbot</code><br><code>-xy</code>: (float) Length and width of the scan frame (m). Default: <code>nanonis settings</code><br><code>-dx</code>: (float) Scan grid spacing (m). Default: <code>nanonis settings</code><br><code>-px</code>: (int) Number of pixels. Default: <code>nanonis settings</code><br><code>-st</code>: (float) Drift compensation time (s). Default: <code>10</code><br><code>-stitch</code>: (int) Return the stitched survey after completion. 1: Yes, else No. Default: <code>1</code><br><code>-hook</code>: (int) Flag to call a custom python script after each image. Script must be ~/scanbot/scanbot/hk_survey.py. 0=Don't call, 1=Call. Default: <code>0</code><br><code>-autotip</code>: (int) Automatic tip shaping. 0=off, 1=on. Properties for the auto tip shaper should be set with auto_tip_shaper command. Default: <code>0</code><br><code>-nx</code>: (int) Size of the nx x ny grid of surveys. This sets up nx x ny surveys each taken after moving -x/yStep motor steps. Default: <code>2</code><br><code>-ny</code>: (int) Size of the nx x ny grid of surveys. This sets up nx x ny surveys each taken after moving -x/yStep motor steps. Default: <code>2</code><br><code>-xStep</code>: (int) Number of motor steps between surveys in the X direction. Negative value snakes coarse grid in opposite direction. Default: <code>20</code><br><code>-yStep</code>: (int) Number of motor steps between surveys in the Y+ direction. Negative value reverses to Y- direction. Default: <code>20</code><br><code>-zStep</code>: (int) Number of motor steps to move in +Z (upwards) before moving the tip in x/y. Default: <code>500</code><br><code>-xyV</code>: (float) Piezo voltage when moving motor steps in xy direction. Default: <code>120</code><br><code>-zV</code>: (float) Piezo voltage when moving motor steps in z direction. Default: <code>180</code><br><code>-xyF</code>: (float) Piezo frequency when moving motor steps in xy direction. Default: <code>1100</code><br><code>-zF</code>: (float) Piezo frequency when moving motor steps in z direction. Default: <code>1100</code></td>
+<td>Conduct several surveys as above, moving the coarse motor between each one.<br>nx x ny surveys are acquired</td>
 <td>survey2 -bias=1 -n=4 -xy=50e-9 -dx=200e-9 -px=256 -nx=3 -ny=5 -zStep=2000 -yStep=-500</td>
 </tr>
 <tr>
@@ -352,7 +352,7 @@ For a list of available commands on the fly, run <code>help</code>, or for help 
 </tr>
 <tr>
 <td>set_crash_safety</td>
-<td><code>-c</code>: (float) When moving the course piezos, a current above this value will be considered a crash and the tip will retract. -1 means no change. Default: <code>-1</code><br><code>-V</code>: (float) Voltage applied to the 'Z' piezo during tip retraction after a crash is detected. -1 means no change. Default: <code>-1</code><br><code>-F</code>: (float) Frequency applied to the 'Z' piezo during tip retraction after a crash is detected. -1 means no change. Default: <code>-1</code></td>
+<td><code>-c</code>: (float) When moving the coarse piezos, a current above this value will be considered a crash and the tip will retract. -1 means no change. Default: <code>-1</code><br><code>-V</code>: (float) Voltage applied to the 'Z' piezo during tip retraction after a crash is detected. -1 means no change. Default: <code>-1</code><br><code>-F</code>: (float) Frequency applied to the 'Z' piezo during tip retraction after a crash is detected. -1 means no change. Default: <code>-1</code></td>
 <td>Settings applied to the Z piezo during a tip retraction after detecting a crash</td>
 <td>set_crash_safety -c=3e-9</td>
 </tr>
@@ -410,7 +410,7 @@ For a list of available commands on the fly, run <code>help</code>, or for help 
 <li>Place a marker at a safe distance above the clean metal.</li>
 <li>Place a marker at a safe distance above the sample.</li>
 <li><strong>Note: Close any other applications that use the camera as they might prevent Scanbot from accessing it.</strong></li>
-<li><strong>Note2: If the course piezos are moved manually at any point, Scanbot will have incorrect information about the location of the tip and this process must be repeated. Same goes for moving the camera.</strong></li>
+<li><strong>Note2: If the coarse piezos are moved manually at any point, Scanbot will have incorrect information about the location of the tip and this process must be repeated. Same goes for moving the camera.</strong></li>
 </ul>
 </li>
 </ol>
@@ -477,15 +477,15 @@ However, if the tip becomes unstable, Scanbot will recognise this and refine the
 </ol>
 <h3 id="auto-tip-maneuvering">Auto Tip Maneuvering</h3>
 <p>The primary concern when it comes to automating movement of the STM head is accidental tip crashes.
-The following rules have been applied to any command where the course piezos are utilised:
+The following rules have been applied to any command where the coarse piezos are utilised:
 <br></p>
 <ul>
-<li>Scanbot can never move the tip in the <code>Z-</code> direction (down) when using the course piezo. Instead, auto approach is used.</li>
+<li>Scanbot can never move the tip in the <code>Z-</code> direction (down) when using the coarse piezo. Instead, auto approach is used.</li>
 <li>When moving in <code>X</code> or <code>Y</code> directions, the tunnelling current must be monitored after every 10 steps.</li>
 <li>A tunnelling current greater than the threshold set in the config file is considered a crash (see <a href="../configuration/#tip-crash-safety">Tip Crash Safety</a>).</li>
 <li>In the event of a crash, the tip will be retracted using the <code>Z+</code> piezo and operation will cease.</li>
 </ul>
-<p><strong>Please make sure to set appropriate piezo voltages and frequencies when using any of the commands that control the course piezos. You can configure voltage and frequency limits in the <a href="../configuration/#piezo-safety">config file</a>.</strong></p></body></html></div>
+<p><strong>Please make sure to set appropriate piezo voltages and frequencies when using any of the commands that control the coarse piezos. You can configure voltage and frequency limits in the <a href="../configuration/#piezo-safety">config file</a>.</strong></p></body></html></div>
             </div>
         </div>
 

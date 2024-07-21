@@ -45,7 +45,7 @@ and begin acquiring a new survey. If the tip becomes unstable during a survey, S
 
 ### In Development
 At present, Scanbot examines STM images captured during surveys to assess the need for tip reshaping. However, its current algorithmic method is limited to identifying tip 
-instability, but it lacks the capability to detect bluntness or duplication of the tip. Addressing this limitation is a priority. Enhancing the algorithm or adopting a 
+instability, but lacks the capability to detect blunt or doubled tips. Addressing this limitation is a priority. Enhancing the algorithm or adopting a 
 sophisticated image classification system would significantly improve Scanbot's ability to accurately determine when the tip necessitates refinement.
 
 There are several indicators that determine how aggressive the tip shaping action should be when refining the scanning probe.

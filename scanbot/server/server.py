@@ -355,7 +355,7 @@ def getLatestVersion(url):
 
 @app.route('/check_updates')
 def check_updates():
-    currentVersion = '4.5.1'
+    currentVersion = '4.5.2'
     latestVersion  = getLatestVersion('https://us-central1-scanbot-46390.cloudfunctions.net/getVersion')
 
     update = False

@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "scanbot"
-version = "4.5.1"
+version = "4.5.2"
 description = "Collection of automated STM and nc-AFM commands compatible with Nanonis V5 SPM Controller"
 authors = ["Julian Ceddia <jdceddia@gmail.com>"]
 readme = "README.md"
@@ -10,11 +10,11 @@ packages = [
             {include = "scanbot/server"},
             ]
 include = [
-            "scanbot/App/build/**/*",
-            "scanbot/App/public/**/*",
-            "scanbot/App/src/**/*",
-            "scanbot/Dev/**/*",
-            ]
+    { path = "scanbot/App/build", format = "wheel" },
+    { path = "scanbot/App/public", format = "wheel" },
+    { path = "scanbot/App/src", format = "wheel" },
+    { path = "scanbot/Dev", format = "wheel" },
+]
 
 [tool.poetry.dependencies]
 python = "^3.9"

@@ -26,13 +26,32 @@ run_mode = 'react'
 
 ################# ARGS ##################
 import argparse
-parser = argparse.ArgumentParser()
-parser.add_argument('--version', action='version', version='scanbot 4.5.2', help='show the version number and exit')
-parser.add_argument('-c', '--terminal', action='store_true', help='run scanbot in terminal')
-parser.add_argument('-z', '--zulip',    action='store_true', help='run scanbot in terminal')
-args = parser.parse_args()
-if(args.terminal):  run_mode = 'c'
-if(args.zulip):     run_mode = 'z'
+
+def get_run_mode():
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--version', action='version', version='scanbot 4.5.2',
+                        help='show the version number and exit')
+    parser.add_argument('-c', '--terminal', action='store_true',
+                        help='run scanbot in terminal')
+    parser.add_argument('-z', '--zulip', action='store_true',
+                        help='run scanbot in zulip mode')
+    return parser
+
+def determine_run_mode():
+    parser = get_run_mode()
+
+    # Only parse arguments when running the script normally,
+    # NOT when imported by PyInstaller during the build.
+    if __name__ == "__main__" or getattr(sys, "frozen", False):
+        args = parser.parse_args()
+        if args.terminal:
+            return "c"
+        if args.zulip:
+            return "z"
+
+    return "react"  # default
+
+run_mode = determine_run_mode()
 ################# ARGS ##################
 
 module_dir = str(os.path.dirname(os.path.abspath(__file__))).replace('\\','/')

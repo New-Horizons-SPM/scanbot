@@ -8,17 +8,10 @@ class scanbot_config():
     def __init__(self, module_dir="./"):
         self.config = OrderedDict(
                       # key                         : [label, description, category, default value] 
-                      { # 'zuliprc'                   : ['Zulip RC File',                 'Upload your Zulip rc file. See https://zulip.com/api/running-bots',                'external', ''],
-                        # 'zulip_stream'              : ['Zulip Stream',                  'Default stream when sending messages via Zulip',                                   'external', 'scanbot'],
-                        # 'zulip_topic'               : ['Zulip Topic',                   'Default topic when sending messages via Zulip',                                    'external', 'live-stream'],
-                        # 'upload_method'             : ['Upload Type',                   'Upload generated pngs via zulip or firebase',                                      'external', 'no_upload'],
-                        # 'path'                      : ['Path',                          'Path to save data',                                                                'external', 'scanbot_data'],
-                        # 'firebase_credentials'      : ['Firebase Credentials',          'Credentials for firebase (if upload_method=firebase)',                             'external', ''],
-                        # 'firebase_storage_bucket'   : ['Firebase Bucket',               'Firebase storage bucket. Firebase path uses "path" key',                           'external', ''],
+                      {# 'path'                      : ['Path',                          'Path to save data',                                                                'external', 'scanbot_data'],
                         'port_list'                 : ['TCP Ports',                     'Comma delimited ports (nanonis => Main Options => TCP Programming Interface)',     'tcp',      '6501,6502,6503,6504'],
                         'ip'                        : ['IP Address',                    'IP address of the pc controlling nanonis',                                         'tcp',      '127.0.0.1'],
                         'topo_basename'             : ['Topo basename',                 'Basename for .sxm files. Leave blank to use current value in nanonis',             'nanonis',  ''],
-                        # 'scp_path'                  : ['SCP Path',                      'SCP generated pngs to user@clouddatabase:path. Leave blank to turn off',           'external', ''],
                         'safe_current'              : ['Crash Current (A)',             'When the current goes above this threhold the tip is considered crashed',          'safety',   '5e-9'],
                         'safe_retract_V'            : ['Crash Retract Voltage (V)',     'Voltage (V) applied to the Z piezo when retracting tip if a crash is detected',    'safety',   '200'],
                         'safe_retract_F'            : ['Crash Retract Frequency (Hz)',  'Frequency (Hz) applied to the Z piezo when retracting tip if a crash is detected', 'safety',   '1500'],

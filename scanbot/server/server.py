@@ -33,8 +33,6 @@ def get_run_mode():
                         help='show the version number and exit')
     parser.add_argument('-c', '--terminal', action='store_true',
                         help='run scanbot in terminal')
-    parser.add_argument('-z', '--zulip', action='store_true',
-                        help='run scanbot in zulip mode')
     return parser
 
 def determine_run_mode():
@@ -46,8 +44,6 @@ def determine_run_mode():
         args = parser.parse_args()
         if args.terminal:
             return "c"
-        if args.zulip:
-            return "z"
 
     return "react"  # default
 
@@ -392,10 +388,6 @@ if __name__ == '__main__':
 
 def app_(test=False,tmp_path=""):
     if(run_mode == 'c'):
-        scanbot_interface(run_mode=run_mode, module_dir=module_dir)
-        exit()
-
-    if(run_mode == 'z'):
         scanbot_interface(run_mode=run_mode, module_dir=module_dir)
         exit()
         

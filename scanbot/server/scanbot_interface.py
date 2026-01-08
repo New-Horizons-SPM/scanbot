@@ -8,8 +8,6 @@ Created on Fri August 8 22:06:37 2022
 from scanbot.server.scanbot import scanbot
 from scanbot.server import global_
 
-import zulip
-
 import os
 import sys
 import subprocess
@@ -22,14 +20,11 @@ import ipaddress
 import threading
 
 class scanbot_interface(object):
-    bot_message = []
-    bot_handler = []
-    validUploadMethods = ['path','zulip','firebase','no_upload']
     
 ###############################################################################
 # Constructor
 ###############################################################################
-    def __init__(self,run_mode="",module_dir="./"):
+    def __init__(self,run_mode, module_dir="./"):
         print("Initialising app...")
         self.run_mode   = run_mode
         self.module_dir = module_dir
@@ -49,20 +44,11 @@ class scanbot_interface(object):
 
         """
         print("Loading scanbot_config.ini...")
-        initDict = {'zuliprc'                   : '',                           # Zulip rc file. See https://zulip.com/api/running-bots
-                    'zulip_stream'              : 'scanbot',                    # Default stream to send messages to
-                    'zulip_topic'               : 'live-stream',                # Default topic to send messages to
-                    'upload_method'             : 'no_upload',                  # Ping data via this channel.
-                    'path'                      : 'sbData',                     # Path to save data (if upload_method=path)
-                    'firebase_credentials'      : '',                           # Credentials for firebase (if upload_method=firebase)
-                    'firebase_storage_bucket'   : '',                           # Firebase bucket. Firebase path uses "path" key
+        initDict = {'path'                      : 'sbData',                     # Path to save data
                     'port_list'                 : '6501,6502,6503,6504',        # Ports (see nanonis => Main Options => TCP Programming Interface)
                     'ip'                        : '127.0.0.1',                  # IP of the pc controlling nanonis
-                    'creeplist'                 : '',                           # IP addresses to creep
-                    'notify_list'               : '',                           # Comma delimited zulip users to @notify when sending data
                     'temp_calibration_curve'    : '',                           # Path to temp calibration curve (see nanonis Temperature modules)
                     'topo_basename'             : '',                           # basename for topographic images
-                    'scp_path'                  : '',                           # user@clouddatabase:path
                     'safe_current'              : '5e-9',                       # When the current goes above this threhold the tip is considered crashed. Used when controlling the course piezos
                     'safe_retract_V'            : '200',                        # Voltage applied to the 'Z' piezo when retracting tip in case of crash
                     'safe_retract_F'            : '1500',                       # Frequency applied to the 'Z' piezo when retracting tip in case of crash
@@ -98,65 +84,25 @@ class scanbot_interface(object):
         if(version.startswith('R')):
             version = version.split('R')[1]
         self.nanonis_version = int(version)
-
-        self.zuliprc      = initDict['zuliprc']
-        self.zulipStream  = initDict['zulip_stream']
-        self.zulipTopic   = initDict['zulip_topic']
         
         self.path         = initDict['path']
-        if(self.path):
-            self.path = self.path.replace('\\','/')
-        
-        self.uploadMethod = initDict['upload_method']
-        
-        if(self.uploadMethod == 'zulip'):
-            if(not self.zuliprc):
-                raise Exception("Check config file. zuliprc require for upload_method=zulip")
-        
-        if(self.uploadMethod in ['path','firebase']):
-            if(not self.path):
-                raise Exception("Check config file. Invalid path for upload_method=" + self.uploadMethod)
-        
-        if(self.uploadMethod not in self.validUploadMethods):
-            raise Exception("Check config file. Invalid upload_method.\nMust be one of path, zulip, firebase")
+        if(not self.path):
+            raise Exception("Check config file. Path is empty")
+        self.path = self.path.replace('\\','/')
             
-        if(self.uploadMethod == 'path'):
-            Path(self.path).mkdir(parents=True, exist_ok=True)
-            if(not self.path.endswith('/')):
-                self.path += '/'
-        
-        self.firebaseCert = initDict['firebase_credentials']
-        self.firebaseStorageBucket = initDict['firebase_storage_bucket']
-        
-        if(self.uploadMethod == 'firebase'):
-            if(not self.firebaseStorageBucket):
-                raise Exception("Storage bucket must be provided for upload_method=firebase")
-            if(not self.path):
-                raise Exception("Storage path must be provided for upload_method=firebase")
-            if(not self.path.endswith('/')):
-                self.path += '/'
-            self.firebaseInit()
-        
+        Path(self.path).mkdir(parents=True, exist_ok=True)
+        if(not self.path.endswith('/')):
+            self.path += '/'
+                
         if(self.setPortList(initDict['port_list'].replace(',',' ').split(' '))):
             raise Exception("Check port_list in config file. Must be space or comma delimited.")
             
         if(self.setIP([initDict['ip']])):
             raise Exception("Check config file... Invalid IP.")
         
-        self.notifyUserList = []
-        if(initDict['notify_list']):
-            self.notifyUserList = initDict['notify_list'].split(',')
-        
-        self.bot_message = []
-        self.zulipClient = []
-        if(self.zuliprc):
-            self.zulipClient = zulip.Client(config_file=self.zuliprc)
-        
         self.tempCurve = initDict['temp_calibration_curve']
         
         self.topoBasename = initDict['topo_basename']
-        
-        self.cloudPath = initDict['scp_path']
         
         self.scanbot.safeCurrent  = float(initDict['safe_current'])
         self.scanbot.safeRetractV = float(initDict['safe_retract_V'])
@@ -177,19 +123,6 @@ class scanbot_interface(object):
            from hk_commands import hk_commands
            self.hk_commands = hk_commands(self)
         
-    def firebaseInit(self):
-        try:
-            import firebase_admin
-            from firebase_admin import credentials
-            print("Initialising firebase app")
-            cred = credentials.Certificate(self.firebaseCert)                   # Your firebase credentials
-            firebase_admin.initialize_app(cred, {
-                'storageBucket': self.firebaseStorageBucket                     # Your firebase storage bucket
-            })
-        except Exception as e:
-            print("Firebase not initialised...")
-            print(e)
-        
     def initGlobals(self):
         global_.tasks   = []
         global_.running = threading.Event()                                     # event to stop threads
@@ -203,8 +136,6 @@ class scanbot_interface(object):
                          'get_ip'           : lambda args: self.IP,             # Return the IP scanbot is configured to talk to
                          'set_portlist'     : self.setPortList,                 # Configure which ports scanbot can use when talking to Nanonis
                          'get_portlist'     : lambda args: self.portList,       # Return the list of ports scanbot is configured to use
-                         'set_upload_method': self.setUploadMethod,             # Set which upload method to use when uploading pngs
-                         'get_upload_method': lambda args: self.uploadMethod,   # View the upload method
                          'set_path'         : self.setPath,                     # Changes the directory pngs are saved in. Creates the directory if it doesn't exist.
                          'get_path'         : lambda args: self.path,           # Path to save scan pngs (saves the channel of focus which can be set using plot_channel)
                          'plot_channel'     : self.plotChannel,                 # Read/select the current channel of focus
@@ -269,7 +200,7 @@ class scanbot_interface(object):
             
             args = self.unpackArgs(user_arg_dict)
         
-        func = lambda : self.scanbot.survey(*args,message=self.bot_message.copy())
+        func = lambda : self.scanbot.survey(*args)
         return self.threadTask(func)
     
     def survey2(self,user_args,_help=False,survey2Params=[]):
@@ -309,7 +240,7 @@ class scanbot_interface(object):
                 args[4] *= 1e-9
                 args[5] *= 1e-9
         
-        func = lambda : self.scanbot.survey2(*args,message=self.bot_message.copy())
+        func = lambda : self.scanbot.survey2(*args)
         return self.threadTask(func)
     
     def biasDep(self,user_args,_help=False):
@@ -334,7 +265,7 @@ class scanbot_interface(object):
         
         args = self.unpackArgs(user_arg_dict)
         
-        func = lambda : self.scanbot.biasDep(*args,message=self.bot_message.copy())
+        func = lambda : self.scanbot.biasDep(*args)
         return self.threadTask(func)
     
     def stsGrid(self,user_args,_help=False):
@@ -363,7 +294,7 @@ class scanbot_interface(object):
             args['-Iset'] *= 1e-12
             args['-Imov'] *= 1e-12
 
-        func = lambda : self.scanbot.stsGrid(args,message=self.bot_message.copy())
+        func = lambda : self.scanbot.stsGrid(args)
         return self.threadTask(func)
 
     def zdep(self,user_args,_help=False):
@@ -392,7 +323,7 @@ class scanbot_interface(object):
         
         args = self.unpackArgs(user_arg_dict)
         
-        func = lambda : self.scanbot.zdep(*args,message=self.bot_message.copy())
+        func = lambda : self.scanbot.zdep(*args)
         return self.threadTask(func)
     
     def registration(self,user_args,_help=False):
@@ -416,7 +347,7 @@ class scanbot_interface(object):
         
         args = self.unpackArgs(user_arg_dict)
         
-        func = lambda : self.scanbot.registration(*args,message=self.bot_message.copy())
+        func = lambda : self.scanbot.registration(*args)
         return self.threadTask(func)
     
 ###############################################################################
@@ -439,7 +370,7 @@ class scanbot_interface(object):
         
         args = self.unpackArgs(user_arg_dict)
         
-        self.scanbot.moveArea(*args,message=self.bot_message.copy())
+        self.scanbot.moveArea(*args)
     
     def tipShape(self,user_args,_help=False):
         arg_dict = {}
@@ -485,8 +416,6 @@ class scanbot_interface(object):
         
         if(_help): return arg_dict
         
-        if(self.run_mode != 'c' and self.run_mode != 'react'): return "This function is not available."
-        
         arg_dict['-reactInit'] = ['0', lambda x: int(x), "(int) User-hidden flag when running in react mode. 1=running from react - use data in ./autoInit/"]
         
         error,user_arg_dict = self.userArgs(arg_dict,user_args)
@@ -495,9 +424,9 @@ class scanbot_interface(object):
         args = self.unpackArgs(user_arg_dict)
         
         if(self.run_mode == 'react'):
-            return self.scanbot.autoInit(*args,message=self.bot_message.copy())
+            return self.scanbot.autoInit(*args)
         
-        func = lambda : self.scanbot.autoInit(*args,message=self.bot_message.copy())
+        func = lambda : self.scanbot.autoInit(*args)
         return self.threadTask(func)
     
     def moveTipToSample(self,user_args,_help=False):
@@ -556,7 +485,7 @@ class scanbot_interface(object):
             args[4] *= 1e-9
             args[5] *= 1e-9
         
-        func = lambda : self.scanbot.autoTipShape(*args,message=self.bot_message.copy())
+        func = lambda : self.scanbot.autoTipShape(*args)
         return self.threadTask(func)
     
 ###############################################################################
@@ -570,13 +499,11 @@ class scanbot_interface(object):
         try:
             portList = [int(x) for x in portList]
         except:
-            self.reactToMessage('cross_mark')
             return "Invalid portlis. Ports must be integers delimited by spaces"
         
-        if(not portList): return self.reactToMessage('cross_mark')
+        if(not portList): return "Port list cannot be empty"
         
         self.portList = portList
-        self.reactToMessage('computer')
     
     def setIP(self,IP,_help=False):
         arg_dict = {'' : ['127.0.0.1', lambda x: str(x), "(string) IP Address"]}
@@ -588,49 +515,23 @@ class scanbot_interface(object):
             IP = IP[0]
             ipaddress.ip_address(IP)
             self.IP = IP
-            self.reactToMessage('computer')
             return
         except Exception as e:
-            self.reactToMessage('cross_mark')
             return str(e)
-        
-    def setUploadMethod(self,uploadMethod,_help=False):
-        arg_dict = {'' : ['', lambda x: str(x), "(string) Data upload method. One of " + ', '.join(self.validUploadMethods)]}
-        
-        if(_help): return arg_dict
-        
-        if(len(uploadMethod) != 1): self.reactToMessage('cross_mark'); return
-        
-        uploadMethod = uploadMethod[0].lower()
-        if(not uploadMethod in self.validUploadMethods):
-            self.reactToMessage('cross_mark')
-            return "Invalid Method. Available methods:\n" + "\n". join(self.validUploadMethods)
-        
-        if(uploadMethod == 'path'):
-            Path(self.path).mkdir(parents=True, exist_ok=True)
-            if(not self.path.endswith('/')): self.path += '/'
-            
-        self.uploadMethod = uploadMethod
-        self.reactToMessage('all_good')
         
     def setPath(self,path,_help=False):
         arg_dict = {'' : ['', 0, "(string) Sets upload path. Creates the directory if path does not exist"]}
         
         if(_help): return arg_dict
         
-        if(len(path) != 1): self.reactToMessage("cross_mark"); return
+        if(len(path) != 1): return
         path = path[0]
         
         try:
-            if(self.uploadMethod == 'firebase'):
-                self.sendReply("set_path not supported for Firebase, yet")
-                
-            if(self.uploadMethod == 'path'):
-                self.path = path
-                if(not self.path.endswith('/')):
-                    self.path += '/'
-                Path(self.path).mkdir(parents=True, exist_ok=True)
-                self.reactToMessage('all_good')
+            self.path = path
+            if(not self.path.endswith('/')):
+                self.path += '/'
+            Path(self.path).mkdir(parents=True, exist_ok=True)
         except Exception as e:
             return str(e)
         
@@ -681,7 +582,7 @@ class scanbot_interface(object):
 ###############################################################################
 # Comms
 ###############################################################################
-    def handle_message(self, message, bot_handler=None):
+    def handle_message(self, message):
         """
         Process commands from incoming messages.
         Command format:
@@ -693,152 +594,61 @@ class scanbot_interface(object):
         Parameters
         ----------
         message     : Incoming message
-        bot_handler : Zulip only.
 
         """
         messageContent   = message
-        self.bot_message = []
-        self.bot_handler = bot_handler
-        if(bot_handler):                                                        # If there's a bot_handler, we're communicating via zulip    
-            self.bot_message = message
-            messageContent = message['content']
-            
+
         command = messageContent.split(' ')[0].lower()
         args    = messageContent.split(' ')[1:]
+
         if(args and '=' in args[0]):
             args = ['-' + arg for arg in messageContent.split(' -')[1:]]
         
         if(self.hk_commands and command in self.hk_commands.commands):
-            reply = self.hk_commands.commands[command](args)
-            if(reply): self.sendReply(reply)
+            self.hk_commands.commands[command](args)
             return
         
         if(not command in self.commands):
-            reply = "Invalid command. Run *help* to see command list"
-            self.sendReply(reply)
+            print("Invalid command. Run *help* to see command list")
             return
 
-        reply = self.commands[command](args)
+        self.commands[command](args)
         
-        if(reply): self.sendReply(reply)
-    
-    def sendReply(self,reply,message=""):
-        """
-        Send reply text. Currently only supports zulip and console.
-
-        Parameters
-        ----------
-        reply   : Reply string
-        message : Zulip: message params for the specific message to reply ro.
-                  If not passed in, replies to the last message sent by user.
-
-        Returns
-        -------
-        message_id : Returns the message id of the sent message. (zulip only)
-
-        """
-        if(not reply): return                                                   # Can't send nothing
-        if(self.bot_handler):                                                   # If our reply pathway is zulip
-            replyTo = message                                                   # If we're replying to a specific message
-            if(not replyTo): replyTo = self.bot_message                         # If we're just replying to the last message sent by user
-            self.bot_handler.send_reply(replyTo, reply)                         # Send the message
-            return
-        
-        if(self.zulipClient):                                                   # We get here when self.runmode /= zulip
-            self.zulipClient.send_message(
-                {
-                    "type": "stream",
-                    "to": self.zulipStream,
-                    "topic": self.zulipTopic,
-                    "content": reply,
-                }
-            )
-        print(reply)                                                            # Print reply to console
-        self.scanbot.currentAction["message"] = reply
-        
-    def reactToMessage(self,reaction,message=""):
-        """
-        Scanbot emoji reaction to message
-    
-        Parameters
-        ----------
-        reaction : Emoji name (currently zulip only)
-        message  : Specific zulip message to react to. If not passed in, reacts
-                   to the last message sent by user.
-    
-        """
-        if(not self.bot_handler):                                               # If we're not using zulip
-            # print("Scanbot reaction: " + reaction)                             # Send reaction to console
-            return
-        
-        reactTo = message                                                       # If we're reacting to a specific zulip message
-        if(not reactTo): reactTo = self.bot_message                             # Otherwise react to the last user message
-        react_request = {
-            'message_id': reactTo['id'],                                        # Message ID to react to
-            'emoji_name': reaction,                                             # Emoji scanbot reacts with
-            }
-        self.zulipClient.add_reaction(react_request)                            # API call to react to the message
-        
-    def sendPNG(self,pngFilename,notify=True,message=""):
-        notifyString = ""
-        if(notify):
-            for user in self.notifyUserList:
-                notifyString += "@**" + user + "** "
-            
-        # path = os.getcwd() + '/' + pngFilename
+       
+    def sendPNG(self,pngFilename):
         path = self.module_dir + pngFilename
         
         if(self.run_mode == 'react'):
             timestamp = time.time()
             Path(self.module_dir + 'temp').mkdir(parents=True, exist_ok=True)
             shutil.copy(path,self.module_dir + 'temp/' + str(timestamp) + '_' + pngFilename)
-        
-        if(self.uploadMethod == 'zulip'):
-            if(self.bot_handler):
-                upload = self.bot_handler.upload_file_from_path(str(path))
-                uploaded_file_reply = "[{}]({})".format(path.name, upload["uri"])
-                self.sendReply(notifyString + pngFilename,message)
-                self.sendReply(uploaded_file_reply,message)
-            else:
-                result = ""
-                with open(str(path), "rb") as fp:
-                    result = self.zulipClient.upload_file(fp)
-
-                if(result):
-                    self.zulipClient.send_message(
-                        {
-                            "type": "stream",
-                            "to": self.zulipStream,
-                            "topic": self.zulipTopic,
-                            "content": "[" + str(path) + "]({})".format(result["uri"]),
-                        }
-                    )
-            os.remove(path)
             
-        if(self.uploadMethod == 'firebase'):
-            from firebase_admin import storage
-            bucket = storage.bucket()
-            blob   = bucket.blob(self.path + pngFilename)
-            blob.upload_from_filename(str(path))
-        
-            url = blob.generate_signed_url(expiration=9999999999)
-            self.sendReply(notifyString + "[" + pngFilename + "](" + url + ")",message)
-            os.remove(path)
-        
-        if(self.uploadMethod == 'path'):
-            os.replace(path, self.path + pngFilename)
-            self.sendReply(notifyString + self.path + pngFilename)
-        
-        if(self.uploadMethod == "no_upload"):
-            os.remove(path)
-            
+        os.replace(path, self.path + pngFilename)
+        print(self.path + pngFilename)
+    
+    def sendReply(self,message):
+        if(self.run_mode == 'react'):
+            print(message)
+        else:
+            print("Scanbot: " + message)
 ###############################################################################
 # Misc
 ###############################################################################
     def getAction(self):
+        """
+        Returns the current action of Scanbot.
+        """
         return self.scanbot.currentAction
     
     def testConnection(self):
+        """
+        Used by the react app to see if we can connect to nanonis.
+
+        Returns
+        -------
+        status : bool
+            True if connection successful, False if not
+        """
         status = True
         try:
             from nanonisTCP.Bias import Bias
@@ -949,15 +759,6 @@ class scanbot_interface(object):
             args.append(value[1](value[0]))                                     # Convert the string into data type
         return args
     
-    def uploadToCloud(self,filename):
-        if(not filename.endswith(".pkl")): return filename
-        try:
-            subprocess.run(["scp", filename, self.cloudPath])
-            os.remove(filename)
-        except Exception as e:
-            self.sendReply("Error uploading file to cloud with command\nscp " +
-                           filename + " " + self.cloudPath + "\n\n" + str(e))
-    
     def _quit(self,arg_dict=[]):
         sys.exit()
 
@@ -968,37 +769,12 @@ class scanbot_interface(object):
 ###############################################################################
 # Run
 ###############################################################################
-handler_class = scanbot_interface                                                   # Used by zulip-run-bot
-
 finish = False
-    
-if('-z' in sys.argv and not finish):
-    rcfile = ''
-    try:
-        with open('scanbot_config.ini','r') as f:                                   # Go through the config file to see what defaults need to be overwritten
-            line = "begin"
-            while(line):
-                line = f.readline()[:-1]
-                key, value = line.split('=')                                        # Format for valid line is "Key=Value"
-                if(key == 'zuliprc'):                                               # Look for the bot rc file
-                    rcfile = value
-                    break
-    except:
-        print("scanbot_config.ini not found.")
-        sys.exit()
-    
-    if(not rcfile):
-        print("zulip bot rc file not in scanbot_config.ini")
-        sys.exit()
-    
-    os.system("zulip-run-bot scanbot_interface.py --config=" + rcfile)
-    finish = True
     
 if('-c' in sys.argv and not finish):
     print("Console mode: type 'exit' to end scanbot")
-    go = True
     handler_class = scanbot_interface(run_mode='c')
-    while(go):
+    while(True):
         message = input("User: ")
         if(message == 'exit'):
             break
@@ -1007,9 +783,8 @@ if('-c' in sys.argv and not finish):
     finish = True
 
 if('-react' in sys.argv and not finish):
-    go = True
     handler_class = scanbot_interface(run_mode='react')
-    while(go):
+    while(True):
         message = input("User: ")
         if(message == 'exit'):
             break

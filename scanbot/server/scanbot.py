@@ -104,27 +104,22 @@ class scanbot():
         channel_index = self.getChannelIndex(channel_name)
         if(channel_index == -1):
             self.disconnect(NTCP)                                               # Close the TCP connection
-            self.interface.reactToMessage("cross_mark")
             return "Channel " + channel_name + " does not exist. Check the signal manager for available channels"
         
         _,channels,_,_ = scan.BufferGet()
         if(channel_index not in channels):
             self.disconnect(NTCP)                                               # Close the TCP connection
-            self.interface.reactToMessage("cross_mark")
             return "Channel " + channel_name + " is not in the scan buffer so there is no data for it. Add it using the plot_channel command"
         
         _,scanData,_ = scan.FrameDataGrab(channel_index, 1)                     # Grab the data within the scan frame. Channel 14 is . 1 is forward data direction
         
-        try:
-            pngFilename = 'im-' + str(channel_name) + '.png'                    # All unsaved (incomplete) scans are saved as im.png
-            pngFilename = self.makePNG(scanData,pngFilename=pngFilename)        # Generate a png from the scan data
-            self.interface.sendPNG(pngFilename,notify=False)                    # Send a png over zulip
-        except:
-            self.interface.reactToMessage("cross_mark")
+        pngFilename = 'im-' + str(channel_name) + '.png'                    # All unsaved (incomplete) scans are saved as im.png
+        pngFilename = self.makePNG(scanData,pngFilename=pngFilename)        # Generate a png from the scan data
+        self.interface.sendPNG(pngFilename)                                 # Send a png
         
         self.disconnect(NTCP)                                                   # Close the TCP connection
             
-    def survey(self,bias,n,startAt,suffix,xy,dx,px,sleepTime,stitch,survey_hk,classifier_hk,autotip,ox=0,oy=0,message="",enhance=False,reverse=False,iamauto=False):
+    def survey(self,bias,n,startAt,suffix,xy,dx,px,sleepTime,stitch,survey_hk,classifier_hk,autotip,ox=0,oy=0,enhance=False,reverse=False,iamauto=False):
         """
         This function carries out an autonomous survey within the scannable 
         area.
@@ -149,7 +144,6 @@ class scanbot():
                   a clean reference metal for tip shaping.
         ox : Absolute x-centre coordinate for the survey grid (m)
         oy : Absolute y-centre coordinate for the survey grid (m)
-        message : (Zulip use only)
         enhance : (Not used in this version)
         reverse : Reverse the direction of the survey (start from the end)
         iamauto : Flag when this function was called autonomously
@@ -187,7 +181,7 @@ class scanbot():
             for i in x:
                 frames.append([i+ox, j+oy, xy, xy])
                 if(i+ox>range_x/2 or j+oy>range_y/2):
-                    self.interface.sendReply("Survey error: Grid size exceeds scan area",message=message)
+                    self.interface.sendReply("Survey error: Grid size exceeds scan area")
                     self.disconnect(NTCP)                                       # Close the TCP connection
                     global_.running.clear()                                     # Free up the running flag
                     return
@@ -219,7 +213,7 @@ class scanbot():
 
             if(idx < startAt-1): continue
             
-            self.interface.sendReply('Running scan ' + str(idx + 1) + '/' + str(n**2),message=message) # Send a message that the next scan is starting
+            self.interface.sendReply('Running scan ' + str(idx + 1) + '/' + str(n**2)) # Send a message that the next scan is starting
             
             slept = 0
             scan.FrameSet(*frame)                                               # Set the coordinates and size of the frame window in nanonis
@@ -279,7 +273,7 @@ class scanbot():
             if(dummyData): scanData = dummyData[idx]                            # This happens when in demo mode
 
             pngFilename,scanDataPlaneFit = self.makePNG(scanData, filePath,returnData=True,dpi=150) # Generate a png from the scan data
-            self.interface.sendPNG(pngFilename,notify=True,message=message)     # Send a png over zulip
+            self.interface.sendPNG(pngFilename)     # Send a png
             
             if(survey_hk):                                                      # call a custom python script
                 try:
@@ -295,22 +289,17 @@ class scanbot():
                 col = ((row)%2)*((n-1) - idx%n) + ((row+1)%2)*idx%n
                 stitchedSurvey[(n-1-row)*lines:(n-1-row)*lines+lines,px*col:px*col+px] = scanData
             
-            if(self.interface.cloudPath):
-                metaData = self.getMetaData(filePath)
-                pklFile = utilities.pklDict(scanData,filePath,*metaData,comments="scanbot")
-                self.interface.uploadToCloud(pklFile)                           # Send data to cloud database
-            
             if(self.checkEventFlags()): break                                   # Check event flags
             if(callAutoTipShape): break
 
         if(stitch == 1 and not np.isnan(stitchedSurvey).all()):
             stitchFilepath = self.makePNG(stitchedSurvey,pngFilename = suffix + '_stitch.png',dpi=150*n, fit=False)
-            self.interface.sendPNG(stitchFilepath,notify=False,message=message) # Send a png over zulip
+            self.interface.sendPNG(stitchFilepath) # Send a png 
         
         scan.PropsSet(series_name=basename)                                     # Put back the original basename
         self.disconnect(NTCP)                                                   # Close the TCP connection
     
-        self.interface.sendReply('survey \'' + suffix + '\' done',message=message) # Send a notification that the survey has completed
+        self.interface.sendReply('survey \'' + suffix + '\' done') # Send a notification that the survey has completed
         
         if(not iamauto):
             global_.running.clear()                                             # Free up the running flag
@@ -323,7 +312,7 @@ class scanbot():
             self.interface.moveTipToClean(user_args=user_args)
         
     def survey2(self,bias,n,startAt,suffix,xy,dx,px,sleepTime,stitch,survey_hk,classifier_hk,autotip, # Survey params
-                     nx,ny,xStep,yStep,zStep,xyV,zV,xyF,zF,message=""):          # Move area params
+                     nx,ny,xStep,yStep,zStep,xyV,zV,xyF,zF):          # Move area params
         """
         This function acquires many surveys with a call to move_area between
         each one.
@@ -355,7 +344,7 @@ class scanbot():
                 if(self.checkEventFlags()): break                               # Check event flags
                 
                 s = suffix + "_y" + str(y) + "_x" + str(x)
-                callAutoTipShape = self.survey(bias,n,startAt,s,xy,dx,px,sleepTime,stitch,survey_hk,classifier_hk,autotip,reverse=reverse,iamauto=True,message=message)
+                callAutoTipShape = self.survey(bias,n,startAt,s,xy,dx,px,sleepTime,stitch,survey_hk,classifier_hk,autotip,reverse=reverse,iamauto=True)
                 reverse = not reverse
                 
                 if(self.checkEventFlags()): break                               # Check event flags
@@ -366,7 +355,7 @@ class scanbot():
                 if(self.checkEventFlags()): break                               # Check event flags
                 
                 direction = xdirections[xdirection]
-                self.interface.sendReply("Moving " + str(xStep) + " steps in " + direction,message=message)
+                self.interface.sendReply("Moving " + str(xStep) + " steps in " + direction)
                 
                 success = self.moveArea(up=zStep,upV=zV,upF=zF,direction=direction,steps=xStep,dirV=xyV,dirF=xyF,zon=True)
                 if(not success):
@@ -382,7 +371,7 @@ class scanbot():
             
             if(self.checkEventFlags()): break                                   # Check event flags
             
-            self.interface.sendReply("Moving " + str(yStep) + " steps in " + ydirection,message=message)
+            self.interface.sendReply("Moving " + str(yStep) + " steps in " + ydirection)
             self.moveArea(up=zStep,upV=zV,upF=zF,direction=ydirection,steps=yStep,dirV=xyV,dirF=xyF,zon=True)
             
             time.sleep(sleepTime)
@@ -393,7 +382,7 @@ class scanbot():
             user_args = ['-run=survey2', '-return=1', '-tipshape=1']
             self.interface.moveTipToClean(user_args=user_args)
     
-    def biasDep(self,nb,dcbias,tdc,dcSpeedRatio,pxdc,lxdc,bi,bf,px,lx,tlf,speedRatio,suffix,message=""):
+    def biasDep(self,nb,dcbias,tdc,dcSpeedRatio,pxdc,lxdc,bi,bf,px,lx,tlf,speedRatio,suffix):
         """
         This function initiates a set of bias dependent scans with the option 
         of performing drift correction.
@@ -418,7 +407,6 @@ class scanbot():
         tlf : Scan speed (time per line (s))
         speedRatio : Backward scan speed ratio
         suffix : Suffix appended to the filenames of the set of bias dep images
-        message : (Zulip use only)
 
         Returns
         -------
@@ -430,8 +418,6 @@ class scanbot():
         if(connection_error):
             global_.running.clear()                                             # Free up the running flag
             return connection_error                                             # Return error message if there was a problem connecting  
-        
-        self.interface.reactToMessage("working_on_it",message=message)
         
         scanModule  = Scan(NTCP)
         
@@ -452,7 +438,7 @@ class scanbot():
         if(lxdc == 0): lxdc = int((pxdc*lx)/px)                                 # Keep the same ratio as px:lx if lxdc not provided
         
         if(px < 16 or lx < 0 or pxdc < 16 or lxdc < 0): 
-            self.interface.sendReply("Error: Check -px, -lx, -pxdc, and -lxdc",message=message)
+            self.interface.sendReply("Error: Check -px, -lx, -pxdc, and -lxdc")
             global_.running.clear()                                             # Free up the running flag
             self.disconnect(NTCP)
             return
@@ -519,12 +505,10 @@ class scanbot():
             pngFilename = self.makePNG(scanData, filePath)                      # Generate a png from the scan data
             GIF.append(scanData)
             
-            self.interface.sendPNG(pngFilename,notify=False,message=message)    # Send a png over zulip
+            self.interface.sendPNG(pngFilename)    # Send a png 
             
         time.sleep(0.25)
         scanModule.PropsSet(series_name=basename)                               # Put back the original basename
-        
-        # self.interface.sendPNG(utilities.makeGif(GIF),notify=False,message=message)
         
         self.interface.sendReply("biasDep " + suffix + " complete.")
         
@@ -546,7 +530,7 @@ class scanbot():
 
         return xx,yy
     
-    def stsGrid(self, params, message=""):
+    def stsGrid(self, params):
         """
         This function obtains an STS grid with drift correction every n points.
         The tip must be inside the scan frame to start
@@ -683,7 +667,7 @@ class scanbot():
                     _,driftCorrection,_ = scanModule.FrameDataGrab(zchannel_index, 1)
 
                     pngFilename,scanDataPlaneFit = self.makePNG(driftCorrection, filePath,returnData=True,dpi=150) # Generate a png from the scan data
-                    self.interface.sendPNG(pngFilename,message=message)             # Send a png over zulip/save in react temp folder for front end
+                    self.interface.sendPNG(pngFilename)             # Send a png /save in react temp folder for front end
                     
                     if(np.sum(initialDC) == 0.0): initialDC = driftCorrection.copy()  # On the first run through, we will compare the initial drift correction frame with itself, so ox,oy = 0,0
                     ox,oy = utilities.getFrameOffset(initialDC,driftCorrection,dxy,theta=-scanFrame[4]) # Frame offset for drift correction. passing negative scan angle because nanonis is backwards
@@ -751,7 +735,7 @@ class scanbot():
         self.disconnect(NTCP)                                                   # Close the TCP connection
         global_.running.clear()                                                 # Free up the running flag
 
-    def zdep(self,zi,zf,nz,iset,bset,dciset,bias,dcbias,ft,bt,dct,px,dcpx,lx,dclx,suffix,makeGIF,message=""):
+    def zdep(self,zi,zf,nz,iset,bset,dciset,bias,dcbias,ft,bt,dct,px,dcpx,lx,dclx,suffix,makeGIF):
         """
         This function performs a set of constant height scans at different tip 
         heights. 
@@ -984,7 +968,7 @@ class scanbot():
             pngFilename = self.makePNG(scanData, filePath)                      # Generate a png from the scan data
             GIF.append(scanData)
             
-            self.interface.sendPNG(pngFilename,notify=False,message=message)    # Send a png over zulip
+            self.interface.sendPNG(pngFilename)    # Send a png 
             
         print("Finishing up.. turning controller on")
         time.sleep(0.25)
@@ -995,14 +979,14 @@ class scanbot():
         time.sleep(0.25)
         scanModule.PropsSet(series_name=basename)                               # Put back the original basename
         
-        # self.interface.sendPNG(utilities.makeGif(GIF),notify=False,message=message)
+        # self.interface.sendPNG(utilities.makeGif(GIF))
         
         self.interface.sendReply("zdep " + suffix + " complete")
         
         self.disconnect(NTCP)                                                   # Close the TCP connection
         global_.running.clear()                                                 # Free up the running flag
     
-    def registration(self,zset,iset,bset,bias,ft,bt,px,lx,lz,dz,scanDir,suffix,message=""):
+    def registration(self,zset,iset,bset,bias,ft,bt,px,lx,lz,dz,scanDir,suffix):
         """
         This function was written to perform nc-AFM registration but may be 
         used for any instance where a tip lift is required during the scan.
@@ -1178,7 +1162,7 @@ class scanbot():
         
         _,scanData,_ = scanModule.FrameDataGrab(0, 1)                           # 0 = Current
         pngFilename = self.makePNG(scanData, filePath)                          # Generate a png from the scan data
-        self.interface.sendPNG(pngFilename,notify=False,message=message)        # Send a png over zulip
+        self.interface.sendPNG(pngFilename)        # Send a png 
             
         time.sleep(0.25)
         zController.OnOffSet(on=1)                                              # Turn on the controller
@@ -1197,7 +1181,7 @@ class scanbot():
 ###############################################################################
 # Tip Actions
 ###############################################################################
-    def moveArea(self,up,upV,upF,direction,steps,dirV,dirF,zon,approach=True,demo=False,message=""):
+    def moveArea(self,up,upV,upF,direction,steps,dirV,dirF,zon,approach=True,demo=False):
         """
         This function blindly moves the tip. The tip can never be moved down.
         The tip is first moved in Z+ before moving in any other direction.
@@ -1213,7 +1197,6 @@ class scanbot():
         dirF : Piezo frequency when moving in -direction (Hz)
         zon : Flag to turn the controller on after approaching (if approaching)
         approach : Flag to begin an approach after moving.
-        message : (Zulip use only)
 
         Returns
         -------
@@ -1227,77 +1210,75 @@ class scanbot():
         # Safety checks
         if(up < 10):
             # self.disconnect(NTCP)
-            # self.interface.sendReply("-up must be > 10",message=message)
+            # self.interface.sendReply("-up must be > 10")
             return False
         
         if(upV > self.zMaxV):
             upV = self.zMaxV
             # self.disconnect(NTCP)
-            # self.interface.sendReply("-upV 300 V max",message=message)
+            # self.interface.sendReply("-upV 300 V max")
             # return False
         
         if(upF > self.zMaxF):
             upF = self.zMaxF
             # self.disconnect(NTCP)
-            # self.interface.sendReply("-upF 2.5 kHz max",message=message)
+            # self.interface.sendReply("-upF 2.5 kHz max")
             # return False
         
         if(dirV > self.xyMaxV):
             dirV = self.xyMaxV
             # self.disconnect(NTCP)
-            # self.interface.sendReply("-dirV 200 V max",message=message)
+            # self.interface.sendReply("-dirV 200 V max")
             # return False
         
         if(dirF > self.xyMaxF):
             dirF = self.xyMaxF
             # self.disconnect(NTCP)
-            # self.interface.sendReply("-dirF 2.5 kHz max",message=message)
+            # self.interface.sendReply("-dirF 2.5 kHz max")
             # return False
         
         if(upV < self.zMinV):
             upV = self.zMinV
             # self.disconnect(NTCP)                                               # Close the TCP connection
-            # self.interface.sendReply("-upV must be between 1 V and 200 V",message=message)
+            # self.interface.sendReply("-upV must be between 1 V and 200 V")
             # return False
             
         if(upF < self.zMinF):
             upF = self.zMinF
             # self.disconnect(NTCP)                                               # Close the TCP connection
-            # self.interface.sendReply("-upF must be between 500 Hz and 2.5 kHz",message=message)
+            # self.interface.sendReply("-upF must be between 500 Hz and 2.5 kHz")
             # return False
         
         if(dirV < self.xyMinV):
             dirV = self.xyMinV
             # self.disconnect(NTCP)                                               # Close the TCP connection
-            # self.interface.sendReply("-upV must be between 1 V and 200 V",message=message)
+            # self.interface.sendReply("-upV must be between 1 V and 200 V")
             # return False
             
         if(dirF < self.xyMinF):
             dirF = self.xyMinF
             # self.disconnect(NTCP)                                               # Close the TCP connection
-            # self.interface.sendReply("-upF must be between 500 Hz and 2.5 kHz",message=message)
+            # self.interface.sendReply("-upF must be between 500 Hz and 2.5 kHz")
             # return False
         
         if(not direction in ["X+","X-","Y+","Y-"]):
             self.disconnect(NTCP)                                               # Close the TCP connection
-            self.interface.sendReply("-dir can only be X+, X-, Y+, Y-",message=message)
+            self.interface.sendReply("-dir can only be X+, X-, Y+, Y-")
             return False
         
         if(steps < 0):
             self.disconnect(NTCP)
-            self.interface.sendReply("-steps must be > 0",message=message)
+            self.interface.sendReply("-steps must be > 0")
             return False
         
         if(up < 0):
             self.disconnect(NTCP)
-            self.interface.sendReply("-up must be > 0",message=message)
+            self.interface.sendReply("-up must be > 0")
             return False
         
         motor         = Motor(NTCP)                                             # Nanonis Motor module
         zController   = ZController(NTCP)                                       # Nanonis ZController module
         autoApproach  = AutoApproach(NTCP)                                      # Nanonis AutoApproach module
-        
-        self.interface.reactToMessage("working_on_it")
         
         self.stop()
         
@@ -1323,13 +1304,13 @@ class scanbot():
             if(not demo):
                 motor.StartMove(direction,stepsAtATime,wait_until_finished=True)    # Move safe number of steps at a time
             print("Moving motor: " + direction + " " + str(stepsAtATime) + "steps")
-            isSafe = self.safeCurrentCheck(NTCP,message=message)                # Safe retract if current overload
+            isSafe = self.safeCurrentCheck(NTCP)                # Safe retract if current overload
             if(not isSafe):
                 self.disconnect(NTCP)                                           # Close the TCP connection
-                self.interface.sendReply("Could not complete move_area...",message=message)
+                self.interface.sendReply("Could not complete move_area...")
                 self.interface.sendReply("Safe retract was triggered because the current exceeded "
                                          + str(self.safeCurrent*1e9) + " nA"
-                                         + " while moving areas",message=message)
+                                         + " while moving areas")
                 return False
                 
             time.sleep(0.25)
@@ -1339,17 +1320,16 @@ class scanbot():
         print("Moving motor: " + direction + " " + str(leftOver) + "steps")
         time.sleep(0.5)
         
-        isSafe = self.safeCurrentCheck(NTCP,message=message)                    # Safe retract if current overload
+        isSafe = self.safeCurrentCheck(NTCP)                    # Safe retract if current overload
         if(not isSafe):
             self.disconnect(NTCP)                                               # Close the TCP connection
-            self.interface.sendReply("Could not complete move_area...",message=message)
+            self.interface.sendReply("Could not complete move_area...")
             self.interface.sendReply("Safe retract was triggered because the current exceeded "
                                      + str(self.safeCurrent*1e9) + " nA"
-                                     + " while moving areas",message=message)
+                                     + " while moving areas")
             return False
         
         if(approach):
-            self.interface.reactToMessage("double_down")
             if(not demo):
                 motor.FreqAmpSet(upF,upV)
         
@@ -1365,7 +1345,6 @@ class scanbot():
             if(zon): zController.OnOffSet(True)
         
             time.sleep(3)
-            self.interface.reactToMessage("sparkler")
         
         self.disconnect(NTCP)                                                   # Close the TCP connection
         
@@ -1550,7 +1529,6 @@ class scanbot():
             self.interface.sendReply(str(e))
         
         self.disconnect(NTCP)
-        self.interface.reactToMessage("dagger")
         
     def tipShapeProps(self,sod,cb,b1,z1,t1,b2,t2,z3,t3,wait,fb):
         """
@@ -1609,12 +1587,11 @@ class scanbot():
         tipShaper.PropsSet(*tipShaperArgs)                                      # update the tip shaping params in nanonis
         
         self.disconnect(NTCP)
-        self.interface.reactToMessage("+1")
         
 ###############################################################################
 # Auto STM
 ###############################################################################
-    def autoInit(self,lightOnOff,cameraPort,demo,reactMode,message=""):
+    def autoInit(self,lightOnOff,cameraPort,demo,reactMode):
         """
         This function initialises the tip, 'sample', and 'clean metal' 
         locations. It must be run before any commands that track and maneuver 
@@ -1628,7 +1605,6 @@ class scanbot():
                      laptops that have built-in cameras already.
         demo       : Run this in demo mode which uses a recording instead of a 
                      live camera feed.
-        message    : (Zulip use only)
 
         Returns
         -------
@@ -1828,7 +1804,7 @@ class scanbot():
             self.interface.survey2(user_args=[],_help=False,survey2Params=self.survey2Params)
             return
         
-    def autoTipShape(self,n,wh,symTarget,sizeTarget,zQA,ztip,rng=1,sleepTime=1,demo=False,tipShape_hk="",message="",iamauto=False):
+    def autoTipShape(self,n,wh,symTarget,sizeTarget,zQA,ztip,rng=1,sleepTime=1,demo=False,tipShape_hk="",iamauto=False):
         """
         This function initiates autonomous tip shaping. The process is as 
         follows:
@@ -1887,7 +1863,6 @@ class scanbot():
                       This hook is designed to overwrite the tip shaping params
                       based on the imprint of the tip. See documentation for 
                       more details.
-        message     : (Zulip use only)
         iamauto     : Flag for when this process was called by Scanbot during
                       STM automation
         demo        : Flag for when operating in demo mode - assigns random 
@@ -1968,7 +1943,7 @@ class scanbot():
             for i in x:
                 snakedGrid.append(np.array([i, j, wh, wh]))
                 if(i>range_x/2 or j>range_y/2):
-                    self.interface.sendReply("Error: Grid size exceeds scan area. Reduce -n",message=message)
+                    self.interface.sendReply("Error: Grid size exceeds scan area. Reduce -n")
                     self.disconnect(NTCP)                                       # Close the TCP connection
                     global_.running.clear()                                     # Free up the running flag
                     return
@@ -2231,8 +2206,6 @@ class scanbot():
         buffer_channels = scan.BufferGet()[1]                   # See which channels are currently selected
 
         self.disconnect(NTCP)
-        
-        self.interface.reactToMessage("+1")
     
 ###############################################################################
 # Misc
@@ -2431,14 +2404,13 @@ class scanbot():
         
         return [x,y,w,h,angle,pixels,lines]
         
-    def checkEventFlags(self,message = ""):
+    def checkEventFlags(self):
         """
         This function is used when scanbot commands are threaded tasks. Global
         pause and running flags are used to pause and stop threaded tasks.
 
         Parameters
         ----------
-        message : (zulip only)
 
         Returns
         -------
@@ -2446,7 +2418,6 @@ class scanbot():
 
         """
         if(not global_.running.is_set()):
-            self.interface.reactToMessage("stop_button")
             return 1                                                            # Running flag
         
         if(global_.pause.is_set()):
@@ -2457,20 +2428,16 @@ class scanbot():
             scan = Scan(NTCP)
             scan.Action(scan_action='pause')
             
-            self.interface.reactToMessage("pause")
-            
             while global_.pause.is_set():
                 time.sleep(2)                                                   # Sleep for a bit
                 if(not global_.running.is_set()):
-                    self.interface.reactToMessage("stop_button")
                     self.disconnect(NTCP)
                     return 1
                 
-            self.interface.reactToMessage("play")
             scan.Action(scan_action='resume')
             self.disconnect(NTCP)
             
-    def safeCurrentCheck(self,NTCP,message=""):
+    def safeCurrentCheck(self,NTCP):
         """
         Check that the tip-sample current is below the safe threshold (i.e. 
         if the tip is not crashed). If a crash is detected, the tip is 
@@ -2482,7 +2449,6 @@ class scanbot():
         Parameters
         ----------
         NTCP : Connection handle to NanonisTCP
-        message : (Zulip use only)
 
         Returns
         -------
@@ -2505,7 +2471,7 @@ class scanbot():
         
         self.interface.sendReply("---\nWarning: Safe retract has been triggered.\n"
                                  + "Current: " + str(current*1e9) + " nA\n"
-                                 + "Threshold: " + str(threshold*1e9) + " nA\n",message=message)
+                                 + "Threshold: " + str(threshold*1e9) + " nA\n")
         
         zController.Withdraw(wait_until_finished=False)                         # Retract the tip
         
@@ -2513,8 +2479,8 @@ class scanbot():
             print("Stopping other processes...")
             self.interface.stop(user_args=[])
         except Exception as e:
-            self.interface.sendReply("---\nWarning: error stopping processes during safe retract...",message=message)
-            self.interface.sendReply(str(e) + "\n---",message=message)
+            self.interface.sendReply("---\nWarning: error stopping processes during safe retract...")
+            self.interface.sendReply(str(e) + "\n---")
         
         motor.FreqAmpSet(self.safeRetractF,self.safeRetractV)                   # Set the motor frequency/voltage in the nanonis motor control module
         motor.StartMove(direction="Z+", steps=50,wait_until_finished=True)      # Move up 50 steps immediately
@@ -2528,14 +2494,14 @@ class scanbot():
                                      + "Current still above threshold after "
                                      + str((count+1)*50) + " Z+ motor steps.\n" 
                                      + "Current: " + str(current*1e9) + " nA\n"
-                                     + "Threshold: " + str(threshold*1e9) + " nA\n",message=message)
+                                     + "Threshold: " + str(threshold*1e9) + " nA\n")
                 
             motor.StartMove(direction="Z+", steps=50,wait_until_finished=True)  # Move another 50 steps up
             current = abs(currentModule.Get())                                  # Get the tip current after moving
             count += 1
             print("Retracting another 50 steps... current: " + str(current*1e9) + " nA")
         
-        self.interface.sendReply("Warning: Safe retract complete... current: " + str(current*1e9) + " nA\n---\n",message=message)
+        self.interface.sendReply("Warning: Safe retract complete... current: " + str(current*1e9) + " nA\n---\n")
         return False
     
 ###############################################################################

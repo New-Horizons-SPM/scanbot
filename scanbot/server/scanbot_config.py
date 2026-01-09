@@ -9,7 +9,7 @@ class scanbot_config():
         self.config = OrderedDict(
                       # key                         : [label, description, category, default value] 
                       {# 'path'                      : ['Path',                          'Path to save data',                                                                'external', 'scanbot_data'],
-                        'port_list'                 : ['TCP Ports',                     'Comma delimited ports (nanonis => Main Options => TCP Programming Interface)',     'tcp',      '6501,6502,6503,6504'],
+                        'port_list'                 : ['TCP Ports',                     'Comma delimited ports (nanonis => Main Options => TCP Programming Interface)',     'tcp',      '6502,6503'],
                         'ip'                        : ['IP Address',                    'IP address of the pc controlling nanonis',                                         'tcp',      '127.0.0.1'],
                         'topo_basename'             : ['Topo basename',                 'Basename for .sxm files. Leave blank to use current value in nanonis',             'nanonis',  ''],
                         'safe_current'              : ['Crash Current (A)',             'When the current goes above this threhold the tip is considered crashed',          'safety',   '5e-9'],

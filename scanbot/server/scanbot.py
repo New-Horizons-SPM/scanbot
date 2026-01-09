@@ -5,6 +5,7 @@ Created on Fri August 8 22:06:52 2022
 @author: Julian Ceddia
 """
 
+from contextlib import contextmanager
 from nanonisTCP import nanonisTCP
 from nanonisTCP.Scan import Scan
 from nanonisTCP.Signals import Signals
@@ -95,30 +96,30 @@ class scanbot():
                   currently in focus.
 
         """
-        NTCP,connection_error = self.connect()                                  # Connect to nanonis via TCP
-        if(connection_error): return connection_error                           # Return error message if there was a problem connecting        
+        try:
+            with self.nanonis() as NTCP:
+                scan = Scan(NTCP)                                                       # Nanonis scan module
+                if(not channel_name): channel_name = self.focusChannel                  # Plot the default channel if -c param not passed in
+                
+                channel_index = self.getChannelIndex(channel_name)
+                if(channel_index == -1):
+                    raise RuntimeError("Channel " + channel_name + " does not exist. Check the signal manager for available channels")
+                
+                _,channels,_,_ = scan.BufferGet()
+                if(channel_index not in channels):
+                    raise RuntimeError("Channel " + channel_name + " is not in the scan buffer so there is no data for it. Add it using the plot_channel command")
+                
+                _,scanData,_ = scan.FrameDataGrab(channel_index, 1)                     # Grab the data within the scan frame. Channel 14 is . 1 is forward data direction
+                
+                pngFilename = 'im-' + str(channel_name) + '.png'                    # All unsaved (incomplete) scans are saved as im.png
+                pngFilename = self.makePNG(scanData,pngFilename=pngFilename)        # Generate a png from the scan data
+                self.interface.sendPNG(pngFilename)                                 # Send a png
+        except RuntimeError as e:
+            self.interface.sendReply(str(e))
+        except Exception as e:
+            self.interface.sendReply("Error generating plot: " + str(e))
+            raise
         
-        scan = Scan(NTCP)                                                       # Nanonis scan module
-        if(not channel_name): channel_name = self.focusChannel                  # Plot the default channel if -c param not passed in
-        
-        channel_index = self.getChannelIndex(channel_name)
-        if(channel_index == -1):
-            self.disconnect(NTCP)                                               # Close the TCP connection
-            return "Channel " + channel_name + " does not exist. Check the signal manager for available channels"
-        
-        _,channels,_,_ = scan.BufferGet()
-        if(channel_index not in channels):
-            self.disconnect(NTCP)                                               # Close the TCP connection
-            return "Channel " + channel_name + " is not in the scan buffer so there is no data for it. Add it using the plot_channel command"
-        
-        _,scanData,_ = scan.FrameDataGrab(channel_index, 1)                     # Grab the data within the scan frame. Channel 14 is . 1 is forward data direction
-        
-        pngFilename = 'im-' + str(channel_name) + '.png'                    # All unsaved (incomplete) scans are saved as im.png
-        pngFilename = self.makePNG(scanData,pngFilename=pngFilename)        # Generate a png from the scan data
-        self.interface.sendPNG(pngFilename)                                 # Send a png
-        
-        self.disconnect(NTCP)                                                   # Close the TCP connection
-            
     def survey(self,bias,n,startAt,suffix,xy,dx,px,sleepTime,stitch,survey_hk,classifier_hk,autotip,ox=0,oy=0,enhance=False,reverse=False,iamauto=False):
         """
         This function carries out an autonomous survey within the scannable 
@@ -150,166 +151,163 @@ class scanbot():
 
         """
         self.currentAction["action"] = "survey"
-        NTCP,connection_error = self.connect()                                  # Connect to nanonis via TCP
-        if(connection_error):
-            global_.running.clear()                                             # Free up the running flag
-            return connection_error                                             # Return error message if there was a problem connecting        
-        
-        if((autotip == 1) and (self.autoInitSet == False)):
-            self.interface.sendReply("Error: run the auto_init command to initialise tip, sample, and clean metal locations before setting -autotip=1")
-            self.disconnect(NTCP)
-            global_.running.clear()                                             # Free up the running flag
-            return
-        
-        self.surveyParams = [bias,n,startAt,suffix,xy,dx,px,sleepTime,stitch,survey_hk,classifier_hk,autotip]
-        
-        scan  = Scan(NTCP)
-        piezo = Piezo(NTCP)
-        range_x,range_y,_ = piezo.RangeGet()
-        
-        if(xy == "-default"): xy = scan.FrameGet()[2]
-        if(dx == "-default"): dx = xy
-        
-        x = np.linspace(-1, 1,n) * (n-1)*dx/2
-        y = x
-        
-        if(reverse and (n%2)): x = np.array(list(reversed(x)))
-        if(reverse):           y = np.array(list(reversed(y)))
-        
-        frames = []
-        for j in y:
-            for i in x:
-                frames.append([i+ox, j+oy, xy, xy])
-                if(i+ox>range_x/2 or j+oy>range_y/2):
-                    self.interface.sendReply("Survey error: Grid size exceeds scan area")
-                    self.disconnect(NTCP)                                       # Close the TCP connection
-                    global_.running.clear()                                     # Free up the running flag
-                    return
-            x = np.array(list(reversed(x)))                                     # Snake the grid - better for drift
-            
-        if(bias != "-default"): self.rampBias(NTCP, bias)                       # Change the scan bias if the user wants to
-        
-        basename = self.interface.topoBasename                                  # Get the basename that's been set in config file
-        if(not basename): basename = scan.PropsGet()[3]                         # Get the save basename from nanonis if one isn't supplied
-        tempBasename = basename + '_' + suffix + '_'                            # Create a temp basename for this survey
-        scan.PropsSet(series_name=tempBasename)                                 # Set the basename in nanonis for this survey
-        
-        if(px != "-default"):
-            px = int(np.ceil(px/16)*16)                                         # Pixels must be divisible by 16
-            scan.BufferSet(pixels=px,lines=px)
-        
-        stitchedSurvey = []
-        if(stitch == 1):
-            _,_,px,lines = scan.BufferGet()
-            stitchedSurvey = np.zeros((lines*n,px*n))*np.nan
-
-        callAutoTipShape = False
-        classificationHistory = []
-        focusChannel_index = self.getChannelIndex(self.focusChannel)
-        for idx,frame in enumerate(frames):
-            seriesName = scan.PropsGet()[3]
-            scan.PropsSet(continuous_scan=2,bouncy_scan=2,autosave=1,series_name=seriesName)
-            self.plotChannel(a=self.zchannel)
-
-            if(idx < startAt-1): continue
-            
-            self.interface.sendReply('Running scan ' + str(idx + 1) + '/' + str(n**2)) # Send a message that the next scan is starting
-            
-            slept = 0
-            scan.FrameSet(*frame)                                               # Set the coordinates and size of the frame window in nanonis
-            scan.Action('start')                                                # Start the scan. default direction is "up"
-            while(slept < sleepTime):                                           # This loop makes running 'stop' more responsive
-                time.sleep(0.2)                                                 # Wait for drift to settle
-                slept += 0.2
-                if(self.checkEventFlags()): break                               # Check event flags
-            if(self.checkEventFlags()): break                                   # Check event flags
-            
-            timeoutStatus = 1
-            scan.Action('start')                                                # Start the scan. default direction is "up"
-            while(timeoutStatus):
-                timeoutStatus, _, filePath = scan.WaitEndOfScan(timeout=200)    # Wait until the scan finishes
-                if(self.checkEventFlags()): break                               # Check event flags
-            if(self.checkEventFlags()): break                                   # Check event flags
+        with self.nanonis() as NTCP:
+            try:
+                if((autotip == 1) and (self.autoInitSet == False)):
+                    raise RuntimeError("Error: run the auto_init command to initialise tip, sample, and clean metal locations before setting -autotip=1")
                 
-            if(not filePath): time.sleep(0.2); continue                         # If user stops the scan, filePath will be blank, then go to the next scan
-            
-            _,scanData,_ = scan.FrameDataGrab(focusChannel_index, 1)            # Grab the data within the scan frame
-            
-            dummyData = []
-            if(autotip):                                                        # If auto tip shaping = Yes, we need to classify the scan to determine if it's time to reshape the tip
-                if(self.autoInitDemo):                                          # Replace real scanData with dummy data if auto tip shape is on and the tip was initialised in demo mode
-                    try:
-                        pkpath = self.interface.module_dir + "../Dev/survey.pk"
-                        dummyData = pickle.load(open(pkpath,'rb'))
-                        scanData  = dummyData[idx]
-                    except:
-                        try:
-                            pkpath = self.interface.module_dir + "./Dev/survey.pk"
-                            dummyData = pickle.load(open(pkpath,'rb'))
-                            scanData  = dummyData[idx]
-                        except:
-                            self.interface.sendReply("Could not load demo data for survey. Please ensure the Dev folder is saved in ~/scanbot")
-
-                if(classifier_hk):
-                    try:
-                        classification = hk_classifier.run(scanData,filePath,classificationHistory) # Overwrite classification with the one from the hook
-                    except Exception as e:
-                        self.interface.sendReply("Warning: Call to survey hook hk_classifier.py failed:")
-                        self.interface.sendReply(str(e))
-                        self.interface.sendReply("Default Scanbot classifier will be used instead.")
-                        classification = utilities.classify(scanData,filePath,classificationHistory) # Obtain image classification
-                else:
-                    classification = utilities.classify(scanData,filePath,classificationHistory) # Obtain image classification
+                self.surveyParams = [bias,n,startAt,suffix,xy,dx,px,sleepTime,stitch,survey_hk,classifier_hk,autotip]
+                
+                scan  = Scan(NTCP)
+                piezo = Piezo(NTCP)
+                range_x,range_y,_ = piezo.RangeGet()
+                
+                if(xy == "-default"): xy = scan.FrameGet()[2]
+                if(dx == "-default"): dx = xy
+                
+                x = np.linspace(-1, 1,n) * (n-1)*dx/2
+                y = x
+                
+                if(reverse and (n%2)): x = np.array(list(reversed(x)))
+                if(reverse):           y = np.array(list(reversed(y)))
+                
+                frames = []
+                for j in y:
+                    for i in x:
+                        frames.append([i+ox, j+oy, xy, xy])
+                        if(i+ox>range_x/2 or j+oy>range_y/2):
+                            raise RuntimeError("Error: survey grid exceeds scannable area. Reduce -xy or -dx values, or change -ox and -oy to centre the grid within the scannable area.")
+                        
+                    x = np.array(list(reversed(x)))                                     # Snake the grid - better for drift
                     
-                classificationHistory.append(classification)
+                if(bias != "-default"): self.rampBias(NTCP, bias)                       # Change the scan bias if the user wants to
                 
-                print("Image classification: ",classification)
+                basename = self.interface.topoBasename                                  # Get the basename that's been set in config file
+                if(not basename): basename = scan.PropsGet()[3]                         # Get the save basename from nanonis if one isn't supplied
+                tempBasename = basename + '_' + suffix + '_'                            # Create a temp basename for this survey
+                scan.PropsSet(series_name=tempBasename)                                 # Set the basename in nanonis for this survey
                 
-                if(classification["tipShape"] == 1):
-                    print("auto tip shaping initate!")
-                    callAutoTipShape = True
-            
-            _,scanData,_ = scan.FrameDataGrab(focusChannel_index, 1)            # Grab the data related to our focused channel
-            if(dummyData): scanData = dummyData[idx]                            # This happens when in demo mode
+                if(px != "-default"):
+                    px = int(np.ceil(px/16)*16)                                         # Pixels must be divisible by 16
+                    scan.BufferSet(pixels=px,lines=px)
+                
+                stitchedSurvey = []
+                if(stitch == 1):
+                    _,_,px,lines = scan.BufferGet()
+                    stitchedSurvey = np.zeros((lines*n,px*n))*np.nan
 
-            pngFilename,scanDataPlaneFit = self.makePNG(scanData, filePath,returnData=True,dpi=150) # Generate a png from the scan data
-            self.interface.sendPNG(pngFilename)     # Send a png
-            
-            if(survey_hk):                                                      # call a custom python script
-                try:
-                    from hk_survey import run
-                    metaData = self.getMetaData(filePath)
-                    run(scanData,filePath,metaData)
-                except Exception as e:
-                    self.interface.sendReply("Warning: Call to survey hook hk_survey.py failed:")
-                    self.interface.sendReply(str(e))
-            
-            if(stitch):
-                row = (idx)//n
-                col = ((row)%2)*((n-1) - idx%n) + ((row+1)%2)*idx%n
-                stitchedSurvey[(n-1-row)*lines:(n-1-row)*lines+lines,px*col:px*col+px] = scanData
-            
-            if(self.checkEventFlags()): break                                   # Check event flags
-            if(callAutoTipShape): break
+                callAutoTipShape = False
+                classificationHistory = []
+                focusChannel_index = self.getChannelIndex(self.focusChannel)
+                for idx,frame in enumerate(frames):
+                    seriesName = scan.PropsGet()[3]
+                    scan.PropsSet(continuous_scan=2,bouncy_scan=2,autosave=1,series_name=seriesName)
+                    self.plotChannel(a=self.zchannel)
 
-        if(stitch == 1 and not np.isnan(stitchedSurvey).all()):
-            stitchFilepath = self.makePNG(stitchedSurvey,pngFilename = suffix + '_stitch.png',dpi=150*n, fit=False)
-            self.interface.sendPNG(stitchFilepath) # Send a png 
-        
-        scan.PropsSet(series_name=basename)                                     # Put back the original basename
-        self.disconnect(NTCP)                                                   # Close the TCP connection
-    
-        self.interface.sendReply('survey \'' + suffix + '\' done') # Send a notification that the survey has completed
-        
-        if(not iamauto):
-            global_.running.clear()                                             # Free up the running flag
-        
-        if(iamauto): return callAutoTipShape
-        
-        if(callAutoTipShape):
-            global_.running.clear()                                             # Free up the running flag
-            user_args = ['-run=survey', '-return=1', '-tipshape=1']
-            self.interface.moveTipToClean(user_args=user_args)
+                    if(idx < startAt-1): continue
+                    
+                    self.interface.sendReply('Running scan ' + str(idx + 1) + '/' + str(n**2)) # Send a message that the next scan is starting
+                    
+                    slept = 0
+                    scan.FrameSet(*frame)                                               # Set the coordinates and size of the frame window in nanonis
+                    scan.Action('start')                                                # Start the scan. default direction is "up"
+                    while(slept < sleepTime):                                           # This loop makes running 'stop' more responsive
+                        time.sleep(0.2)                                                 # Wait for drift to settle
+                        slept += 0.2
+                        if(self.checkEventFlags()): break                               # Check event flags
+                    if(self.checkEventFlags()): break                                   # Check event flags
+                    
+                    timeoutStatus = 1
+                    scan.Action('start')                                                # Start the scan. default direction is "up"
+                    while(timeoutStatus):
+                        timeoutStatus, _, filePath = scan.WaitEndOfScan(timeout=200)    # Wait until the scan finishes
+                        if(self.checkEventFlags()): break                               # Check event flags
+                    if(self.checkEventFlags()): break                                   # Check event flags
+                        
+                    if(not filePath): time.sleep(0.2); continue                         # If user stops the scan, filePath will be blank, then go to the next scan
+                    
+                    _,scanData,_ = scan.FrameDataGrab(focusChannel_index, 1)            # Grab the data within the scan frame
+                    
+                    dummyData = []
+                    if(autotip):                                                        # If auto tip shaping = Yes, we need to classify the scan to determine if it's time to reshape the tip
+                        if(self.autoInitDemo):                                          # Replace real scanData with dummy data if auto tip shape is on and the tip was initialised in demo mode
+                            try:
+                                pkpath = self.interface.module_dir + "../Dev/survey.pk"
+                                dummyData = pickle.load(open(pkpath,'rb'))
+                                scanData  = dummyData[idx]
+                            except:
+                                try:
+                                    pkpath = self.interface.module_dir + "./Dev/survey.pk"
+                                    dummyData = pickle.load(open(pkpath,'rb'))
+                                    scanData  = dummyData[idx]
+                                except:
+                                    self.interface.sendReply("Could not load demo data for survey. Please ensure the Dev folder is saved in ~/scanbot")
+
+                        if(classifier_hk):
+                            try:
+                                classification = hk_classifier.run(scanData,filePath,classificationHistory) # Overwrite classification with the one from the hook
+                            except Exception as e:
+                                self.interface.sendReply("Warning: Call to survey hook hk_classifier.py failed:")
+                                self.interface.sendReply(str(e))
+                                self.interface.sendReply("Default Scanbot classifier will be used instead.")
+                                classification = utilities.classify(scanData,filePath,classificationHistory) # Obtain image classification
+                        else:
+                            classification = utilities.classify(scanData,filePath,classificationHistory) # Obtain image classification
+                            
+                        classificationHistory.append(classification)
+                        
+                        print("Image classification: ",classification)
+                        
+                        if(classification["tipShape"] == 1):
+                            print("auto tip shaping initate!")
+                            callAutoTipShape = True
+                    
+                    _,scanData,_ = scan.FrameDataGrab(focusChannel_index, 1)            # Grab the data related to our focused channel
+                    if(dummyData): scanData = dummyData[idx]                            # This happens when in demo mode
+
+                    pngFilename,scanDataPlaneFit = self.makePNG(scanData, filePath,returnData=True,dpi=150) # Generate a png from the scan data
+                    self.interface.sendPNG(pngFilename)     # Send a png
+                    
+                    if(survey_hk):                                                      # call a custom python script
+                        try:
+                            from hk_survey import run as hk_run
+                            metaData = self.getMetaData(NTCP)
+                            hk_run(scanData,filePath,metaData)
+                        except Exception as e:
+                            self.interface.sendReply("Warning: Call to survey hook hk_survey.py failed:")
+                            self.interface.sendReply(str(e))
+                    
+                    if(stitch):
+                        row = (idx)//n
+                        col = ((row)%2)*((n-1) - idx%n) + ((row+1)%2)*idx%n
+                        stitchedSurvey[(n-1-row)*lines:(n-1-row)*lines+lines,px*col:px*col+px] = scanData
+                    
+                    if(self.checkEventFlags()): break                                   # Check event flags
+                    if(callAutoTipShape): break
+
+                if(stitch == 1 and not np.isnan(stitchedSurvey).all()):
+                    stitchFilepath = self.makePNG(stitchedSurvey,pngFilename = suffix + '_stitch.png',dpi=150*n, fit=False)
+                    self.interface.sendPNG(stitchFilepath) # Send a png 
+                
+                scan.PropsSet(series_name=basename)                                     # Put back the original basename
+                            
+                self.interface.sendReply('survey \'' + suffix + '\' done') # Send a notification that the survey has completed
+                
+                if(iamauto): return callAutoTipShape
+                
+                # Not using moveTipToClean anymore. Replace this logic with simple tip shaping call
+                # if(callAutoTipShape):
+                #     global_.running.clear()                                             # Free up the running flag
+                #     user_args = ['-run=survey', '-return=1', '-tipshape=1']
+                #     self.interface.moveTipToClean(user_args=user_args)
+            except RuntimeError as e:
+                self.interface.sendReply(str(e))
+            except Exception as e:
+                self.interface.sendReply("Error during survey: " + str(e))
+                raise
+            finally:
+                if(not iamauto): 
+                    global_.running.clear()                                             # Free up the running flag
         
     def survey2(self,bias,n,startAt,suffix,xy,dx,px,sleepTime,stitch,survey_hk,classifier_hk,autotip, # Survey params
                      nx,ny,xStep,yStep,zStep,xyV,zV,xyF,zF):          # Move area params
@@ -378,9 +376,10 @@ class scanbot():
             
         global_.running.clear()
         
-        if(callAutoTipShape):
-            user_args = ['-run=survey2', '-return=1', '-tipshape=1']
-            self.interface.moveTipToClean(user_args=user_args)
+        # Not using moveTipToClean anymore. Replace this logic with simple tip shaping call
+        # if(callAutoTipShape):
+        #     user_args = ['-run=survey2', '-return=1', '-tipshape=1']
+        #     self.interface.moveTipToClean(user_args=user_args)
     
     def biasDep(self,nb,dcbias,tdc,dcSpeedRatio,pxdc,lxdc,bi,bf,px,lx,tlf,speedRatio,suffix):
         """
@@ -414,106 +413,104 @@ class scanbot():
 
         """
         self.currentAction["action"] = "biasdep"
-        NTCP,connection_error = self.connect()                                  # Connect to nanonis via TCP
-        if(connection_error):
-            global_.running.clear()                                             # Free up the running flag
-            return connection_error                                             # Return error message if there was a problem connecting  
-        
-        scanModule  = Scan(NTCP)
-        
-        basename = self.interface.topoBasename                                  # Get the basename that's been set in config file
-        if(not basename): basename = scanModule.PropsGet()[3]                   # Get the save basename from nanonis if one isn't supplied
-        tempBasename = basename + '_' + suffix + '_'                            # Create a temp basename for this survey
-        scanModule.PropsSet(series_name=tempBasename)                           # Set the basename in nanonis for this survey
-        
-        scanFrame = scanModule.FrameGet()                                       # [x,y,w,h,theta]
-        
-        if(tlf == '-default' or tlf == 0): _,_,tlf,_,_,_ = scanModule.SpeedGet()# Get the default time per line if it's not provided
-        
-        if(px == '-default' or px == 0): px = scanModule.BufferGet()[2]         # Get the default number of pixels from nanonis
-        px = int(np.ceil(px/16)*16)                                             # Ensure the number of pixels is divisible by 16 (nanonis requirement)
-        if(lx == 0): lx = px                                                    # Default lx=px if lx not provided
-        
-        pxdc = int(np.ceil(pxdc/16)*16)                                         # Ensure the number of pixels for the drift correct frame is divisible by 16 (nanonis requirement)
-        if(lxdc == 0): lxdc = int((pxdc*lx)/px)                                 # Keep the same ratio as px:lx if lxdc not provided
-        
-        if(px < 16 or lx < 0 or pxdc < 16 or lxdc < 0): 
-            self.interface.sendReply("Error: Check -px, -lx, -pxdc, and -lxdc")
-            global_.running.clear()                                             # Free up the running flag
-            self.disconnect(NTCP)
-            return
-        
-        dx    = scanFrame[2]/pxdc
-        dy    = scanFrame[3]/lxdc
-        dxy   = np.array([dx,dy])
-        ox,oy = np.array([0,0])
+        with self.nanonis() as NTCP:
+            try:
+                scanModule  = Scan(NTCP)
+                
+                basename = self.interface.topoBasename                                  # Get the basename that's been set in config file
+                if(not basename): basename = scanModule.PropsGet()[3]                   # Get the save basename from nanonis if one isn't supplied
+                tempBasename = basename + '_' + suffix + '_'                            # Create a temp basename for this survey
+                scanModule.PropsSet(series_name=tempBasename)                           # Set the basename in nanonis for this survey
+                
+                scanFrame = scanModule.FrameGet()                                       # [x,y,w,h,theta]
+                
+                if(tlf == '-default' or tlf == 0): _,_,tlf,_,_,_ = scanModule.SpeedGet()# Get the default time per line if it's not provided
+                
+                if(px == '-default' or px == 0): px = scanModule.BufferGet()[2]         # Get the default number of pixels from nanonis
+                px = int(np.ceil(px/16)*16)                                             # Ensure the number of pixels is divisible by 16 (nanonis requirement)
+                if(lx == 0): lx = px                                                    # Default lx=px if lx not provided
+                
+                pxdc = int(np.ceil(pxdc/16)*16)                                         # Ensure the number of pixels for the drift correct frame is divisible by 16 (nanonis requirement)
+                if(lxdc == 0): lxdc = int((pxdc*lx)/px)                                 # Keep the same ratio as px:lx if lxdc not provided
+                
+                if(px < 16 or lx < 0 or pxdc < 16 or lxdc < 0): 
+                    raise RuntimeError("Error: Number of pixels and lines must be positive integers, and pixels must be at least 16.")
+                
+                dx    = scanFrame[2]/pxdc
+                dy    = scanFrame[3]/lxdc
+                dxy   = np.array([dx,dy])
+                ox,oy = np.array([0,0])
 
-        GIF       = []
-        biasList  = np.linspace(bi,bf,nb)
-        initialDC = np.zeros((pxdc,pxdc))
-        zchannel_index = self.getChannelIndex(self.zchannel)
-        focusChannel_index = self.getChannelIndex(self.focusChannel)
-        for idx,bias in enumerate(biasList):
-            seriesName = scanModule.PropsGet()[3]
-            scanModule.PropsSet(continuous_scan=2,bouncy_scan=2,autosave=1,series_name=seriesName)
-            self.plotChannel(a=self.zchannel)
+                GIF       = []
+                biasList  = np.linspace(bi,bf,nb)
+                initialDC = np.zeros((pxdc,pxdc))
+                zchannel_index = self.getChannelIndex(self.zchannel)
+                focusChannel_index = self.getChannelIndex(self.focusChannel)
+                for idx,bias in enumerate(biasList):
+                    seriesName = scanModule.PropsGet()[3]
+                    scanModule.PropsSet(continuous_scan=2,bouncy_scan=2,autosave=1,series_name=seriesName)
+                    self.plotChannel(a=self.zchannel)
 
-            self.interface.sendReply("Scan " + str(idx+1) + "/" + str(nb))
-            if(abs(dcbias) > 0):                                                # If drift correction is turned on, take a drift correction image
+                    self.interface.sendReply("Scan " + str(idx+1) + "/" + str(nb))
+                    if(abs(dcbias) > 0):                                                # If drift correction is turned on, take a drift correction image
+                        time.sleep(0.25)
+                        scanModule.BufferSet(pixels=pxdc,lines=lxdc)
+                        scanModule.SpeedSet(fwd_line_time=tdc,speed_ratio=dcSpeedRatio)
+                        
+                        print("Ramping bias to " + str(dcbias) + " and taking drift correction image.")
+                        self.rampBias(NTCP, dcbias)
+                        if(self.checkEventFlags()): break                               # Check event flags
+                        time.sleep(0.25)
+                        
+                        basename_dc = tempBasename + str(int(dcbias*100)/100) + "V-DC_"
+                        scanModule.PropsSet(series_name=basename_dc)                    # Set the basename for drift correction images
+                        scanModule.Action('start',scan_direction='up')
+                        _, _, filePath = scanModule.WaitEndOfScan()
+                        if(not filePath): break                                         # If the scan was stopped manually before, stop here
+                        if(self.checkEventFlags()): break                               # Check event flags
+
+                        _,driftCorrection,_ = scanModule.FrameDataGrab(zchannel_index, 1)
+                        
+                        if(np.sum(initialDC) == 0): initialDC = driftCorrection.copy()  # On the first run through, we will compare the initial drift correction frame with itself, so ox,oy = 0,0
+                        ox,oy = utilities.getFrameOffset(initialDC,driftCorrection,dxy,theta=-scanFrame[4]) # Frame offset for drift correction. passing negative scan angle because nanonis is backwards
+                        print("Frame offset correction offset: " + str([ox,oy]))
+                        
+                        scanFrame[0] -= ox
+                        scanFrame[1] -= oy
+                        scanModule.FrameSet(*scanFrame)                                 # Move the scan frame
+                        
+                    print("Ramping to next image bias: " + str(int(100*bias)/100) + " V")
+                    self.rampBias(NTCP, bias)                                           # Ramp to the next image bias
+                    if(self.checkEventFlags()): break                                   # Check event flags
+                    
+                    scanModule.BufferSet(pixels=px,lines=lx)
+                    scanModule.SpeedSet(fwd_line_time=tlf,speed_ratio=speedRatio)
+                    
+                    basename_image = tempBasename + str(int(100*bias)/100) + "V_"
+                    scanModule.PropsSet(series_name=basename_image)                     # Set the basename in nanonis for this survey
+                    
+                    scanModule.Action('start',scan_direction='down')
+                    _, _, filePath = scanModule.WaitEndOfScan()
+                    if(not filePath): break
+                    if(self.checkEventFlags()): break                                   # Check event flags
+                    
+                    _,scanData,_ = scanModule.FrameDataGrab(focusChannel_index, 1)      # Grab the data for the current focus channel
+                    pngFilename = self.makePNG(scanData, filePath)                      # Generate a png from the scan data
+                    GIF.append(scanData)
+                    
+                    self.interface.sendPNG(pngFilename)    # Send a png 
+                    
                 time.sleep(0.25)
-                scanModule.BufferSet(pixels=pxdc,lines=lxdc)
-                scanModule.SpeedSet(fwd_line_time=tdc,speed_ratio=dcSpeedRatio)
+                scanModule.PropsSet(series_name=basename)                               # Put back the original basename
                 
-                print("Ramping bias to " + str(dcbias) + " and taking drift correction image.")
-                self.rampBias(NTCP, dcbias)
-                if(self.checkEventFlags()): break                               # Check event flags
-                time.sleep(0.25)
-                
-                basename_dc = tempBasename + str(int(dcbias*100)/100) + "V-DC_"
-                scanModule.PropsSet(series_name=basename_dc)                    # Set the basename for drift correction images
-                scanModule.Action('start',scan_direction='up')
-                _, _, filePath = scanModule.WaitEndOfScan()
-                if(not filePath): break                                         # If the scan was stopped manually before, stop here
-                if(self.checkEventFlags()): break                               # Check event flags
-
-                _,driftCorrection,_ = scanModule.FrameDataGrab(zchannel_index, 1)
-                
-                if(np.sum(initialDC) == 0): initialDC = driftCorrection.copy()  # On the first run through, we will compare the initial drift correction frame with itself, so ox,oy = 0,0
-                ox,oy = utilities.getFrameOffset(initialDC,driftCorrection,dxy,theta=-scanFrame[4]) # Frame offset for drift correction. passing negative scan angle because nanonis is backwards
-                print("Frame offset correction offset: " + str([ox,oy]))
-                
-                scanFrame[0] -= ox
-                scanFrame[1] -= oy
-                scanModule.FrameSet(*scanFrame)                                 # Move the scan frame
-                
-            print("Ramping to next image bias: " + str(int(100*bias)/100) + " V")
-            self.rampBias(NTCP, bias)                                           # Ramp to the next image bias
-            if(self.checkEventFlags()): break                                   # Check event flags
-            
-            scanModule.BufferSet(pixels=px,lines=lx)
-            scanModule.SpeedSet(fwd_line_time=tlf,speed_ratio=speedRatio)
-            
-            basename_image = tempBasename + str(int(100*bias)/100) + "V_"
-            scanModule.PropsSet(series_name=basename_image)                     # Set the basename in nanonis for this survey
-            
-            scanModule.Action('start',scan_direction='down')
-            _, _, filePath = scanModule.WaitEndOfScan()
-            if(not filePath): break
-            if(self.checkEventFlags()): break                                   # Check event flags
-            
-            _,scanData,_ = scanModule.FrameDataGrab(focusChannel_index, 1)      # Grab the data for the current focus channel
-            pngFilename = self.makePNG(scanData, filePath)                      # Generate a png from the scan data
-            GIF.append(scanData)
-            
-            self.interface.sendPNG(pngFilename)    # Send a png 
-            
-        time.sleep(0.25)
-        scanModule.PropsSet(series_name=basename)                               # Put back the original basename
-        
-        self.interface.sendReply("biasDep " + suffix + " complete.")
-        
-        self.disconnect(NTCP)                                                   # Close the TCP connection
-        global_.running.clear()                                                 # Free up the running flag
+                self.interface.sendReply("biasDep " + suffix + " complete.")
+            except RuntimeError as e:
+                self.interface.sendReply(str(e))
+            except Exception as e:
+                self.interface.sendReply("Error during biasDep: " + str(e))
+                raise
+            finally:
+                global_.running.clear()                                                 # Free up the running flag
 
     def getGrid(self,gridFrame):
         nx,ny,ox,oy,w,h,gridAngle = gridFrame
@@ -565,175 +562,168 @@ class scanbot():
         gridType = "grid"                                                       # Only grid is support at the moment. Support for cloud and line will be added later
 
         self.currentAction["action"] = "stsgrid"
-        NTCP,connection_error = self.connect()                                  # Connect to nanonis via TCP
-        if(connection_error):
-            global_.running.clear()                                             # Free up the running flag
-            return connection_error                                             # Return error message if there was a problem connecting        
         
-        scanModule = Scan(NTCP)
-        biasModule = Bias(NTCP)
-        zController = ZController(NTCP)
-        folme = FolMe(NTCP)
-        pattern = Pattern(NTCP)
-        bspec   = BiasSpectr(NTCP)
-        
-        tipPos    = folme.XYPosGet(Wait_for_newest_data=1)
-        scanFrame = scanModule.FrameGet()
-        if(not self.tipInFrame(tipPos,scanFrame)):
-            self.interface.sendReply("Tip must be in scan frame to get setpoint")
-            self.disconnect(NTCP)                                               # Close the TCP connection
-            global_.running.clear()                                             # Free up the running flag
-            return
-        
-        gridFrame = pattern.GridGet()
-        xx,yy = self.getGrid(gridFrame)
-    
-        gridCentre = np.array([gridFrame[2],gridFrame[3]])
-        if(not self.tipInFrame(tipPos=gridCentre,scanFrame=scanFrame)):
-            self.interface.sendReply("The grid centre must be within the scan frame")
-            self.disconnect(NTCP)                                               # Close the TCP connection
-            global_.running.clear()                                             # Free up the running flag
-            return
-
-        if(not len(xx)):
-            self.interface.sendReply("Stopping because grid is empty")
-            self.disconnect(NTCP)                                               # Close the TCP connection
-            global_.running.clear()                                             # Free up the running flag
-            return
-        
-        if(pxdc > 0):
-            pxdc = 16*int(pxdc/16)
-            scanModule.BufferSet(pixels=pxdc,lines=pxdc)
-        if(tdc > 0):
-            if(tbdc == 0): tbdc = 1
-            scanModule.SpeedSet(fwd_line_time=tdc,speed_ratio=tbdc)
-
-        if(Vset == 0): Vset = biasModule.Get()
-        if(Iset == 0): Iset = zController.SetpntGet()
-        if(VDC == 0):  VDC = Vset
-        if(IDC == 0):  IDC = Iset
-        if(Vmov == 0): Vmov = Vset
-        if(Imov == 0): Imov = Iset
-
-        seriesName = scanModule.PropsGet()[3]
-        scanModule.PropsSet(continuous_scan=2,bouncy_scan=2,autosave=1,series_name=seriesName)
-        self.plotChannel(a=self.zchannel)
-        zchannel_index = self.getChannelIndex(self.zchannel)
-
-        pxdc  = scanModule.BufferGet()[2]
-        dx    = scanFrame[2]/pxdc
-        dy    = scanFrame[3]/pxdc
-        dxy   = np.array([dx,dy])
-        ox,oy = np.array([0,0])
-
-        gridData = {}
-        
-        stop  = False
-        count = 0
-        initialDC = np.zeros(10)
-        totalDrift = np.array([0,0])
-        zController.SetpntSet(Imov)
-        time.sleep(0.1)
-        self.rampBias(NTCP,Vmov,zhold=False)
-        saveDict = {"meta" : params}
-        saveFilename = path + str(dt.now()).replace(':','-') + "-python-sts-" + gridType + "-" + sufx + ".pk"
-        for iy,y in enumerate(yy):
-            rowData  = {}
-            for ix,x in enumerate(xx):
-                if(NDC > 0 and count % NDC == 0):                                   # If drift correction is turned on, take a drift correction image
-                    time.sleep(0.25)
-                    
-                    print("Changing setpoint to " + str(IDC))
-                    print("Ramping bias to " + str(VDC) + " and taking drift correction image.")
-                    zController.SetpntSet(IDC)
-                    time.sleep(0.1)
-                    self.rampBias(NTCP,VDC,zhold=False)
-                    if(self.checkEventFlags()):
-                        stop = True
-                        break                                                       # Check event flags
-                    time.sleep(0.25)
-                    
-                    basename_dc = "scanbot-DC-stsgrid"
-                    scanModule.PropsSet(series_name=basename_dc)                    # Set the basename for drift correction images
-                    scanModule.Action('start',scan_direction='up')
-                    _, _, filePath = scanModule.WaitEndOfScan()
-                    if(not filePath):                                               # If the scan was stopped manually before, stop here
-                        stop = True
-                        break
-                    if(self.checkEventFlags()):                                     # Check event flags
-                        stop = True
-                        break
-                    
-                    _,driftCorrection,_ = scanModule.FrameDataGrab(zchannel_index, 1)
-
-                    pngFilename,scanDataPlaneFit = self.makePNG(driftCorrection, filePath,returnData=True,dpi=150) # Generate a png from the scan data
-                    self.interface.sendPNG(pngFilename)             # Send a png /save in react temp folder for front end
-                    
-                    if(np.sum(initialDC) == 0.0): initialDC = driftCorrection.copy()  # On the first run through, we will compare the initial drift correction frame with itself, so ox,oy = 0,0
-                    ox,oy = utilities.getFrameOffset(initialDC,driftCorrection,dxy,theta=-scanFrame[4]) # Frame offset for drift correction. passing negative scan angle because nanonis is backwards
-                    print("Frame offset correction offset: " + str([ox,oy]))
-                    
-                    scanFrame[0] -= ox
-                    scanFrame[1] -= oy
-                    scanModule.FrameSet(*scanFrame)                                 # Move the scan frame
-                    
-                    gridFrame[2] -= ox
-                    gridFrame[3] -= oy
-                    pattern.GridSet(*gridFrame)
-                    totalDrift = totalDrift - np.array([ox,oy])
+        with self.nanonis() as NTCP:
+            try:
+                scanModule = Scan(NTCP)
+                biasModule = Bias(NTCP)
+                zController = ZController(NTCP)
+                folme = FolMe(NTCP)
+                pattern = Pattern(NTCP)
+                bspec   = BiasSpectr(NTCP)
                 
+                tipPos    = folme.XYPosGet(Wait_for_newest_data=1)
+                scanFrame = scanModule.FrameGet()
+                if(not self.tipInFrame(tipPos,scanFrame)):
+                    raise RuntimeError("Tip must be in scan frame to get setpoint")
+                
+                gridFrame = pattern.GridGet()
+                xx,yy = self.getGrid(gridFrame)
+            
+                gridCentre = np.array([gridFrame[2],gridFrame[3]])
+                if(not self.tipInFrame(tipPos=gridCentre,scanFrame=scanFrame)):
+                    raise RuntimeError("The grid centre must be within the scan frame")
+
+                if(not len(xx)):
+                    raise RuntimeError("Grid is empty")
+                
+                if(pxdc > 0):
+                    pxdc = 16*int(pxdc/16)
+                    scanModule.BufferSet(pixels=pxdc,lines=pxdc)
+                if(tdc > 0):
+                    if(tbdc == 0): tbdc = 1
+                    scanModule.SpeedSet(fwd_line_time=tdc,speed_ratio=tbdc)
+
+                if(Vset == 0): Vset = biasModule.Get()
+                if(Iset == 0): Iset = zController.SetpntGet()
+                if(VDC == 0):  VDC = Vset
+                if(IDC == 0):  IDC = Iset
+                if(Vmov == 0): Vmov = Vset
+                if(Imov == 0): Imov = Iset
+
+                seriesName = scanModule.PropsGet()[3]
+                scanModule.PropsSet(continuous_scan=2,bouncy_scan=2,autosave=1,series_name=seriesName)
+                self.plotChannel(a=self.zchannel)
+                zchannel_index = self.getChannelIndex(self.zchannel)
+
+                pxdc  = scanModule.BufferGet()[2]
+                dx    = scanFrame[2]/pxdc
+                dy    = scanFrame[3]/pxdc
+                dxy   = np.array([dx,dy])
+                ox,oy = np.array([0,0])
+
+                gridData = {}
+                
+                stop  = False
+                count = 0
+                initialDC = np.zeros(10)
+                totalDrift = np.array([0,0])
                 zController.SetpntSet(Imov)
+                time.sleep(0.1)
                 self.rampBias(NTCP,Vmov,zhold=False)
-                time.sleep(0.1)
+                saveDict = {"meta" : params}
+                saveFilename = path + str(dt.now()).replace(':','-') + "-python-sts-" + gridType + "-" + sufx + ".pk"
+                for iy,y in enumerate(yy):
+                    rowData  = {}
+                    for ix,x in enumerate(xx):
+                        if(NDC > 0 and count % NDC == 0):                                   # If drift correction is turned on, take a drift correction image
+                            time.sleep(0.25)
+                            
+                            print("Changing setpoint to " + str(IDC))
+                            print("Ramping bias to " + str(VDC) + " and taking drift correction image.")
+                            zController.SetpntSet(IDC)
+                            time.sleep(0.1)
+                            self.rampBias(NTCP,VDC,zhold=False)
+                            if(self.checkEventFlags()):
+                                stop = True
+                                break                                                       # Check event flags
+                            time.sleep(0.25)
+                            
+                            basename_dc = "scanbot-DC-stsgrid"
+                            scanModule.PropsSet(series_name=basename_dc)                    # Set the basename for drift correction images
+                            scanModule.Action('start',scan_direction='up')
+                            _, _, filePath = scanModule.WaitEndOfScan()
+                            if(not filePath):                                               # If the scan was stopped manually before, stop here
+                                stop = True
+                                break
+                            if(self.checkEventFlags()):                                     # Check event flags
+                                stop = True
+                                break
+                            
+                            _,driftCorrection,_ = scanModule.FrameDataGrab(zchannel_index, 1)
 
-                folme.XYPosSet(x + totalDrift[0], y + totalDrift[1], Wait_end_of_move=True)
+                            pngFilename,scanDataPlaneFit = self.makePNG(driftCorrection, filePath,returnData=True,dpi=150) # Generate a png from the scan data
+                            self.interface.sendPNG(pngFilename)             # Send a png /save in react temp folder for front end
+                            
+                            if(np.sum(initialDC) == 0.0): initialDC = driftCorrection.copy()  # On the first run through, we will compare the initial drift correction frame with itself, so ox,oy = 0,0
+                            ox,oy = utilities.getFrameOffset(initialDC,driftCorrection,dxy,theta=-scanFrame[4]) # Frame offset for drift correction. passing negative scan angle because nanonis is backwards
+                            print("Frame offset correction offset: " + str([ox,oy]))
+                            
+                            scanFrame[0] -= ox
+                            scanFrame[1] -= oy
+                            scanModule.FrameSet(*scanFrame)                                 # Move the scan frame
+                            
+                            gridFrame[2] -= ox
+                            gridFrame[3] -= oy
+                            pattern.GridSet(*gridFrame)
+                            totalDrift = totalDrift - np.array([ox,oy])
+                        
+                        zController.SetpntSet(Imov)
+                        self.rampBias(NTCP,Vmov,zhold=False)
+                        time.sleep(0.1)
 
-                self.rampBias(NTCP,Vset,zhold=False)
-                zController.SetpntSet(Iset)
-                time.sleep(0.1)
-                spectrum = bspec.Start(get_data=1)
+                        folme.XYPosSet(x + totalDrift[0], y + totalDrift[1], Wait_end_of_move=True)
 
-                for key in spectrum['data_dict'].keys():
-                    if(key == "Bias calc (V)"):
-                        gridData["sweep_signal"] = np.array(spectrum['data_dict'][key])
-                        continue
+                        self.rampBias(NTCP,Vset,zhold=False)
+                        zController.SetpntSet(Iset)
+                        time.sleep(0.1)
+                        spectrum = bspec.Start(get_data=1)
 
-                    if(not key in gridData):
-                        gridData[key] = []
+                        for key in spectrum['data_dict'].keys():
+                            if(key == "Bias calc (V)"):
+                                gridData["sweep_signal"] = np.array(spectrum['data_dict'][key])
+                                continue
 
-                    if(not key in rowData):
-                        rowData[key] = list(np.zeros_like(xx))
-                        gridData[key].append(rowData)
+                            if(not key in gridData):
+                                gridData[key] = []
 
-                    rowData[key][ix]  = np.array(spectrum['data_dict'][key])
-                    if(not iy%2):
-                        gridData[key][-1] = rowData[key].copy()
-                    if(iy%2):
-                        gridData[key][-1] = rowData[key][::-1]
-                
-                saveDict = {"data" : gridData}
-                pickle.dump(saveDict,open(saveFilename,'wb'))
-                
-                if(self.checkEventFlags()):
-                    stop = True
-                    break                                                       # Check event flags
+                            if(not key in rowData):
+                                rowData[key] = list(np.zeros_like(xx))
+                                gridData[key].append(rowData)
 
-                count += 1
+                            rowData[key][ix]  = np.array(spectrum['data_dict'][key])
+                            if(not iy%2):
+                                gridData[key][-1] = rowData[key].copy()
+                            if(iy%2):
+                                gridData[key][-1] = rowData[key][::-1]
+                        
+                        saveDict = {"data" : gridData}
+                        pickle.dump(saveDict,open(saveFilename,'wb'))
+                        
+                        if(self.checkEventFlags()):
+                            stop = True
+                            break                                                       # Check event flags
 
-            zController.SetpntSet(Imov)
-            self.rampBias(NTCP,Vmov,zhold=False)
-            time.sleep(0.1)
+                        count += 1
 
-            xx = np.flip(xx)
+                    zController.SetpntSet(Imov)
+                    self.rampBias(NTCP,Vmov,zhold=False)
+                    time.sleep(0.1)
 
-            if(stop): break
+                    xx = np.flip(xx)
 
-        scanModule.PropsSet(series_name=seriesName)
+                    if(stop): break
 
-        self.interface.sendReply("STS-Grid Complete")
+                scanModule.PropsSet(series_name=seriesName)
 
-        self.disconnect(NTCP)                                                   # Close the TCP connection
-        global_.running.clear()                                                 # Free up the running flag
+                self.interface.sendReply("STS-Grid Complete")
+            except RuntimeError as e:
+                self.interface.sendReply(str(e))
+            except Exception as e:
+                self.interface.sendReply("Error during STS-Grid: " + str(e))
+                raise
+            finally:
+                global_.running.clear()                                                 # Free up the running flag
 
     def zdep(self,zi,zf,nz,iset,bset,dciset,bias,dcbias,ft,bt,dct,px,dcpx,lx,dclx,suffix,makeGIF):
         """
@@ -776,215 +766,208 @@ class scanbot():
                    
         """
         self.currentAction["action"] = "zdep"
-        NTCP,connection_error = self.connect()                                  # Connect to nanonis via TCP
-        if(connection_error):
-            global_.running.clear()                                             # Free up the running flag
-            return connection_error                                             # Return error message if there was a problem connecting        
-        
-        scanModule = Scan(NTCP)
-        biasModule = Bias(NTCP)
-        zController = ZController(NTCP)
-        folme = FolMe(NTCP)
-        piezo = Piezo(NTCP)
-        
-        tipPos    = folme.XYPosGet(Wait_for_newest_data=1)
-        scanFrame = scanModule.FrameGet()
-        if(not self.tipInFrame(tipPos,scanFrame)):
-            self.interface.sendReply("Tip must be in scan frame to get setpoint")
-            self.disconnect(NTCP)                                               # Close the TCP connection
-            global_.running.clear()                                             # Free up the running flag
-            return
-        
-        currentISet = zController.SetpntGet()
-        if(not iset == '-default'):                                             # Only update setpoint if the user provided it
-            if(abs(iset) > 1e-9):                                               # Limit to 1 nA to avoid accidental setpoints
-                self.interface.sendReply('Maximum setpoint using -iset is 1 nA. If you want iset > 1 nA, put the setting into nanonis and run zdep without the -iset param.')
-                self.disconnect(NTCP)
-                global_.running.clear()                                         # Free up the running flag
-                return
-        else:
-            iset = currentISet
-            
-        if(not dciset == '-default'):                                           # Only update setpoint if the user provided it
-            if(abs(dciset) > 1e-9):                                             # Limit to 1 nA to avoid accidental setpoints
-                self.interface.sendReply('Maximum setpoint using -dciset is 1 nA. If you want iset > 1 nA, put the setting into nanonis and run zdep without the -iset param.')
-                self.disconnect(NTCP)
-                global_.running.clear()                                         # Free up the running flag
-                return
-        else:
-            dciset = currentISet
-        
-        basename = self.interface.topoBasename                                  # Get the basename that's been set in config file
-        if(not basename): basename = scanModule.PropsGet()[3]                   # Get the save basename from nanonis if one isn't supplied
-        tempBasename = basename + '_' + suffix + '_'                            # Create a temp basename for this survey
-        scanModule.PropsSet(series_name=tempBasename)                           # Set the basename in nanonis for this survey
-        
-        _,_,pixels,lines = scanModule.BufferGet()
-        if(px   == '-default'):
-            px = pixels
-            lx = lines
-        if(dcpx == '-default'):
-            dcpx = pixels
-            dclx = lines
-            
-        if(lx   == 0): lx = px                                                  # Scan frame is square if lx = 0
-        if(dclx == 0): dclx = dcpx                                              # Scan frame is square if dclx = 0
-        
-        _,_,fwdTime,bwdTime,_,_ = scanModule.SpeedGet()
-        if(ft == '-default'): ft = fwdTime
-        if(bt == '-default'): bt = bwdTime
-        speedRatio = ft/bt                                                      # Speed ratio is forward time per line/backward time per line
-        
-        if(dct == '-default'): dct = fwdTime
-        
-        v = biasModule.Get()
-        if(bset   == '-default'): bset   = v
-        if(bias   == '-default'): bias   = v
-        if(dcbias == '-default'): dcbias = v
-        if(bset > 0):
-            self.interface.sendReply("Cannot set -bset to 0 V or tip will crash")
-            self.disconnect(NTCP)
-            global_.running.clear()                                             # Free up the running flag
-        
-        status, vx, vy, vz, _, _, _ = piezo.DriftCompGet()
-        if not status:
-            piezo.DriftCompSet(on=False, vx=0, vy=0, vz=0)
-            
-        previous_zref = {}
-        dx  = scanFrame[2]/dcpx; dy  = scanFrame[3]/dclx
-        dxy = np.array([dx,dy])
-        ox,oy = np.array([0,0])
-        dzList = np.linspace(zi, zf, nz)
-        initialDC = np.zeros((dcpx,dcpx))
-        
-        scanTime  = lx*(ft + bt)
-        delayTime = 4
-        if(abs(dcbias) > 0):
-           scanTime  += 2*dclx*dct
-           delayTime += 1.5
-        
-        GIF = []
-        eta = len(dzList)*(scanTime + delayTime)
-        completionTime = dt.now() + timedelta(seconds=eta)
-        self.interface.sendReply("Starting zdep.. ETA: " + str(completionTime))
-        zchannel_index = self.getChannelIndex(self.zchannel)
-        for idx,dz in enumerate(dzList):
-            seriesName = scanModule.PropsGet()[3]
-            scanModule.PropsSet(continuous_scan=2,bouncy_scan=2,autosave=1,series_name=seriesName)
-            self.plotChannel(a=self.zchannel)
-        
-            self.interface.sendReply("Scan " + str(idx+1) + "/" + str(len(dzList)))
-            print("doing dz = " + str(dz*1e9) + " nm")
-            if(abs(dcbias) > 0):                                                # If drift correction is turned on, take a drift correction image
+        with self.nanonis() as NTCP:
+            try:
+                scanModule = Scan(NTCP)
+                biasModule = Bias(NTCP)
+                zController = ZController(NTCP)
+                folme = FolMe(NTCP)
+                piezo = Piezo(NTCP)
+                
+                tipPos    = folme.XYPosGet(Wait_for_newest_data=1)
+                scanFrame = scanModule.FrameGet()
+                if(not self.tipInFrame(tipPos,scanFrame)):
+                    raise RuntimeError("Tip must be in scan frame to get setpoint")
+                
+                currentISet = zController.SetpntGet()
+                if(not iset == '-default'):                                             # Only update setpoint if the user provided it
+                    if(abs(iset) > 1e-9):                                               # Limit to 1 nA to avoid accidental setpoints
+                        raise RuntimeError('Maximum setpoint using -iset is 1 nA. If you want iset > 1 nA, put the setting into nanonis and run zdep without the -iset param.')
+                else:
+                    iset = currentISet
+                    
+                if(not dciset == '-default'):                                           # Only update setpoint if the user provided it
+                    if(abs(dciset) > 1e-9):                                             # Limit to 1 nA to avoid accidental setpoints
+                        self.interface.sendReply('Maximum setpoint using -dciset is 1 nA. If you want iset > 1 nA, put the setting into nanonis and run zdep without the -iset param.')
+                        self.disconnect(NTCP)
+                        global_.running.clear()                                         # Free up the running flag
+                        return
+                else:
+                    dciset = currentISet
+                
+                basename = self.interface.topoBasename                                  # Get the basename that's been set in config file
+                if(not basename): basename = scanModule.PropsGet()[3]                   # Get the save basename from nanonis if one isn't supplied
+                tempBasename = basename + '_' + suffix + '_'                            # Create a temp basename for this survey
+                scanModule.PropsSet(series_name=tempBasename)                           # Set the basename in nanonis for this survey
+                
+                _,_,pixels,lines = scanModule.BufferGet()
+                if(px   == '-default'):
+                    px = pixels
+                    lx = lines
+                if(dcpx == '-default'):
+                    dcpx = pixels
+                    dclx = lines
+                    
+                if(lx   == 0): lx = px                                                  # Scan frame is square if lx = 0
+                if(dclx == 0): dclx = dcpx                                              # Scan frame is square if dclx = 0
+                
+                _,_,fwdTime,bwdTime,_,_ = scanModule.SpeedGet()
+                if(ft == '-default'): ft = fwdTime
+                if(bt == '-default'): bt = bwdTime
+                speedRatio = ft/bt                                                      # Speed ratio is forward time per line/backward time per line
+                
+                if(dct == '-default'): dct = fwdTime
+                
+                v = biasModule.Get()
+                if(bset   == '-default'): bset   = v
+                if(bias   == '-default'): bias   = v
+                if(dcbias == '-default'): dcbias = v
+                if(not abs(bset) > 1e-3):                                               # Limit to 1 mV to avoid accidental crashes
+                    raise RuntimeError('Minimum bias is 1 mV to prevent crashes.')
+                
+                status, vx, vy, vz, _, _, _ = piezo.DriftCompGet()
+                if not status:
+                    piezo.DriftCompSet(on=False, vx=0, vy=0, vz=0)
+                    
+                previous_zref = {}
+                dx  = scanFrame[2]/dcpx; dy  = scanFrame[3]/dclx
+                dxy = np.array([dx,dy])
+                ox,oy = np.array([0,0])
+                dzList = np.linspace(zi, zf, nz)
+                initialDC = np.zeros((dcpx,dcpx))
+                
+                scanTime  = lx*(ft + bt)
+                delayTime = 4
+                if(abs(dcbias) > 0):
+                    scanTime  += 2*dclx*dct
+                    delayTime += 1.5
+                
+                GIF = []
+                eta = len(dzList)*(scanTime + delayTime)
+                completionTime = dt.now() + timedelta(seconds=eta)
+                self.interface.sendReply("Starting zdep.. ETA: " + str(completionTime))
+                zchannel_index = self.getChannelIndex(self.zchannel)
+                for idx,dz in enumerate(dzList):
+                    seriesName = scanModule.PropsGet()[3]
+                    scanModule.PropsSet(continuous_scan=2,bouncy_scan=2,autosave=1,series_name=seriesName)
+                    self.plotChannel(a=self.zchannel)
+                
+                    self.interface.sendReply("Scan " + str(idx+1) + "/" + str(len(dzList)))
+                    print("doing dz = " + str(dz*1e9) + " nm")
+                    if(abs(dcbias) > 0):                                                # If drift correction is turned on, take a drift correction image
+                        time.sleep(0.25)
+                        zController.OnOffSet(on=1)                                      # Turn on the controller to get reference
+                        
+                        time.sleep(0.25)
+                        print("DC: Setpoint: " + str(dciset*1e12) + " pA")
+                        zController.SetpntSet(setpoint=abs(dciset))                     # Update setpoint current in nanonis
+                        time.sleep(0.25)
+                        
+                        print("DC: px,lx: " + str([dcpx,dclx]))
+                        scanModule.BufferSet(pixels=dcpx,lines=dclx)
+                        print("DC: tpl: " + str(dct) + " s")
+                        scanModule.SpeedSet(fwd_line_time=dct,speed_ratio=1)
+                        
+                        print("DC: Ramping bias: " + str(dcbias))
+                        self.rampBias(NTCP, dcbias)
+                        time.sleep(0.25)
+                        
+                        print("DC: Taking scan")
+                        scanModule.PropsSet(series_name=tempBasename + str(dcbias) + "V-DC_") # Set the basename in nanonis for this survey
+                        scanModule.Action('start',scan_direction='up')
+                        _, _, filePath = scanModule.WaitEndOfScan()
+                        if(not filePath): break                                         # If the scan was stopped before finishing, stop zdep
+                        _,driftCorrection,_ = scanModule.FrameDataGrab(zchannel_index, 1)
+                        
+                        if(np.sum(initialDC) == 0): initialDC = driftCorrection
+                        print("Scan Angle: " + str(scanFrame[4]))
+                        ox,oy = utilities.getFrameOffset(initialDC,driftCorrection,dxy,theta=-scanFrame[4]) # Frame offset for drift correction. passing negative scan angle because nanonis is backwards
+                        print("DC: ox,oy: " + str([ox,oy]))
+                        
+                        scanFrame[0] -= ox
+                        scanFrame[1] -= oy
+                        scanModule.FrameSet(*scanFrame)
+                        
+                        tipPos -= np.array([ox,oy])
+                        
+                    time.sleep(0.25)
+                    zController.OnOffSet(on=1)                                          # Turn on the controller to get reference
+                    print("CH: Moving tip: " + str(tipPos))
+                    folme.XYPosSet(tipPos[0], tipPos[1], Wait_end_of_move=True)
+                    
+                    time.sleep(0.5)
+                    print("CH: Setpoint: " + str(iset*1e12) + " pA")
+                    zController.SetpntSet(setpoint=abs(iset))                           # Update setpoint current in nanonis
+                    
+                    time.sleep(0.5)
+                    print("CH: Ramping to setpoint bias: " + str(bset) + " V")
+                    self.rampBias(NTCP, bset)
+                    
+                    zref = 0
+                    time.sleep(0.5)
+                    for i in range(100):
+                        zref += zController.ZPosGet()/100                               # Average 100 values of z position. This is the position zi and zf are relative to
+                        time.sleep(0.01)                                                # 10 ms sample rate
+                    
+                    if('time' in previous_zref):
+                        deltaz = zref - previous_zref['z']
+                        deltat = (dt.now() - previous_zref['time']).total_seconds()
+                        dvz = deltaz/deltat
+                        status, vx, vy, vz, _, _, _ = piezo.DriftCompGet()              # the vz velocity
+                        print("deltaz/deltat = " + str(deltaz) + "/" + str(deltat))
+                        print("vz,dvz,vz+dvz = " + str(vz) + "," + str(dvz) + "," + str(dvz + vz))
+                        if(not -dcbias == 0):                                           # Only do this if dc is turned on
+                            print("Updating piezo drift compensation")
+                            piezo.DriftCompSet(on=True, vx=vx, vy=vy, vz=vz+dvz)
+                        
+                    previous_zref = {'z' : zref,
+                                    'time' : dt.now()}
+                    print("setting previous zref to: " + str(previous_zref))
+                    
+                    print("CH: zref 100 averages: " + str(zref*1e9) + " nm")
+                    zController.OnOffSet(on=False)                                      # Turn off the controller
+                    
+                    print("CH: Ramping bias: " + str(bias) + " V")
+                    self.rampBias(NTCP, bias, zhold=False)                              # zhold=False leaves the zhold setting as is during bias ramp (i.e. don't turn controller on after bias ramp complete)
+                    
+                    time.sleep(0.25)
+                    print("CH: moving to z=" + str(1e9*zref + 1e9*dz))
+                    zController.ZPosSet(zpos=zref + dz)                                 # Go to the next position
+                    
+                    print("CH: px,lx: " + str([px,lx]))
+                    scanModule.BufferSet(pixels=px,lines=lx)
+                    print("CH: fwd,ratio: " + str([ft,speedRatio]))
+                    scanModule.SpeedSet(fwd_line_time=ft,speed_ratio=speedRatio)
+                    scanModule.PropsSet(series_name=tempBasename + str(int(dz*1e12)) + "pm_")     # Set the basename in nanonis for this survey
+                    scanModule.Action('start',scan_direction='down')
+                    _, _, filePath = scanModule.WaitEndOfScan()
+                    if(not filePath): break
+                    
+                    _,scanData,_ = scanModule.FrameDataGrab(0, 1)                       # 0 = Current
+                    pngFilename = self.makePNG(scanData, filePath)                      # Generate a png from the scan data
+                    GIF.append(scanData)
+                    
+                    self.interface.sendPNG(pngFilename)    # Send a png 
+                    
+                print("Finishing up.. turning controller on")
                 time.sleep(0.25)
-                zController.OnOffSet(on=1)                                      # Turn on the controller to get reference
+                zController.OnOffSet(on=1)                                              # Turn on the controller
                 
                 time.sleep(0.25)
-                print("DC: Setpoint: " + str(dciset*1e12) + " pA")
-                zController.SetpntSet(setpoint=abs(dciset))                     # Update setpoint current in nanonis
+                zController.SetpntSet(setpoint=abs(iset))                               # Update setpoint current in nanonis
                 time.sleep(0.25)
+                scanModule.PropsSet(series_name=basename)                               # Put back the original basename
                 
-                print("DC: px,lx: " + str([dcpx,dclx]))
-                scanModule.BufferSet(pixels=dcpx,lines=dclx)
-                print("DC: tpl: " + str(dct) + " s")
-                scanModule.SpeedSet(fwd_line_time=dct,speed_ratio=1)
+                # self.interface.sendPNG(utilities.makeGif(GIF))
                 
-                print("DC: Ramping bias: " + str(dcbias))
-                self.rampBias(NTCP, dcbias)
-                time.sleep(0.25)
-                
-                print("DC: Taking scan")
-                scanModule.PropsSet(series_name=tempBasename + str(dcbias) + "V-DC_") # Set the basename in nanonis for this survey
-                scanModule.Action('start',scan_direction='up')
-                _, _, filePath = scanModule.WaitEndOfScan()
-                if(not filePath): break                                         # If the scan was stopped before finishing, stop zdep
-                _,driftCorrection,_ = scanModule.FrameDataGrab(zchannel_index, 1)
-                
-                if(np.sum(initialDC) == 0): initialDC = driftCorrection
-                print("Scan Angle: " + str(scanFrame[4]))
-                ox,oy = utilities.getFrameOffset(initialDC,driftCorrection,dxy,theta=-scanFrame[4]) # Frame offset for drift correction. passing negative scan angle because nanonis is backwards
-                print("DC: ox,oy: " + str([ox,oy]))
-                
-                scanFrame[0] -= ox
-                scanFrame[1] -= oy
-                scanModule.FrameSet(*scanFrame)
-                
-                tipPos -= np.array([ox,oy])
-                
-            time.sleep(0.25)
-            zController.OnOffSet(on=1)                                          # Turn on the controller to get reference
-            print("CH: Moving tip: " + str(tipPos))
-            folme.XYPosSet(tipPos[0], tipPos[1], Wait_end_of_move=True)
-            
-            time.sleep(0.5)
-            print("CH: Setpoint: " + str(iset*1e12) + " pA")
-            zController.SetpntSet(setpoint=abs(iset))                           # Update setpoint current in nanonis
-            
-            time.sleep(0.5)
-            print("CH: Ramping to setpoint bias: " + str(bset) + " V")
-            self.rampBias(NTCP, bset)
-            
-            zref = 0
-            time.sleep(0.5)
-            for i in range(100):
-                zref += zController.ZPosGet()/100                               # Average 100 values of z position. This is the position zi and zf are relative to
-                time.sleep(0.01)                                                # 10 ms sample rate
-            
-            if('time' in previous_zref):
-                deltaz = zref - previous_zref['z']
-                deltat = (dt.now() - previous_zref['time']).total_seconds()
-                dvz = deltaz/deltat
-                status, vx, vy, vz, _, _, _ = piezo.DriftCompGet()              # the vz velocity
-                print("deltaz/deltat = " + str(deltaz) + "/" + str(deltat))
-                print("vz,dvz,vz+dvz = " + str(vz) + "," + str(dvz) + "," + str(dvz + vz))
-                if(not -dcbias == 0):                                           # Only do this if dc is turned on
-                    print("Updating piezo drift compensation")
-                    piezo.DriftCompSet(on=True, vx=vx, vy=vy, vz=vz+dvz)
-                
-            previous_zref = {'z' : zref,
-                             'time' : dt.now()}
-            print("setting previous zref to: " + str(previous_zref))
-            
-            print("CH: zref 100 averages: " + str(zref*1e9) + " nm")
-            zController.OnOffSet(on=False)                                      # Turn off the controller
-            
-            print("CH: Ramping bias: " + str(bias) + " V")
-            self.rampBias(NTCP, bias, zhold=False)                              # zhold=False leaves the zhold setting as is during bias ramp (i.e. don't turn controller on after bias ramp complete)
-            
-            time.sleep(0.25)
-            print("CH: moving to z=" + str(1e9*zref + 1e9*dz))
-            zController.ZPosSet(zpos=zref + dz)                                 # Go to the next position
-            
-            print("CH: px,lx: " + str([px,lx]))
-            scanModule.BufferSet(pixels=px,lines=lx)
-            print("CH: fwd,ratio: " + str([ft,speedRatio]))
-            scanModule.SpeedSet(fwd_line_time=ft,speed_ratio=speedRatio)
-            scanModule.PropsSet(series_name=tempBasename + str(int(dz*1e12)) + "pm_")     # Set the basename in nanonis for this survey
-            scanModule.Action('start',scan_direction='down')
-            _, _, filePath = scanModule.WaitEndOfScan()
-            if(not filePath): break
-            
-            _,scanData,_ = scanModule.FrameDataGrab(0, 1)                       # 0 = Current
-            pngFilename = self.makePNG(scanData, filePath)                      # Generate a png from the scan data
-            GIF.append(scanData)
-            
-            self.interface.sendPNG(pngFilename)    # Send a png 
-            
-        print("Finishing up.. turning controller on")
-        time.sleep(0.25)
-        zController.OnOffSet(on=1)                                              # Turn on the controller
-        
-        time.sleep(0.25)
-        zController.SetpntSet(setpoint=abs(iset))                               # Update setpoint current in nanonis
-        time.sleep(0.25)
-        scanModule.PropsSet(series_name=basename)                               # Put back the original basename
-        
-        # self.interface.sendPNG(utilities.makeGif(GIF))
-        
-        self.interface.sendReply("zdep " + suffix + " complete")
-        
-        self.disconnect(NTCP)                                                   # Close the TCP connection
-        global_.running.clear()                                                 # Free up the running flag
+                self.interface.sendReply("zdep " + suffix + " complete")
+            except RuntimeError as e:
+                self.interface.sendReply(str(e))
+            except Exception as e:
+                self.interface.sendReply("Error during zdep: " + str(e))
+                raise
+            finally:
+                global_.running.clear()                                                 # Free up the running flag
     
     def registration(self,zset,iset,bset,bias,ft,bt,px,lx,lz,dz,scanDir,suffix):
         """
@@ -1020,168 +1003,154 @@ class scanbot():
 
         """
         self.currentAction["action"] = "registration"
-        NTCP,connection_error = self.connect()                                  # Connect to nanonis via TCP
-        if(connection_error):
-            global_.running.clear()                                             # Free up the running flag
-            return connection_error                                             # Return error message if there was a problem connecting        
         
-        scanModule = Scan(NTCP)
-        biasModule = Bias(NTCP)
-        zController = ZController(NTCP)
-        folme = FolMe(NTCP)
-        marks = Marks(NTCP)
-        
-        seriesName = scanModule.PropsGet()[3]
-        scanModule.PropsSet(continuous_scan=2,bouncy_scan=2,autosave=1,series_name=seriesName)
-        self.plotChannel(a=self.zchannel)
-
-        tipPos    = folme.XYPosGet(Wait_for_newest_data=1)
-        scanFrame = scanModule.FrameGet()
-        if(not self.tipInFrame(tipPos,scanFrame)):
-            self.interface.sendReply("Tip must be in scan frame to get setpoint")
-            self.disconnect(NTCP)                                               # Close the TCP connection
-            global_.running.clear()                                             # Free up the running flag
-            return
-        
-        currentISet = zController.SetpntGet()
-        if(not iset == '-default'):                                             # Only update setpoint if the user provided it
-            if(abs(iset) > 1e-9):                                               # Limit to 1 nA to avoid accidental setpoints
-                self.interface.sendReply('Maximum setpoint using -iset is 1 nA. If you want iset > 1 nA, put the setting into nanonis and run zdep without the -iset param.')
-                self.disconnect(NTCP)
-                global_.running.clear()                                         # Free up the running flag
-                return
-        else:
-            iset = currentISet
-        
-        basename = self.interface.topoBasename                                  # Get the basename that's been set in config file
-        if(not basename): basename = scanModule.PropsGet()[3]                   # Get the save basename from nanonis if one isn't supplied
-        tempBasename = basename + '_' + suffix + '_'                            # Create a temp basename for this survey
-        scanModule.PropsSet(series_name=tempBasename)                           # Set the basename in nanonis for this survey
-        
-        _,_,pixels,lines = scanModule.BufferGet()
-        if(px   == '-default'):
-            px = pixels
-            lx = lines
-        
-        if(lx   == 0): lx = px                                                  # Scan frame is square if lx = 0
-        
-        _,_,fwdTime,bwdTime,_,_ = scanModule.SpeedGet()
-        if(ft == '-default'): ft = fwdTime
-        if(bt == '-default'): bt = bwdTime
-        speedRatio = ft/bt                                                      # Speed ratio is forward time per line/backward time per line
-        
-        v = biasModule.Get()
-        if(bset == '-default'): bset = v
-        if(bias == '-default'): bias = v
-        if(bset > 0):
-            self.interface.sendReply("Cannot set -bset to 0 V or tip will crash")
-            self.disconnect(NTCP)
-            global_.running.clear()                                             # Free up the running flag
-        
-        scanDir = scanDir.lower()
-        if(not scanDir in ["down","up"]):
-            self.interface.sendReply("Scan direction must be either 'up' or 'down'")
-            self.disconnect(NTCP)                                               # Close the TCP connection
-            global_.running.clear()                                             # Free up the running flag
-            return
-        
-        if(lz >= lx or lz < 1):
-            self.interface.sendReply("-lz must be within the scan frame")
-            self.disconnect(NTCP)                                               # Close the TCP connection
-            global_.running.clear()                                             # Free up the running flag
-            return
-            
-        updown = 1
-        if(scanDir == "up"): updown = -1
-        x,y,w,h,angle = scanFrame
-        angle = -angle*math.pi/180
-        start = np.array([x,y])
-        start[0] -= w/2
-        start[1] += (h/2 - h*(lz/lx))*updown
-        start = utilities.rotate(origin=[x,y], point=start, angle=angle)
-        
-        end = np.array([x,y])
-        end[0] += w/2
-        end[1] += (h/2 - h*(lz/lx))*updown
-        end = utilities.rotate(origin=[x,y], point=end, angle=angle)
-        marks.LineDraw(start=start,end=end)
-        
-        scanModule.BufferSet(pixels=px,lines=lx)
-        scanModule.SpeedSet(fwd_line_time=ft,speed_ratio=speedRatio)
-        scanModule.PropsSet(series_name=tempBasename)                           # Set the basename in nanonis
-        
-        zController.OnOffSet(on=1)                                              # Turn on the controller to get reference
-        time.sleep(0.25)
-        zController.SetpntSet(setpoint=abs(iset))                               # Update setpoint current in nanonis
-        time.sleep(0.5)
-        self.rampBias(NTCP, bias=bset)
-        
-        zref = 0
-        time.sleep(0.5)
-        for i in range(100):
-            zref += zController.ZPosGet()/100                                   # Average 100 values of z position. This is the position zi and zf are relative to
-            time.sleep(0.01)                                                    # 10 ms sample rate
-        
-        time.sleep(0.25)
-        zController.OnOffSet(on=0)                                              # Turn off the controller
-        time.sleep(0.25)
-        self.rampBias(NTCP, bias=bias)
-        time.sleep(0.5)
-        zController.ZPosSet(zpos=zref + zset)                                   # Go to the setpoint
-        time.sleep(0.25)
-        
-        scanModule.Action('start',scan_direction=scanDir)
-        while(True):  
-            timeout,_,_= scanModule.WaitEndOfScan(timeout=int((ft+bt)*1000))
-            if(self.checkEventFlags() or not timeout):                          # Check event flags
-                marks.LinesErase()
-                time.sleep(0.25)
-                zController.OnOffSet(on=1)                                      # Turn on the controller
-                time.sleep(0.25)
-                zController.SetpntSet(setpoint=abs(iset))                       # Update setpoint current in nanonis
-                time.sleep(0.25)
-                scanModule.PropsSet(series_name=basename)                       # Put back the original basename
-                self.interface.sendReply("registration " + suffix + " stopped")
-                self.disconnect(NTCP)                                           # Close the TCP connection
-                global_.running.clear()                                         # Free up the running flag
-                return
+        with self.nanonis() as NTCP:
+            try:        
+                scanModule = Scan(NTCP)
+                biasModule = Bias(NTCP)
+                zController = ZController(NTCP)
+                folme = FolMe(NTCP)
+                marks = Marks(NTCP)
                 
-            _,scanData,_ = scanModule.FrameDataGrab(0, 1)                       # 0 = Current
-            scanData = np.sum(abs(scanData),axis=1)
-            lines = sum(scanData > 0)
-            if(lines > lz):
-                scanModule.Action('pause',scan_direction=scanDir)
-                time.sleep(1)
-                zController.ZPosSet(zpos=zref+zset+dz)                          # Apply dz offset
-                time.sleep(1)
-                scanModule.Action('resume',scan_direction=scanDir)
-                break
-            
-        _, _, filePath = scanModule.WaitEndOfScan()
-        if(not filePath): pass
-        
-        _,scanData,_ = scanModule.FrameDataGrab(0, 1)                           # 0 = Current
-        pngFilename = self.makePNG(scanData, filePath)                          # Generate a png from the scan data
-        self.interface.sendPNG(pngFilename)        # Send a png 
-            
-        time.sleep(0.25)
-        zController.OnOffSet(on=1)                                              # Turn on the controller
-        
-        time.sleep(0.25)
-        zController.SetpntSet(setpoint=abs(iset))                               # Update setpoint current in nanonis
-        time.sleep(0.25)
-        scanModule.PropsSet(series_name=basename)                               # Put back the original basename
-        
-        marks.LinesErase()
-        self.interface.sendReply("registration " + suffix + " complete")
-        
-        self.disconnect(NTCP)                                                   # Close the TCP connection
-        global_.running.clear()                                                 # Free up the running flag
+                seriesName = scanModule.PropsGet()[3]
+                scanModule.PropsSet(continuous_scan=2,bouncy_scan=2,autosave=1,series_name=seriesName)
+                self.plotChannel(a=self.zchannel)
+
+                tipPos    = folme.XYPosGet(Wait_for_newest_data=1)
+                scanFrame = scanModule.FrameGet()
+                if(not self.tipInFrame(tipPos,scanFrame)):
+                    raise RuntimeError("Tip must be in scan frame to get setpoint")
+                
+                currentISet = zController.SetpntGet()
+                if(not iset == '-default'):                                             # Only update setpoint if the user provided it
+                    if(abs(iset) > 1e-9):                                               # Limit to 1 nA to avoid accidental setpoints
+                        raise RuntimeError('Maximum setpoint using -iset is 1 nA. If you want iset > 1 nA, put the setting into nanonis and run zdep without the -iset param.')
+                else:
+                    iset = currentISet
+                
+                basename = self.interface.topoBasename                                  # Get the basename that's been set in config file
+                if(not basename): basename = scanModule.PropsGet()[3]                   # Get the save basename from nanonis if one isn't supplied
+                tempBasename = basename + '_' + suffix + '_'                            # Create a temp basename for this survey
+                scanModule.PropsSet(series_name=tempBasename)                           # Set the basename in nanonis for this survey
+                
+                _,_,pixels,lines = scanModule.BufferGet()
+                if(px   == '-default'):
+                    px = pixels
+                    lx = lines
+                
+                if(lx   == 0): lx = px                                                  # Scan frame is square if lx = 0
+                
+                _,_,fwdTime,bwdTime,_,_ = scanModule.SpeedGet()
+                if(ft == '-default'): ft = fwdTime
+                if(bt == '-default'): bt = bwdTime
+                speedRatio = ft/bt                                                      # Speed ratio is forward time per line/backward time per line
+                
+                v = biasModule.Get()
+                if(bset == '-default'): bset = v
+                if(bias == '-default'): bias = v
+                if(not abs(bset) > 1e-3):                                               # Limit to 1 mV to avoid accidental crashes
+                    raise RuntimeError("Cannot set -bset to 0 V or tip will crash")
+                
+                scanDir = scanDir.lower()
+                if(not scanDir in ["down","up"]):
+                    raise RuntimeError("Scan direction must be either 'up' or 'down'")
+                
+                if(lz >= lx or lz < 1):
+                    raise RuntimeError("-lz must be within the scan frame")
+                    
+                updown = 1
+                if(scanDir == "up"): updown = -1
+                x,y,w,h,angle = scanFrame
+                angle = -angle*math.pi/180
+                start = np.array([x,y])
+                start[0] -= w/2
+                start[1] += (h/2 - h*(lz/lx))*updown
+                start = utilities.rotate(origin=[x,y], point=start, angle=angle)
+                
+                end = np.array([x,y])
+                end[0] += w/2
+                end[1] += (h/2 - h*(lz/lx))*updown
+                end = utilities.rotate(origin=[x,y], point=end, angle=angle)
+                marks.LineDraw(start=start,end=end)
+                
+                scanModule.BufferSet(pixels=px,lines=lx)
+                scanModule.SpeedSet(fwd_line_time=ft,speed_ratio=speedRatio)
+                scanModule.PropsSet(series_name=tempBasename)                           # Set the basename in nanonis
+                
+                zController.OnOffSet(on=1)                                              # Turn on the controller to get reference
+                time.sleep(0.25)
+                zController.SetpntSet(setpoint=abs(iset))                               # Update setpoint current in nanonis
+                time.sleep(0.5)
+                self.rampBias(NTCP, bias=bset)
+                
+                zref = 0
+                time.sleep(0.5)
+                for i in range(100):
+                    zref += zController.ZPosGet()/100                                   # Average 100 values of z position. This is the position zi and zf are relative to
+                    time.sleep(0.01)                                                    # 10 ms sample rate
+                
+                time.sleep(0.25)
+                zController.OnOffSet(on=0)                                              # Turn off the controller
+                time.sleep(0.25)
+                self.rampBias(NTCP, bias=bias)
+                time.sleep(0.5)
+                zController.ZPosSet(zpos=zref + zset)                                   # Go to the setpoint
+                time.sleep(0.25)
+                
+                scanModule.Action('start',scan_direction=scanDir)
+                while(True):  
+                    timeout,_,_= scanModule.WaitEndOfScan(timeout=int((ft+bt)*1000))
+                    if(self.checkEventFlags() or not timeout):                          # Check event flags
+                        marks.LinesErase()
+                        time.sleep(0.25)
+                        zController.OnOffSet(on=1)                                      # Turn on the controller
+                        time.sleep(0.25)
+                        zController.SetpntSet(setpoint=abs(iset))                       # Update setpoint current in nanonis
+                        time.sleep(0.25)
+                        scanModule.PropsSet(series_name=basename)                       # Put back the original basename
+                        self.interface.sendReply("registration " + suffix + " stopped")
+                        return
+                        
+                    _,scanData,_ = scanModule.FrameDataGrab(0, 1)                       # 0 = Current
+                    scanData = np.sum(abs(scanData),axis=1)
+                    lines = sum(scanData > 0)
+                    if(lines > lz):
+                        scanModule.Action('pause',scan_direction=scanDir)
+                        time.sleep(1)
+                        zController.ZPosSet(zpos=zref+zset+dz)                          # Apply dz offset
+                        time.sleep(1)
+                        scanModule.Action('resume',scan_direction=scanDir)
+                        break
+                    
+                _, _, filePath = scanModule.WaitEndOfScan()
+                if(not filePath): pass
+                
+                _,scanData,_ = scanModule.FrameDataGrab(0, 1)                           # 0 = Current
+                pngFilename = self.makePNG(scanData, filePath)                          # Generate a png from the scan data
+                self.interface.sendPNG(pngFilename)        # Send a png 
+                    
+                time.sleep(0.25)
+                zController.OnOffSet(on=1)                                              # Turn on the controller
+                
+                time.sleep(0.25)
+                zController.SetpntSet(setpoint=abs(iset))                               # Update setpoint current in nanonis
+                time.sleep(0.25)
+                scanModule.PropsSet(series_name=basename)                               # Put back the original basename
+                
+                marks.LinesErase()
+                self.interface.sendReply("registration " + suffix + " complete")
+            except RuntimeError as e:   
+                self.interface.sendReply(str(e))
+            except Exception as e:
+                self.interface.sendReply("Error during registration: " + str(e))
+                raise
+            finally:
+                global_.running.clear()                                                 # Free up the running flag
         
 ###############################################################################
 # Tip Actions
 ###############################################################################
-    def moveArea(self,up,upV,upF,direction,steps,dirV,dirF,zon,approach=True,demo=False):
+    def moveArea(self,up,upV,upF,direction,steps,dirV,dirF,zon,approach,demo=False):
         """
         This function blindly moves the tip. The tip can never be moved down.
         The tip is first moved in Z+ before moving in any other direction.
@@ -1204,333 +1173,134 @@ class scanbot():
         False if error or crash detected.
 
         """
-        NTCP,connection_error = self.connect()                                  # Connect to nanonis via TCP
-        if(connection_error): return connection_error                           # Return error message if there was a problem connecting        
-        
-        # Safety checks
-        if(up < 10):
-            # self.disconnect(NTCP)
-            # self.interface.sendReply("-up must be > 10")
-            return False
-        
-        if(upV > self.zMaxV):
-            upV = self.zMaxV
-            # self.disconnect(NTCP)
-            # self.interface.sendReply("-upV 300 V max")
-            # return False
-        
-        if(upF > self.zMaxF):
-            upF = self.zMaxF
-            # self.disconnect(NTCP)
-            # self.interface.sendReply("-upF 2.5 kHz max")
-            # return False
-        
-        if(dirV > self.xyMaxV):
-            dirV = self.xyMaxV
-            # self.disconnect(NTCP)
-            # self.interface.sendReply("-dirV 200 V max")
-            # return False
-        
-        if(dirF > self.xyMaxF):
-            dirF = self.xyMaxF
-            # self.disconnect(NTCP)
-            # self.interface.sendReply("-dirF 2.5 kHz max")
-            # return False
-        
-        if(upV < self.zMinV):
-            upV = self.zMinV
-            # self.disconnect(NTCP)                                               # Close the TCP connection
-            # self.interface.sendReply("-upV must be between 1 V and 200 V")
-            # return False
+        with self.nanonis() as NTCP:
+            try:
+                # Safety checks
+                if(up < 10):
+                    raise RuntimeError("-up must be > 10")
+                
+                if(upV > self.zMaxV):
+                    raise RuntimeError(f"-upV must be between {self.zMinV} V and {self.zMaxV} V")
+                
+                if(upF > self.zMaxF):
+                    raise RuntimeError(f"-upF must be between {self.zMinF} Hz and {self.zMaxF} Hz")
+                
+                if(dirV > self.xyMaxV):
+                    raise RuntimeError(f"-dirV must be between {self.xyMinV} V and {self.xyMaxV} V")
+                
+                if(dirF > self.xyMaxF):
+                    raise RuntimeError(f"-dirF must be between {self.xyMinF} Hz and {self.xyMaxF} Hz")
+                
+                if(upV < self.zMinV):
+                    raise RuntimeError(f"-upV must be between {self.zMinV} V and {self.zMaxV} V")
+                    
+                if(upF < self.zMinF):
+                    raise RuntimeError(f"-upF must be between {self.zMinF} Hz and {self.zMaxF} Hz")
+                
+                if(dirV < self.xyMinV):
+                    raise RuntimeError(f"-dirV must be between {self.xyMinV} V and {self.xyMaxV} V")
+                    
+                if(dirF < self.xyMinF):
+                    raise RuntimeError(f"-dirF must be between {self.xyMinF} Hz and {self.xyMaxF} Hz")
+                
+                if(not direction in ["X+","X-","Y+","Y-"]):
+                    raise RuntimeError("-dir can only be X+, X-, Y+, Y-")
+                
+                if(steps < 0):
+                    raise RuntimeError("-steps must be > 0")
+                
+                if(up < 0):
+                    raise RuntimeError("-up must be > 0")
+                
+                motor         = Motor(NTCP)                                             # Nanonis Motor module
+                zController   = ZController(NTCP)                                       # Nanonis ZController module
+                autoApproach  = AutoApproach(NTCP)                                      # Nanonis AutoApproach module
+                
+                self.stop(NTCP)
+                
+                print("withdrawing")
+                zController.Withdraw(wait_until_finished=True,timeout=3)                # Withdwar the tip
+                print("withdrew")
+                time.sleep(0.25)
+                
+                if(not demo):
+                    motor.FreqAmpSet(upF,upV)                                               # Set the motor controller params appropriate for Z piezos
+                    motor.StartMove("Z+",up,wait_until_finished=True)                       # Retract the tip +Z direction
+                print("Moving motor: Z+" + " " + str(up) + "steps")
+                time.sleep(0.5)
+                
+                stepsAtATime = 10                                                       # Moving the motor across 10 steps at a time to be safe
+                leftOver     = steps%stepsAtATime                                       # Continue moving motor a few steps if stes is not divisible by 10
+                steps        = int(steps/stepsAtATime)                                  # Sets of 10 steps
+                
+                isSafe = True
+                if(not demo):
+                    motor.FreqAmpSet(dirF,dirV)                                             # Set the motor controller params appropriate for XY piezos
+                for s in range(steps):
+                    if(not demo):
+                        motor.StartMove(direction,stepsAtATime,wait_until_finished=True)    # Move safe number of steps at a time
+                    print("Moving motor: " + direction + " " + str(stepsAtATime) + "steps")
+                    isSafe = self.safeCurrentCheck(NTCP)                # Safe retract if current overload
+                    if(not isSafe):
+                        raise RuntimeError("Could not complete move_area... Safe retract was triggered because the current exceeded "
+                                            + str(self.safeCurrent*1e9) + " nA"
+                                            + " while moving areas")
+
+                    time.sleep(0.25)
+                
+                if(not demo):
+                    motor.StartMove(direction,leftOver,wait_until_finished=True)
+                print("Moving motor: " + direction + " " + str(leftOver) + "steps")
+                time.sleep(0.5)
+                
+                isSafe = self.safeCurrentCheck(NTCP)                    # Safe retract if current overload
+                if(not isSafe):
+                    raise RuntimeError("Could not complete move_area... Safe retract was triggered because the current exceeded "
+                                        + str(self.safeCurrent*1e9) + " nA"
+                                        + " while moving areas")
+                
+                if(approach):
+                    if(not demo):
+                        motor.FreqAmpSet(upF,upV)
+                
+                    autoApproach.Open()
+                    time.sleep(1)                                                       # Module needs time to open
+                    autoApproach.OnOffSet(on_off=True)
+                    
+                    while(autoApproach.OnOffGet()):
+                        print("Still approaching...")
+                        time.sleep(2)
+                
+                    time.sleep(1)
+                    if(zon): zController.OnOffSet(True)
+                
+                    time.sleep(3)
+                return True
             
-        if(upF < self.zMinF):
-            upF = self.zMinF
-            # self.disconnect(NTCP)                                               # Close the TCP connection
-            # self.interface.sendReply("-upF must be between 500 Hz and 2.5 kHz")
-            # return False
-        
-        if(dirV < self.xyMinV):
-            dirV = self.xyMinV
-            # self.disconnect(NTCP)                                               # Close the TCP connection
-            # self.interface.sendReply("-upV must be between 1 V and 200 V")
-            # return False
-            
-        if(dirF < self.xyMinF):
-            dirF = self.xyMinF
-            # self.disconnect(NTCP)                                               # Close the TCP connection
-            # self.interface.sendReply("-upF must be between 500 Hz and 2.5 kHz")
-            # return False
-        
-        if(not direction in ["X+","X-","Y+","Y-"]):
-            self.disconnect(NTCP)                                               # Close the TCP connection
-            self.interface.sendReply("-dir can only be X+, X-, Y+, Y-")
-            return False
-        
-        if(steps < 0):
-            self.disconnect(NTCP)
-            self.interface.sendReply("-steps must be > 0")
-            return False
-        
-        if(up < 0):
-            self.disconnect(NTCP)
-            self.interface.sendReply("-up must be > 0")
-            return False
-        
-        motor         = Motor(NTCP)                                             # Nanonis Motor module
-        zController   = ZController(NTCP)                                       # Nanonis ZController module
-        autoApproach  = AutoApproach(NTCP)                                      # Nanonis AutoApproach module
-        
-        self.stop()
-        
-        print("withdrawing")
-        zController.Withdraw(wait_until_finished=True,timeout=3)                # Withdwar the tip
-        print("withdrew")
-        time.sleep(0.25)
-        
-        if(not demo):
-            motor.FreqAmpSet(upF,upV)                                               # Set the motor controller params appropriate for Z piezos
-            motor.StartMove("Z+",up,wait_until_finished=True)                       # Retract the tip +Z direction
-        print("Moving motor: Z+" + " " + str(up) + "steps")
-        time.sleep(0.5)
-        
-        stepsAtATime = 10                                                       # Moving the motor across 10 steps at a time to be safe
-        leftOver     = steps%stepsAtATime                                       # Continue moving motor a few steps if stes is not divisible by 10
-        steps        = int(steps/stepsAtATime)                                  # Sets of 10 steps
-        
-        isSafe = True
-        if(not demo):
-            motor.FreqAmpSet(dirF,dirV)                                             # Set the motor controller params appropriate for XY piezos
-        for s in range(steps):
-            if(not demo):
-                motor.StartMove(direction,stepsAtATime,wait_until_finished=True)    # Move safe number of steps at a time
-            print("Moving motor: " + direction + " " + str(stepsAtATime) + "steps")
-            isSafe = self.safeCurrentCheck(NTCP)                # Safe retract if current overload
-            if(not isSafe):
-                self.disconnect(NTCP)                                           # Close the TCP connection
-                self.interface.sendReply("Could not complete move_area...")
-                self.interface.sendReply("Safe retract was triggered because the current exceeded "
-                                         + str(self.safeCurrent*1e9) + " nA"
-                                         + " while moving areas")
+            except RuntimeError as e:
+                self.interface.sendReply(str(e))
                 return False
-                
-            time.sleep(0.25)
-        
-        if(not demo):
-            motor.StartMove(direction,leftOver,wait_until_finished=True)
-        print("Moving motor: " + direction + " " + str(leftOver) + "steps")
-        time.sleep(0.5)
-        
-        isSafe = self.safeCurrentCheck(NTCP)                    # Safe retract if current overload
-        if(not isSafe):
-            self.disconnect(NTCP)                                               # Close the TCP connection
-            self.interface.sendReply("Could not complete move_area...")
-            self.interface.sendReply("Safe retract was triggered because the current exceeded "
-                                     + str(self.safeCurrent*1e9) + " nA"
-                                     + " while moving areas")
-            return False
-        
-        if(approach):
-            if(not demo):
-                motor.FreqAmpSet(upF,upV)
-        
-            autoApproach.Open()
-            time.sleep(1)                                                       # Module needs time to open
-            autoApproach.OnOffSet(on_off=True)
-            
-            while(autoApproach.OnOffGet()):
-                print("Still approaching...")
-                time.sleep(2)
-        
-            time.sleep(1)
-            if(zon): zController.OnOffSet(True)
-        
-            time.sleep(3)
-        
-        self.disconnect(NTCP)                                                   # Close the TCP connection
-        
-        return True
+            except Exception as e:
+                self.interface.sendReply("Error during move_area: " + str(e))
+                raise
     
-    def moveTip(self,lightOnOff,cameraPort,trackOnly,xStep,zStep,xV,zV,xF,zF,target=[],tipPos=[],iamauto=False):
-        """
-        This function moves the tip to a desired target location while tracking
-        it's position using the camera feed. In order for a tip to be moved to 
-        a target, the target z-coordinate must be above the tip's current 
-        coordinate (the tip can never be moved down for safety). Scanbot will 
-        make sure the tip's z-coordinate is above the target coordinate before 
-        moving along the X direction.
-        
-        This function can be called by the user directly, where they will be 
-        prompted to mark the tip's current location as well as the target 
-        location.
-        
-        It is also called by Scanbot during autonomous operation. The tip's 
-        initial position must be set using the autoInit function before this 
-        works.
-        
-        Parameters
-        ----------
-        lightOnOff : Flag to call hook hk_light. If set, a python script 
-                     (~/scanbot/scanbot/hk_light.py) is called to turn the 
-                     light on and off before/after moving the tip
-        cameraPort : usually if you have a desktop windows machine with one 
-                     camera plugged in, set this to 0. laptops with built-in 
-                     cameras will probably be 1
-        trackOnly  : Used for testing only.
-        xStep      : Motor steps in x-direction when moving the tip in X+ or X-
-        zStep      : Motor steps in Z+ when moving the tip up in Z+.
-        xV         : Piezo voltage during xStep (V)
-        zV         : Piezo voltage during zStep (V)
-        xF         : Piezo frequency during xStep (Hz)
-        zF         : Piezo frequency during zStep (Hz)
-        target     : Target position (used in autonomous mode)
-        tipPos     : Current tip position (used in autonomous mode)
-        iamauto    : Flag for when this function was called in autonomous mode
-
-        """
-        self.currentAction["action"] = "movetip"
-        if(lightOnOff):                                                         # If we want to turn the light on
-            try:
-                turn_on()                                                       # Call the hook to do so. Hook should return null if successful, otherwise it should throw an Exception
-            except Exception as e:
-                self.interface.sendReply("Error calling hook hk_light.py to turn on light")
-                global_.running.clear()                                         # Free up the running flag
-                return str(e)
-        
-        cap = utilities.getVideo(cameraPort,self.autoInitDemo)
-        ret,frame = utilities.getAveragedFrame(cap,n=1)                         # Read the first frame of the video to test camera feed
-        if(not ret):
-            self.interface.sendReply("Error finding camera feed. Check camera port.")
-            global_.running.clear()                                             # Free up the running flag
-            cap.release()
-            cv2.destroyAllWindows()
-            return
-        
-        if(not len(tipPos)):
-            self.interface.sendReply("Select a marker for the tip location. Press 'q' to cancel")
-            tipPos = utilities.markPoint(cap)
-        
-        if(not len(target) and not trackOnly):
-            ret,frame = utilities.getAveragedFrame(cap,n=1)                     # Read the first frame of the video
-            
-            self.interface.sendReply("Select target location for the tip. Press 'q' to cancel and enter track-only mode")
-            target = utilities.markPoint(cap)
-        
-        if(len(target)):
-            if(target[1] - tipPos[1] > 0 and not iamauto):
-                self.interface.sendReply("Error: cannot move tip lower than current position. Track-Only mode activated")
-                target = []
-            
-        print("target",target)
-        if(not len(target)): trackOnly = True
-        
-        success = True
-        targetHit = False
-        previousPos = np.array([0,0])
-        previousTime = time.time()
-        # pk = []
-        currentPos = tipPos.copy()
-        
-        while(cap.isOpened()):
-            if(not success):
-                self.interface.sendReply("Error moving area... tip crashed... stopping")
-                global_.running.clear()
-                break
-            
-            ret, frame = utilities.getAveragedFrame(cap,n=11,initialFrame=self.initialFrame.copy())
-            if(not ret): break
-        
-            currentPos = utilities.trackTip(frame,currentPos)
-            
-            # print(currentPos)
-            
-            ret, frame = cap.read()
-            if(not ret): break
-            rec = cv2.circle(frame, currentPos, radius=3, color=(0, 0, 255), thickness=-1)
-            if(len(target)): rec = cv2.circle(rec, target, radius=3, color=(0, 255, 0), thickness=-1)
-                
-            cv2.imshow('Frame',rec)
-            
-            if cv2.waitKey(25) & 0xFF == ord('q'): break                        # Press Q on keyboard to  exit
-            if(self.checkEventFlags()): break                                   # Check event flags
-            
-            if(self.interface.run_mode == 'react'):
-            
-                if(not (currentPos == previousPos).all()):
-                    # pk.append([rec,currentPos,frame])
-                    previousPos = currentPos.copy()
-
-                    if(previousTime + 5 < time.time()):
-                        pngFilename = self.makePNG(rec[:, :, ::-1],pngFilename="tiptracking.png",fit=False,process=False)
-                        self.interface.sendPNG(pngFilename)
-                        previousTime = time.time()
-
-            if(trackOnly): continue
-            
-            if(currentPos[1] > target[1]):                                      # First priority is to always keep the tip above this line
-                if(self.autoInitDemo):
-                    print("Moving up")
-                    continue
-                success = self.moveArea(up=zStep, upV=zV, upF=zF, direction="X+", steps=0, dirV=xV, dirF=xF, zon=False, approach=False)
-                continue
-            if(currentPos[0] < target[0]):
-                if(self.autoInitDemo):
-                    print("Moving right")
-                    continue
-                success = self.moveArea(up=10, upV=zV, upF=zF, direction="X+", steps=xStep, dirV=xV, dirF=xF, zon=False, approach=False)
-                continue
-            if(currentPos[0] > target[0]):
-                if(self.autoInitDemo):
-                    print("Moving left")
-                    continue
-                success = self.moveArea(up=10, upV=zV, upF=zF, direction="X-", steps=xStep, dirV=xV, dirF=xF, zon=False, approach=False)
-                continue
-            
-            targetHit = True
-            self.interface.sendReply("Target Hit!")
-            break                                                               # Target reached!
-        
-        cap.release()
-        cv2.destroyAllWindows()
-        # import pickle
-        # pickle.dump(pk,open('test.pk','wb'))
-        if(iamauto):
-            self.tipPos = currentPos
-        
-        if(lightOnOff):                                                         # If we want to turn the light off
-            try:
-                from hk_light import turn_off
-                turn_off()                                                      # Call the hook to do so. Hook should return null if successful, otherwise it should throw an Exception
-            except Exception as e:
-                self.interface.sendReply("Error calling hook hk_light.py to turn light off")
-                global_.running.clear()                                         # Free up the running flag
-                return str(e)
-            
-        if(targetHit and iamauto): return "Target Hit"                          # Keep the running flag going because we might be approaching after this.
-        
-        global_.running.clear()                                                 # Free up the running flag
-        
-        return
-        
-    def tipShape(self):
+    def tipShape(self, NTCP):
         """
         This function executes a tip shape based on parameters currently set in
         nanonis. Change the tip shaping parameters using the tip_shape_props 
         Scanbot command or by simply changing them in nanonis.
 
         """
-        NTCP,connection_error = self.connect()                                  # Connect to nanonis via TCP
-        if(connection_error): return connection_error                           # Return error message if there was a problem connecting
-        
         tipShaper = TipShaper(NTCP)
         
         try:
             tipShaper.Start(wait_until_finished=True,timeout=-1)
         except Exception as e:
             self.interface.sendReply(str(e))
+            raise
         
-        self.disconnect(NTCP)
         
-    def tipShapeProps(self,sod,cb,b1,z1,t1,b2,t2,z3,t3,wait,fb):
+    def tipShapeProps(self,sod,cb,b1,z1,t1,b2,t2,z3,t3,wait,fb,NTCP=None):
         """
         This function configures the tip shaping properties.
 
@@ -1549,261 +1319,44 @@ class scanbot():
         fb    : Flag to turn feedback back on after t3
 
         """
-        NTCP,connection_error = self.connect()                                  # Connect to nanonis via TCP
-        if(connection_error): return connection_error                           # Return error message if there was a problem connecting
-         
-        tipShaper  = TipShaper(NTCP)
-        
-        try:
-            default_args = tipShaper.PropsGet()                                 # Store all the current tip shaping settings in nanonis
-        except Exception as e:
-            self.interface.sendReply(str(e))
-            self.disconnect(NTCP)
-            return
-            
-        tipShaperArgs = [sod,cb,b1,z1,t1,b2,t2,z3,t3,wait,fb]                   # Order matters here
-        for i,a in enumerate(tipShaperArgs):
-            if(a=="-default"):
-                tipShaperArgs[i] = default_args[i]
-        
-        z1 = tipShaperArgs[3]
-        if(z1 < -50e-9):
-            self.interface.sendReply("Limit for z1=-50e-9 m")
-            self.disconnect(NTCP)
-            return
-        
-        z3 = tipShaperArgs[7]
-        if(z3 < -50e-9):
-            self.interface.sendReply("Limit for z3=-50e-9 m")
-            self.disconnect(NTCP)
-            return
-        
-        if(z1 > 0):
-            self.interface.sendReply("Sure you want a positive z1?")
-            
-        if(z3 < 0):
-            self.interface.sendReply("Sure you want a negative z3?")
-            
-        tipShaper.PropsSet(*tipShaperArgs)                                      # update the tip shaping params in nanonis
-        
-        self.disconnect(NTCP)
+        with NTCP or self.nanonis() as NTCP:
+            try:
+                tipShaper  = TipShaper(NTCP)
+                
+                try:
+                    default_args = tipShaper.PropsGet()                                 # Store all the current tip shaping settings in nanonis
+                except Exception as e:
+                    raise RuntimeError("Tip Shaper module must be open in Nanonis to set tip shaping properties.")
+                    
+                tipShaperArgs = [sod,cb,b1,z1,t1,b2,t2,z3,t3,wait,fb]                   # Order matters here
+                for i,a in enumerate(tipShaperArgs):
+                    if(a=="-default"):
+                        tipShaperArgs[i] = default_args[i]
+                
+                z1 = tipShaperArgs[3]
+                if(z1 < -50e-9):
+                    raise RuntimeError("Limit for z1=-50e-9 m")
+                
+                z3 = tipShaperArgs[7]
+                if(z3 < -50e-9):
+                    raise RuntimeError("Limit for z3=-50e-9 m")
+                
+                if(z1 > 0):
+                    raise RuntimeError("z1 must be negative (i.e. -1e-9 m)")
+                    
+                if(z3 < 0):
+                    raise RuntimeError("z3 must be positive (i.e. 1e-9 m)")
+
+                tipShaper.PropsSet(*tipShaperArgs)                                      # update the tip shaping params in nanonis
+            except RuntimeError as e:
+                self.interface.sendReply(str(e))
+            except Exception as e:
+                self.interface.sendReply("Error during tip_shape_props: " + str(e))
+                raise
         
 ###############################################################################
 # Auto STM
 ###############################################################################
-    def autoInit(self,lightOnOff,cameraPort,demo,reactMode):
-        """
-        This function initialises the tip, 'sample', and 'clean metal' 
-        locations. It must be run before any commands that track and maneuver 
-        the tip autonomously.
-
-        Parameters
-        ----------
-        lightOnOff : Call to the hk_light hook which is designed to turn the 
-                     STM light on/off if required.
-        cameraPort : Usually 0 if there's only one camera connected. 1 for 
-                     laptops that have built-in cameras already.
-        demo       : Run this in demo mode which uses a recording instead of a 
-                     live camera feed.
-
-        Returns
-        -------
-        String if an error occurred.
-
-        """
-        self.currentAction["action"] = "autoinit"
-        self.autoInitSet = False
-        self.autoInitDemo = demo
-        if(reactMode and not demo):
-            global_.running.clear()                                         # Free up the running flag
-            try:
-                pkpath = self.interface.module_dir + "autoInit/autoInit.pk"
-                autoinitDict = pickle.load(open(pkpath,'rb'))
-                self.tipPos         = autoinitDict['tipLocation']
-                self.samplePos      = autoinitDict['sampleLocation']
-                self.cleanMetalPos  = autoinitDict['metalLocation']
-                self.initialFrame   = autoinitDict['initialFrame'][:, :, ::-1] # Convert image to BGR from RGB because cv2 does BGR?
-                tipInFrame          = autoinitDict['tipInFrame'][:, :, ::-1] 
-
-                self.autoInitSet    = True
-
-                rec = cv2.circle(tipInFrame.astype(np.uint8), self.tipPos, radius=3, color=(0, 0, 255), thickness=-1)
-                rec = cv2.circle(rec, self.samplePos, radius=3, color=(0, 255, 0), thickness=-1)
-                rec = cv2.circle(rec, self.cleanMetalPos, radius=3, color=(0, 255, 0), thickness=-1)
-                
-                pkpath = self.interface.module_dir + "autoInit/initialisation.png"
-                cv2.imwrite(pkpath,rec)
-                return
-            
-            except Exception as e:
-                print("Error!",e)
-                return str(e)
-            
-        if(lightOnOff):                                                         # If we want to turn the light on
-            try:
-                from hk_light import turn_on
-                turn_on()                                                       # Call the hook to do so. Hook should return null if successful, otherwise it should throw an Exception
-            except Exception as e:
-                self.interface.sendReply("Error calling hook hk_light.py to turn on the light")
-                global_.running.clear()                                         # Free up the running flag
-                return str(e)
-        
-        cap = utilities.getVideo(cameraPort,self.autoInitDemo)
-        
-        ret,frame = utilities.getAveragedFrame(cap,n=1)                         # Read the first frame of the video
-        if(not ret):
-            self.interface.sendReply("Error finding camera feed. Check camera port.")
-            global_.running.clear()                                             # Free up the running flag
-            cap.release()
-            cv2.destroyAllWindows()
-            return
-        
-        self.interface.sendReply("Move the tip completely out of view of the camera. 'q' to cancel")
-        initialFrame = utilities.getInitialFrame(cap,demo=self.autoInitDemo)
-        if(not len(initialFrame)):
-            self.interface.sendReply("Cancelling...")
-            global_.running.clear()                                             # Free up the running flag
-            cap.release()
-            cv2.destroyAllWindows()
-            return
-        
-        self.interface.sendReply("Move the tip back into view of the camera. 'q' to cancel")
-        goAhead = utilities.displayUntilClick(cap)
-        if(not goAhead):
-            self.interface.sendReply("Cancelling...")
-            global_.running.clear()                                             # Free up the running flag
-            cap.release()
-            cv2.destroyAllWindows()
-            return
-            
-        self.interface.sendReply("Place a marker at the tip location. Press 'q' to cancel")
-        tipPos = utilities.markPoint(cap,windowName="Mark tip location")
-        if(not len(tipPos)):
-            self.interface.sendReply("Cancelling...")
-            global_.running.clear()                                             # Free up the running flag
-            cap.release()
-            cv2.destroyAllWindows()
-            return
-        
-        self.interface.sendReply("Place a marker at a safe height above the clean metal. Press 'q' to cancel")
-        cleanMetalPos = utilities.markPoint(cap,windowName="Mark clean metal location")
-        if(not len(cleanMetalPos)):
-            self.interface.sendReply("Cancelling...")
-            global_.running.clear()                                             # Free up the running flag
-            cap.release()
-            cv2.destroyAllWindows()
-            return
-        
-        self.interface.sendReply("Place a marker at a safe height above the sample. Press 'q' to cancel")
-        samplePos = utilities.markPoint(cap,windowName="Mark sample location")
-        if(not len(samplePos)):
-            self.interface.sendReply("Cancelling...")
-            global_.running.clear()                                             # Free up the running flag
-            cap.release()
-            cv2.destroyAllWindows()
-            return
-        
-        ret, frame = utilities.getAveragedFrame(cap,n=11)
-        if(not ret):
-            self.interface.sendReply("Problem with camera feed")
-            global_.running.clear()                                             # Free up the running flag
-            cap.release()
-            cv2.destroyAllWindows()
-            return
-        
-        rec = cv2.circle(frame.astype(np.uint8), tipPos, radius=3, color=(0, 0, 255), thickness=-1)
-        rec = cv2.circle(rec, samplePos, radius=3, color=(0, 255, 0), thickness=-1)
-        rec = cv2.circle(rec, cleanMetalPos, radius=3, color=(0, 255, 0), thickness=-1)
-            
-        cv2.imshow('Frame',rec)
-        
-        if(reactMode):
-            module_dir = self.interface.module_dir
-            Path(module_dir + 'autoinit').mkdir(parents=True, exist_ok=True)
-            cv2.imwrite(module_dir + 'autoInit/initialisation.png',rec)
-        
-        self.interface.sendReply("Initialisation complete! If this doens't look correct, run it again.")
-        self.interface.sendReply("Press 'q' to exit (timeout = 30s)")
-        
-        timeout = 0
-        while(timeout < 30):
-            if cv2.waitKey(25) & 0xFF == ord('q'): break                        # Press Q on keyboard to  exit
-            time.sleep(1)
-            timeout += 1
-            
-        cap.release()
-        cv2.destroyAllWindows()
-        
-        self.autoInitSet    = True
-        self.tipPos         = tipPos
-        self.samplePos      = samplePos
-        self.cleanMetalPos  = cleanMetalPos
-        self.initialFrame   = initialFrame
-        
-        self.interface.sendReply("Done")
-        
-        if(lightOnOff):                                                         # If we want to turn the light on
-            try:
-                from hk_light import turn_off
-                turn_off()                                                      # Call the hook to do so. Hook should return null if successful, otherwise it should throw an Exception
-            except Exception as e:
-                self.interface.sendReply("Error calling hook hk_light.py to turn off the light.")
-                global_.running.clear()                                         # Free up the running flag
-                return str(e)
-            
-        global_.running.clear()                                                 # Free up the running flag
-        return
-    
-    def moveTipToTarget(self,lightOnOff, cameraPort, xStep, zStep, xV, zV, xF, zF, approach, tipshape, tipShape_hk, retrn, run, target, autoTipParams=[]):
-        if(not self.autoInitSet):
-            self.interface.sendReply("Error, run the auto_init command to initialise tip, sample, and clean metal locations")
-            global_.running.clear()                                             # Free up the running flag
-            return
-        
-        trackOnly = 0
-        if(target == "sample"):  targetPos = self.samplePos.copy()
-        elif(target == "clean"): targetPos = self.cleanMetalPos.copy()
-        
-        targetHit = self.moveTip(lightOnOff, cameraPort, trackOnly, xStep, zStep, xV, zV, xF, zF,target=targetPos,tipPos=self.tipPos.copy(),iamauto=True)
-        
-        if(not targetHit == "Target Hit"): return
-        
-        if(not approach == 1): return
-        
-        self.moveArea(up=10, upV=zV, upF=zF, direction="X+", steps=0, dirV=xV, dirF=xF, zon=True, demo=self.autoInitDemo) # Approach
-        
-        message = ""
-        if(target == "clean" and tipshape == 1):
-            message = self.autoTipShape(n=20, wh=10e-9, symTarget=0.7, sizeTarget=3, zQA=-85e-11, ztip=-2.5e-9, sleepTime=1, iamauto=True, demo=self.autoInitDemo, tipShape_hk=tipShape_hk)
-            if(not message): message = ""
-        
-        if(not "Tip shaping successful" in message):
-            global_.running.clear()                                             # Free up the running flag
-            return
-            
-        if(not retrn == 1): return
-        
-        targetPos = self.samplePos.copy()
-        targetHit = self.moveTip(lightOnOff, cameraPort, trackOnly, xStep, zStep, xV, zV, xF, zF,target=targetPos,tipPos=self.tipPos.copy(),iamauto=True)
-        
-        if(not targetHit == "Target Hit"): return
-        
-        self.moveArea(up=10, upV=zV, upF=zF, direction="X+", steps=0, dirV=xV, dirF=xF, zon=True, demo=self.autoInitDemo) # Approach
-        
-        global_.running.clear()                                                 # Free up the running flag
-        
-        if(not run in ["survey","survey2"]):
-            self.interface.sendReply("Error running " + run + ". -run must be one of 'survey' or 'survey2'")
-            return
-        
-        if(run == "survey"):
-            self.interface.survey(user_args=[],_help=False,surveyParams=self.surveyParams)
-            return
-                
-        if(run == "survey2"):
-            self.interface.survey2(user_args=[],_help=False,survey2Params=self.survey2Params)
-            return
-        
     def autoTipShape(self,n,wh,symTarget,sizeTarget,zQA,ztip,rng=1,sleepTime=1,demo=False,tipShape_hk="",iamauto=False):
         """
         This function initiates autonomous tip shaping. The process is as 
@@ -1876,219 +1429,207 @@ class scanbot():
 
         """
         self.currentAction["action"] = "autotipshape"
-        if(iamauto): demo = self.autoInitDemo
-
-        NTCP,connection_error = self.connect()                                  # Connect to nanonis via TCP
-        if(connection_error):
-            global_.running.clear()                                             # Free up the running flag
-            return connection_error                                             # Return error message if there was a problem connecting        
-        
-        scanModule  = Scan(NTCP)
-        folme       = FolMe(NTCP)
-        tipShaper   = TipShaper(NTCP)
-        
-        try:
-            tipShapeProps = tipShaper.PropsGet()                                # Use the default tip shaping properties to begin with
-        except Exception as e:                                                  # If this fails, the tip shaper module isn't open. Nanonis does not support opening the tip shaper module using TCP interface
-            global_.running.clear()                                             # Free up the running flag
-            self.disconnect(NTCP)                                               # Close the TCP connection
-            self.interface.sendReply(str(e))                                    # Inform the user
-            return
-        
-        if(zQA > 0 or ztip > 0):
-            global_.running.clear()                                             # Free up the running flag
-            self.disconnect(NTCP)                                               # Close the TCP connection
-            self.interface.sendReply("Tip lifts -zQA and -ztip must be < 0")
-            return
-        
-        if(rng == 1): rng = np.random.default_rng()
-        else: rng = 0
-        
-        hk_tipShapeHistory = []                                                 # Variable used to pass in and out of hk_tipShape
-        hk_tipQA = False                                                        # Initialise the tipQA to False for the first go
-        
-        tipShapeProps[10]   = 1                                                 # Make sure feedback on after tip shape
-        tipShapeProps[3]   = ztip                                               # Amount to dip the tip into the surface
-        tipShapeProps[7]   = -3*ztip                                            # Amount to withdraw the tip from the surface
-        
-        tipCheckerProps     = tipShaper.PropsGet()                              # These will be the tip shaper properties used to perform a light tip-shaping action which is scanned over to assess tip quality
-        tipCheckerProps[1]  = 1                                                 # Turn on the change bias checkbox
-        tipCheckerProps[2]  = 0.1                                               # Bias to change to before tip shaping
-        tipCheckerProps[3]  = zQA                                               # Set initial tip lift
-        tipCheckerProps[4]  = 0.1                                               # Duration of tip lift
-        tipCheckerProps[5]  = 0                                                 # Bias applied while tip is in surface
-        tipCheckerProps[6]  = 0.1                                               # Amount of time tip is in surface
-        tipCheckerProps[7]  = -3*zQA                                            # Tip lift 2
-        tipCheckerProps[8]  = 0.1                                               # Duration of tip lift 2
-        tipCheckerProps[9]  = 0.1                                               # Time to wait before putting bias back
-        tipCheckerProps[10] = 1                                                 # Turn feedback on after tip shape
-        
-        suffix = "sb-auto-tip"
-        basename = self.interface.topoBasename                                  # Get the basename that's been set in config file
-        if(not basename): basename = scanModule.PropsGet()[3]                   # Get the save basename from nanonis if one isn't supplied
-        tempBasename = basename + '_' + suffix + '_'                            # Create a temp basename for this run
-        scanModule.PropsSet(series_name=tempBasename)                           # Set the basename in nanonis
-        
-        attempt = 0                                                             # Keep track of number of attempts to tip shape
-        tipQA   = False                                                         # Temp flag
-        
-        piezo = Piezo(NTCP)
-        range_x,range_y,_ = piezo.RangeGet()
-        dx = 3*wh
-        x = np.linspace(-1, 1,n) * (n-1)*dx/2
-        y = x
-        
-        snakedGrid = []
-        for j in y:
-            for i in x:
-                snakedGrid.append(np.array([i, j, wh, wh]))
-                if(i>range_x/2 or j>range_y/2):
-                    self.interface.sendReply("Error: Grid size exceeds scan area. Reduce -n")
-                    self.disconnect(NTCP)                                       # Close the TCP connection
-                    global_.running.clear()                                     # Free up the running flag
-                    return
-            x = np.array(list(reversed(x)))                                     # Snake the grid - better for drift
-        
-        if(demo):
+        with self.nanonis() as NTCP:                                        # Connect to nanonis via TCP
             try:
-                pkpath = self.interface.module_dir + "../Dev/autoTipShape.pk"
-                demoData = pickle.load(open(pkpath,'rb'))                       # Load in dummy data for demo mode. This is just a few images of various tip imprints
-            except:                                                             # If it faile, maybe we're running in react mode or the user pasted it in the wrong folder
-                pkpath = self.interface.module_dir + "./Dev/autoTipShape.pk"
-                demoData = pickle.load(open(pkpath,'rb'))                       # Load in dummy data for demo mode. This is just a few images of various tip imprints
-            demoIDX = 0                                                         # Keep track of demo data file
-            
-        seriesName = scanModule.PropsGet()[3]
-        scanModule.PropsSet(continuous_scan=2,bouncy_scan=2,autosave=1,series_name=seriesName)
-        self.plotChannel(a=self.zchannel)
-        zchannel_index = self.getChannelIndex(self.zchannel)
-        for frame in snakedGrid:
-            scanModule.FrameSet(*frame)
-            
-            scanModule.Action(scan_action="start",scan_direction="up")          # Start an upward scan
-            for numSeconds in range(sleepTime):                                 # Sleep at one second intervals so we can still stop the routine without lag if we need to
-                time.sleep(1)
-                if(self.checkEventFlags()): break                               # Check event flags
-            if(self.checkEventFlags()): break                                   # Check event flags
+                scanModule  = Scan(NTCP)
+                folme       = FolMe(NTCP)
+                tipShaper   = TipShaper(NTCP)
                 
-            scanModule.Action(scan_action="start",scan_direction="up")          # Restart an upward scan, hopefully image is less drifty now
-            
-            isClean  = True
-            timedOut = True
-            while(timedOut and isClean):                                        # Periodically check if the current scan is of a clean region
-                timedOut, _, filePath = scanModule.WaitEndOfScan(timeout=3000)  # Wait until the scan finishes or 3 sec, whichever occurs first
-                _,cleanImage,_ = scanModule.FrameDataGrab(zchannel_index, 1)    # Image of the 'clean' surface
-                isClean = utilities.isClean(cleanImage,lxy=wh,threshold=0.3e-9,sensitivity=1) # Check if the scan so far is of a clean area
-                if(demo): isClean = True
-            
-            cleanImage = np.flipud(cleanImage)                                  # Flip because the scan direction is up
-            if(not isClean):
-                scanModule.Action(scan_action='stop')
-                self.interface.sendReply("Bad area, moving scan frame")
-                continue                                                        # Don't count the attempt if the area sucks
-            
-            if(not filePath): break                                             # If the scan was stopped before finishing, stop program
-
-            tipCheckPos = utilities.getCleanCoordinate(cleanImage, lxy=wh)      # Do some processing to find a clean location to assess tip quality
-            if(not len(tipCheckPos)):                                           # If no coordinate is returned because the area is bad...
-                continue                                                        # Don't count the attempt if the area sucks
-            
-            tipCheckPos += frame[0:2]                                           # Convert frame-relative coordinate to absolute coordinate
-            folme.XYPosSet(*tipCheckPos,Wait_end_of_move=True)                  # Move the tip to a clean place
-            
-            self.tipShapeProps(*tipCheckerProps)                                # Set the tip shaping properties up for the very light action
-            time.sleep(1)
-            if(self.checkEventFlags()): break                                   # Check event flags
-            self.tipShape()                                                     # Execute the light tip shape
-            time.sleep(1)
-            if(self.checkEventFlags()): break                                   # Check event flags
-            
-            scanModule.Action(scan_action="start",scan_direction="up")          # Start an upward scan
-            _, _, filePath = scanModule.WaitEndOfScan()                         # Wait until the scan finishes
-            if(not filePath): break                                             # If the scan was stopped before finishing, stop program
-            _,tipImprint,_ = scanModule.FrameDataGrab(zchannel_index, 1)        # Image of the tip's crater after very light tip shape action
-            cleanImage = np.flipud(cleanImage)                                  # Flip because the scan direction is up
-            
-            # Probably do something here to periodically check scan area (as
-            # above) in case the tip blew up and left the area a mess.
-            
-            if(demo):
-                tipImprint = demoData[demoIDX]                                  # If we're in demo mode, replace the image with some dummy data
-                demoIDX += 1                                                    # Incrememnt the index to cycle through the dummy data
-                if(demoIDX == len(tipImprint)):
-                    demoIDX = 0                                                 # Loop back to the start - happens when size and symm scores are too tight for dummy data
-                    
-            tipCheckPos -= frame[0:2]                                           # Convert absolute coodinate to frame-relative coordinate
-            symmetry,size,contour = utilities.assessTip(tipImprint,wh,tipCheckPos,True) # Assess the quality of the tip based on the imprint it leaves on the surface
-            
-            imprintFilename = "imprint_size--" + str(int(size*100)/100) + "_symm--" + str(int(symmetry*100)/100) + ".png"
-            imprintPNG = self.makePNG(tipImprint,pngFilename=imprintFilename)
-            self.interface.sendPNG(imprintPNG)
-                
-            self.interface.sendReply("Imprint size: " + str(size) + "\nImprint symm: " + str(symmetry))
-            
-            # if(size < 0): contour not found, do something about that.
-            
-            if(symmetry > symTarget):
-                if(size < sizeTarget and size > 0):
-                    tipQA = True                                                # Tip quality is good if it meets the target scores
-                    if(tipShape_hk and not hk_tipQA):
-                        tipQA = False
-            
-            if(tipQA): break                                                    # Stop the routine if a good tip has been achieved
-            
-            edgeOfFrame = frame[0:2] - np.array([wh,0])/2
-            folme.XYPosSet(*edgeOfFrame,Wait_end_of_move=True)                  # Move the tip to the left edge of the scan frame
-            
-            if(rng):
-                r  = rng.integers(low=1000, high=-ztip*1000e9, size=1)[0]
-                r /= -1000e9
-                tipShapeProps[3]   = r                                          # Amount to dip the tip into the surface
-                tipShapeProps[7]   = -3*r                                       # Amount to withdraw the tip from the surface
-                
-            if(tipShape_hk):
                 try:
-                    actual = [size,symmetry]
-                    target = [sizeTarget,symTarget]
-                    temp_tipShapeProps,hk_tipShapeHistory, hk_tipQA = hk_tipShape.run(NTCP, cleanImage,tipImprint,tipShapeProps.copy(),target,actual,hk_tipShapeHistory)
-                    if(not type(temp_tipShapeProps) == type(None)):
-                        if(not len(temp_tipShapeProps) == len(tipShapeProps)):
-                            self.interface.sendReply("Warning: tipShapeProps returned from hk_tipShape.py does not contain expected number of parameters. See documentation for nanonisTCP.TipShaper. This will probably cause an error.")
-                        tipShapeProps = temp_tipShapeProps
+                    tipShapeProps = tipShaper.PropsGet()                                # Use the default tip shaping properties to begin with
+                except Exception:                                                       # If this fails, the tip shaper module isn't open. Nanonis does not support opening the tip shaper module using TCP interface
+                    raise RuntimeError("Tip Shaper module must be open in Nanonis")
+                
+                if(zQA > 0 or ztip > 0):
+                    raise RuntimeError("Tip lifts -zQA and -ztip must be < 0")
+                
+                if(rng == 1): rng = np.random.default_rng()
+                else: rng = 0
+                
+                hk_tipShapeHistory = []                                                 # Variable used to pass in and out of hk_tipShape
+                hk_tipQA = False                                                        # Initialise the tipQA to False for the first go
+                
+                tipShapeProps[10]   = 1                                                 # Make sure feedback on after tip shape
+                tipShapeProps[3]   = ztip                                               # Amount to dip the tip into the surface
+                tipShapeProps[7]   = -3*ztip                                            # Amount to withdraw the tip from the surface
+                
+                tipCheckerProps     = tipShaper.PropsGet()                              # These will be the tip shaper properties used to perform a light tip-shaping action which is scanned over to assess tip quality
+                tipCheckerProps[1]  = 1                                                 # Turn on the change bias checkbox
+                tipCheckerProps[2]  = 0.1                                               # Bias to change to before tip shaping
+                tipCheckerProps[3]  = zQA                                               # Set initial tip lift
+                tipCheckerProps[4]  = 0.1                                               # Duration of tip lift
+                tipCheckerProps[5]  = 0                                                 # Bias applied while tip is in surface
+                tipCheckerProps[6]  = 0.1                                               # Amount of time tip is in surface
+                tipCheckerProps[7]  = -3*zQA                                            # Tip lift 2
+                tipCheckerProps[8]  = 0.1                                               # Duration of tip lift 2
+                tipCheckerProps[9]  = 0.1                                               # Time to wait before putting bias back
+                tipCheckerProps[10] = 1                                                 # Turn feedback on after tip shape
+                
+                suffix = "sb-auto-tip"
+                basename = self.interface.topoBasename                                  # Get the basename that's been set in config file
+                if(not basename): basename = scanModule.PropsGet()[3]                   # Get the save basename from nanonis if one isn't supplied
+                tempBasename = basename + '_' + suffix + '_'                            # Create a temp basename for this run
+                scanModule.PropsSet(series_name=tempBasename)                           # Set the basename in nanonis
+                
+                attempt = 0                                                             # Keep track of number of attempts to tip shape
+                tipQA   = False                                                         # Temp flag
+                
+                piezo = Piezo(NTCP)
+                range_x,range_y,_ = piezo.RangeGet()
+                dx = 3*wh
+                x = np.linspace(-1, 1,n) * (n-1)*dx/2
+                y = x
+                
+                snakedGrid = []
+                for j in y:
+                    for i in x:
+                        snakedGrid.append(np.array([i, j, wh, wh]))
+                        if(i>range_x/2 or j>range_y/2):
+                            raise RuntimeError("Grid size exceeds scan area. Reduce -n")
+                        
+                    x = np.array(list(reversed(x)))                                     # Snake the grid - better for drift
+                
+                if(demo):
+                    try:
+                        pkpath = self.interface.module_dir + "../Dev/autoTipShape.pk"
+                        demoData = pickle.load(open(pkpath,'rb'))                       # Load in dummy data for demo mode. This is just a few images of various tip imprints
+                    except:                                                             # If it faile, maybe we're running in react mode or the user pasted it in the wrong folder
+                        pkpath = self.interface.module_dir + "./Dev/autoTipShape.pk"
+                        demoData = pickle.load(open(pkpath,'rb'))                       # Load in dummy data for demo mode. This is just a few images of various tip imprints
+                    demoIDX = 0                                                         # Keep track of demo data file
                     
-                except Exception as e:
-                    self.interface.sendReply("Error calling hk_tipShape...")
-                    self.interface.sendReply(str(e))
-            
-            self.tipShapeProps(*tipShapeProps)                                  # Set the tip shaping properties up to change the tip
-            time.sleep(1)
-            if(self.checkEventFlags()): break                                   # Check event flags
-            self.tipShape()                                                     # Execute the tip shape
-            time.sleep(1)
-            if(self.checkEventFlags()): break                                   # Check event flags
-            
-            attempt += 1
-            
-        scanModule.PropsSet(series_name=basename)                               # Put back the original basename
-        
-        self.tipShapeProps(*tipShapeProps)                                      # Put back the original tip shaping properties
-        
-        message = "Tip shaping failed"
-        if(tipQA): message = "Tip shaping successful"
-        self.interface.sendReply(message + " after " + str(attempt+1) + " attempts")
-        
-        try:                                                                    # Will fail if no images of the tip imprint were taken before process stopped
-            imprintFilename = "imprint_size--" + str(int(size*100)/100) + "_symm--" + str(int(symmetry*100)/100) + "_final.png"
-            imprintPNG = self.makePNG(tipImprint,pngFilename=imprintFilename)
-            self.interface.sendPNG(imprintPNG)
-        except: pass
-        
-        self.disconnect(NTCP)                                                   # Close the TCP connection
-        
-        if(iamauto): return message                                             # Don't clear the running flag if called by iamauto
-        
-        global_.running.clear()                                                 # Free up the running flag
-        
+                seriesName = scanModule.PropsGet()[3]
+                scanModule.PropsSet(continuous_scan=2,bouncy_scan=2,autosave=1,series_name=seriesName)
+                self.plotChannel(a=self.zchannel)
+                zchannel_index = self.getChannelIndex(self.zchannel)
+                for frame in snakedGrid:
+                    scanModule.FrameSet(*frame)
+                    
+                    scanModule.Action(scan_action="start",scan_direction="up")          # Start an upward scan
+                    for numSeconds in range(sleepTime):                                 # Sleep at one second intervals so we can still stop the routine without lag if we need to
+                        time.sleep(1)
+                        if(self.checkEventFlags()): break                               # Check event flags
+                    if(self.checkEventFlags()): break                                   # Check event flags
+                        
+                    scanModule.Action(scan_action="start",scan_direction="up")          # Restart an upward scan, hopefully image is less drifty now
+                    
+                    isClean  = True
+                    timedOut = True
+                    while(timedOut and isClean):                                        # Periodically check if the current scan is of a clean region
+                        timedOut, _, filePath = scanModule.WaitEndOfScan(timeout=3000)  # Wait until the scan finishes or 3 sec, whichever occurs first
+                        _,cleanImage,_ = scanModule.FrameDataGrab(zchannel_index, 1)    # Image of the 'clean' surface
+                        isClean = utilities.isClean(cleanImage,lxy=wh,threshold=0.3e-9,sensitivity=1) # Check if the scan so far is of a clean area
+                        if(demo): isClean = True
+                    
+                    cleanImage = np.flipud(cleanImage)                                  # Flip because the scan direction is up
+                    if(not isClean):
+                        scanModule.Action(scan_action='stop')
+                        self.interface.sendReply("Bad area, moving scan frame")
+                        continue                                                        # Don't count the attempt if the area sucks
+                    
+                    if(not filePath): break                                             # If the scan was stopped before finishing, stop program
+
+                    tipCheckPos = utilities.getCleanCoordinate(cleanImage, lxy=wh)      # Do some processing to find a clean location to assess tip quality
+                    if(not len(tipCheckPos)):                                           # If no coordinate is returned because the area is bad...
+                        continue                                                        # Don't count the attempt if the area sucks
+                    
+                    tipCheckPos += frame[0:2]                                           # Convert frame-relative coordinate to absolute coordinate
+                    folme.XYPosSet(*tipCheckPos,Wait_end_of_move=True)                  # Move the tip to a clean place
+                    
+                    self.tipShapeProps(*tipCheckerProps,NTCP=NTCP)                      # Set the tip shaping properties up for the very light action
+                    time.sleep(1)
+                    if(self.checkEventFlags()): break                                   # Check event flags
+                    self.tipShape(NTCP)                                                 # Execute the light tip shape
+                    time.sleep(1)
+                    if(self.checkEventFlags()): break                                   # Check event flags
+                    
+                    scanModule.Action(scan_action="start",scan_direction="up")          # Start an upward scan
+                    _, _, filePath = scanModule.WaitEndOfScan()                         # Wait until the scan finishes
+                    if(not filePath): break                                             # If the scan was stopped before finishing, stop program
+                    _,tipImprint,_ = scanModule.FrameDataGrab(zchannel_index, 1)        # Image of the tip's crater after very light tip shape action
+                    cleanImage = np.flipud(cleanImage)                                  # Flip because the scan direction is up
+                    
+                    # Probably do something here to periodically check scan area (as
+                    # above) in case the tip blew up and left the area a mess.
+                    
+                    if(demo):
+                        tipImprint = demoData[demoIDX]                                  # If we're in demo mode, replace the image with some dummy data
+                        demoIDX += 1                                                    # Incrememnt the index to cycle through the dummy data
+                        if(demoIDX == len(tipImprint)):
+                            demoIDX = 0                                                 # Loop back to the start - happens when size and symm scores are too tight for dummy data
+                            
+                    tipCheckPos -= frame[0:2]                                           # Convert absolute coodinate to frame-relative coordinate
+                    symmetry,size,contour = utilities.assessTip(tipImprint,wh,tipCheckPos,True) # Assess the quality of the tip based on the imprint it leaves on the surface
+                    
+                    imprintFilename = "imprint_size--" + str(int(size*100)/100) + "_symm--" + str(int(symmetry*100)/100) + ".png"
+                    imprintPNG = self.makePNG(tipImprint,pngFilename=imprintFilename)
+                    self.interface.sendPNG(imprintPNG)
+                        
+                    self.interface.sendReply("Imprint size: " + str(size) + "\nImprint symm: " + str(symmetry))
+                    
+                    # if(size < 0): contour not found, do something about that.
+                    
+                    if(symmetry > symTarget):
+                        if(size < sizeTarget and size > 0):
+                            tipQA = True                                                # Tip quality is good if it meets the target scores
+                            if(tipShape_hk and not hk_tipQA):
+                                tipQA = False
+                    
+                    if(tipQA): break                                                    # Stop the routine if a good tip has been achieved
+                    
+                    edgeOfFrame = frame[0:2] - np.array([wh,0])/2
+                    folme.XYPosSet(*edgeOfFrame,Wait_end_of_move=True)                  # Move the tip to the left edge of the scan frame
+                    
+                    if(rng):
+                        r  = rng.integers(low=1000, high=-ztip*1000e9, size=1)[0]
+                        r /= -1000e9
+                        tipShapeProps[3]   = r                                          # Amount to dip the tip into the surface
+                        tipShapeProps[7]   = -3*r                                       # Amount to withdraw the tip from the surface
+                        
+                    if(tipShape_hk):
+                        try:
+                            actual = [size,symmetry]
+                            target = [sizeTarget,symTarget]
+                            temp_tipShapeProps,hk_tipShapeHistory, hk_tipQA = hk_tipShape.run(NTCP, cleanImage,tipImprint,tipShapeProps.copy(),target,actual,hk_tipShapeHistory)
+                            if(not type(temp_tipShapeProps) == type(None)):
+                                if(not len(temp_tipShapeProps) == len(tipShapeProps)):
+                                    self.interface.sendReply("Warning: tipShapeProps returned from hk_tipShape.py does not contain expected number of parameters. See documentation for nanonisTCP.TipShaper. This will probably cause an error.")
+                                tipShapeProps = temp_tipShapeProps
+                            
+                        except Exception as e:
+                            self.interface.sendReply("Error calling hk_tipShape...")
+                            self.interface.sendReply(str(e))
+                    
+                    self.tipShapeProps(*tipShapeProps,NTCP=NTCP)                        # Set the tip shaping properties up to change the tip
+                    time.sleep(1)
+                    if(self.checkEventFlags()): break                                   # Check event flags
+                    self.tipShape(NTCP)                                                 # Execute the tip shape
+                    time.sleep(1)
+                    if(self.checkEventFlags()): break                                   # Check event flags
+                    
+                    attempt += 1
+                    
+                scanModule.PropsSet(series_name=basename)                               # Put back the original basename
+                
+                self.tipShapeProps(*tipShapeProps,NTCP=NTCP)                        # Put back the original tip shaping properties
+                
+                message = "Tip shaping failed"
+                if(tipQA): message = "Tip shaping successful"
+                self.interface.sendReply(message + " after " + str(attempt+1) + " attempts")
+                
+                try:                                                                    # Will fail if no images of the tip imprint were taken before process stopped
+                    imprintFilename = "imprint_size--" + str(int(size*100)/100) + "_symm--" + str(int(symmetry*100)/100) + "_final.png"
+                    imprintPNG = self.makePNG(tipImprint,pngFilename=imprintFilename)
+                    self.interface.sendPNG(imprintPNG)
+                except: pass
+            except RuntimeError as e:
+                self.interface.sendReply("RuntimeError: " + str(e))
+            except Exception as e:
+                self.interface.sendReply("Exception: " + str(e))
+                raise e
+            finally:
+                if(not iamauto):
+                    global_.running.clear()                                                 # Free up the running flag
         
 ###############################################################################
 # Config
@@ -2109,25 +1650,21 @@ class scanbot():
                        version of Nanonis. Returns -1 if the channel is not in 
                        the list of available channels
         """
-        NTCP,connection_error = self.connect()                                  # Connect to nanonis via TCP
-        if(connection_error): return connection_error                           # Return error message if there was a problem connecting        
-        
-        signals = Signals(NTCP)                                                 # Nanonis Signals module
-        
-        all_channel_names = signals.NamesGet()                                  # Get all of the signal names
-        
-        try:
-            available_channel_names,_ = signals.InSlotsGet()                    # Fails on newer versions of Nanonis
-        except:
-            available_channel_names = all_channel_names
-        
-        try:
-            channel_index = available_channel_names.index(channel_name)
-        except:
-            channel_index = -1
+        with self.nanonis() as NTCP:                                        # Connect to nanonis via TCP
+            signals = Signals(NTCP)                                                 # Nanonis Signals module
+            
+            all_channel_names = signals.NamesGet()                                  # Get all of the signal names
+            try:
+                available_channel_names,_ = signals.InSlotsGet()                    # Fails on newer versions of Nanonis
+            except:
+                available_channel_names = all_channel_names
+            
+            try:
+                channel_index = available_channel_names.index(channel_name)
+            except:
+                channel_index = -1
 
-        self.disconnect(NTCP)
-        return channel_index
+            return channel_index
 
     def plotChannel(self,c='',a='',r=''):
         """
@@ -2155,76 +1692,73 @@ class scanbot():
         if(not c and not a and not r):
             helpStr  = "See the Nanonis signals manager for a list of available signals"
             return helpStr
-        
-        NTCP,connection_error = self.connect()                                  # Connect to nanonis via TCP
-        if(connection_error): return connection_error                           # Return error message if there was a problem connecting        
-        
-        scan = Scan(NTCP)                                                       # Nanonis Scan module
-        signals = Signals(NTCP)                                                 # Nanonis Signals module
-        
-        all_channel_names = signals.NamesGet()                                  # Get all of the signal names
-        buffer_channels = scan.BufferGet()[1]                                   # See which channels are currently selected
-        
-        try:
-            available_channel_names,_ = signals.InSlotsGet()    # Fails on newer versions of Nanonis
-        except:
-            available_channel_names = all_channel_names
-        
-        errmsg = ""
-        if(c and not c in available_channel_names): errmsg += "Invalid channel " + str(c) + ". Check the signals manager\n"
-        if(a and not a in available_channel_names): errmsg += "Invalid channel " + str(a) + ". Check the signals manager\n"
-        if(r and not r in available_channel_names): errmsg += "Invalid channel " + str(r) + ". Check the signals manager\n"
-        if(r == self.focusChannel):                 errmsg += "Channel " + r + " cannot be removed while selected for focus\n"
-        
-        if(errmsg):
-            self.disconnect(NTCP)
-            return errmsg
-        
-        setBuf = False
-        if(c):
-            c_channel = available_channel_names.index(c)
-            if(not c_channel in buffer_channels):               # If the user wants a channel to take focus which is not in the buffer...
-                buffer_channels.append(c_channel)               # Add it to the buffer
-                setBuf = True                                   # and trigger the update
-            self.focusChannel = c                               # Set the focus channel with the index of the intended focus channel
-        
-        if(a):
-            a_channel = available_channel_names.index(a)
-            if(not a_channel in buffer_channels):
-                buffer_channels.append(a_channel)               # Only add this to the list if it's not already there
-                setBuf = True                                   # Trigger the update
+        with self.nanonis() as NTCP:                                        # Connect to nanonis via TCP
+            try:
+                scan = Scan(NTCP)                                                       # Nanonis Scan module
+                signals = Signals(NTCP)                                                 # Nanonis Signals module
+                
+                all_channel_names = signals.NamesGet()                                  # Get all of the signal names
+                buffer_channels = scan.BufferGet()[1]                                   # See which channels are currently selected
+                
+                try:
+                    available_channel_names,_ = signals.InSlotsGet()    # Fails on newer versions of Nanonis
+                except:
+                    available_channel_names = all_channel_names
+                
+                errmsg = ""
+                if(c and not c in available_channel_names): errmsg += "Invalid channel " + str(c) + ". Check the signals manager\n"
+                if(a and not a in available_channel_names): errmsg += "Invalid channel " + str(a) + ". Check the signals manager\n"
+                if(r and not r in available_channel_names): errmsg += "Invalid channel " + str(r) + ". Check the signals manager\n"
+                if(r == self.focusChannel):                 errmsg += "Channel " + r + " cannot be removed while selected for focus\n"
+                
+                if(errmsg):
+                    raise RuntimeError(errmsg)
+                
+                setBuf = False
+                if(c):
+                    c_channel = available_channel_names.index(c)
+                    if(not c_channel in buffer_channels):               # If the user wants a channel to take focus which is not in the buffer...
+                        buffer_channels.append(c_channel)               # Add it to the buffer
+                        setBuf = True                                   # and trigger the update
+                    self.focusChannel = c                               # Set the focus channel with the index of the intended focus channel
+                
+                if(a):
+                    a_channel = available_channel_names.index(a)
+                    if(not a_channel in buffer_channels):
+                        buffer_channels.append(a_channel)               # Only add this to the list if it's not already there
+                        setBuf = True                                   # Trigger the update
 
-        if(r):
-            r_channel = available_channel_names.index(r)
-            if(r_channel in buffer_channels):
-                buffer_channels.remove(r_channel)              # Only remove this from the list if it's currently in there
-                setBuf = True                                  # Trigger the update
+                if(r):
+                    r_channel = available_channel_names.index(r)
+                    if(r_channel in buffer_channels):
+                        buffer_channels.remove(r_channel)              # Only remove this from the list if it's currently in there
+                        setBuf = True                                  # Trigger the update
 
-        if(setBuf):
-            scan.BufferSet(channel_indexes=buffer_channels)     # Only set the buffer if there's a change we need to make
+                if(setBuf):
+                    scan.BufferSet(channel_indexes=buffer_channels)     # Only set the buffer if there's a change we need to make
 
-        buffer_channels = scan.BufferGet()[1]                   # See which channels are currently selected
-
-        self.disconnect(NTCP)
+                buffer_channels = scan.BufferGet()[1]                   # See which channels are currently selected
+            except RuntimeError as e:
+                self.interface.sendReply(str(e))
+            except Exception as e:
+                self.interface.sendReply("Error during plot_channel: " + str(e))
+                raise
     
 ###############################################################################
 # Misc
 ###############################################################################
-    def stop(self):
+    def stop(self,NTCP=None):
         """
         This function stops Scanbot from whatever it's currently doing
 
         """
-        NTCP,connection_error = self.connect()                                  # Connect to nanonis via TCP
-        if(connection_error): return connection_error                           # Return error message if there was a problem connecting        
-        
-        scan = Scan(NTCP)                                                       # Nanonis scan module
-        scan.Action('stop')                                                     # Stop the current scan
-        
-        self.disconnect(NTCP)                                                   # Close the NTCP connection
-        
-###############################################################################
-# Utilities
+        with NTCP or self.nanonis() as NTCP:                                        # Connect to nanonis via TCP
+            try:
+                scan = Scan(NTCP)                                                       # Nanonis scan module
+                scan.Action('stop')                                                     # Stop the current scan
+            except Exception as e:
+                self.interface.sendReply("Error during stop: " + str(e))
+                raise
 ###############################################################################
     def tipShapePropsGet(self):
         """
@@ -2235,33 +1769,33 @@ class scanbot():
         getStr : Readable string containing all the tip-shaping parameters
 
         """
-        NTCP,connection_error = self.connect()                                  # Connect to nanonis via TCP
-        if(connection_error): return connection_error                           # Return error message if there was a problem connecting
-         
-        tipShaper = TipShaper(NTCP)
-        
-        try:
-            args = tipShaper.PropsGet()                                         # Grab all the current tip shaping settings in nanonis
-        except Exception as e:
-            self.interface.sendReply(str(e))
-            self.disconnect(NTCP)
-            return
-        
-        self.disconnect(NTCP)
-        
-        getStr  = "Switch off delay (sod): " + str(args[0])  + "\n"
-        getStr += "Change bias flag  (cb): " + str(args[1])  + "\n"
-        getStr += "Change bias value (b1): " + str(args[2])  + "\n"
-        getStr += "Tip lift 1 height (z1): " + str(args[3])  + "\n"
-        getStr += "Tip lift 1 time   (t1): " + str(args[4])  + "\n"
-        getStr += "Tip lift bias     (b2): " + str(args[5])  + "\n"
-        getStr += "Tip lift 2 time   (t2): " + str(args[6])  + "\n"
-        getStr += "Tip lift 3 height (z3): " + str(args[7])  + "\n"
-        getStr += "Tip lift 3 time   (t3): " + str(args[8])  + "\n"
-        getStr += "Final wait time (wait): " + str(args[9])  + "\n"
-        getStr += "Restore feeback   (fb): " + str(args[10]) + "\n"
-        
-        return getStr
+        with self.nanonis() as NTCP:
+            try:
+                tipShaper = TipShaper(NTCP)
+                
+                try:
+                    args = tipShaper.PropsGet()                                         # Grab all the current tip shaping settings in nanonis
+                except Exception as e:
+                    raise RuntimeError("Tip Shaper module must be open in Nanonis to get tip shaping properties.")
+                
+                getStr  = "Switch off delay (sod): " + str(args[0])  + "\n"
+                getStr += "Change bias flag  (cb): " + str(args[1])  + "\n"
+                getStr += "Change bias value (b1): " + str(args[2])  + "\n"
+                getStr += "Tip lift 1 height (z1): " + str(args[3])  + "\n"
+                getStr += "Tip lift 1 time   (t1): " + str(args[4])  + "\n"
+                getStr += "Tip lift bias     (b2): " + str(args[5])  + "\n"
+                getStr += "Tip lift 2 time   (t2): " + str(args[6])  + "\n"
+                getStr += "Tip lift 3 height (z3): " + str(args[7])  + "\n"
+                getStr += "Tip lift 3 time   (t3): " + str(args[8])  + "\n"
+                getStr += "Final wait time (wait): " + str(args[9])  + "\n"
+                getStr += "Restore feeback   (fb): " + str(args[10]) + "\n"
+                
+                return getStr
+            except RuntimeError as e:
+                self.interface.sendReply(str(e))
+            except Exception as e:
+                self.interface.sendReply("Error during tip_shape_props_get: " + str(e))
+                raise
     
     def tipInFrame(self,tipPos,scanFrame):
         """
@@ -2374,7 +1908,7 @@ class scanbot():
         if(returnData): return pngFilename,scanData
         return pngFilename
     
-    def getMetaData(self,filePath):
+    def getMetaData(self,NTCP):
         """
         Return the metadata about a scan
 
@@ -2393,18 +1927,13 @@ class scanbot():
                     [6] scan frame number of lines
 
         """
-        NTCP,connection_error = self.connect()                                  # Connect to nanonis via TCP
-        if(connection_error): return "getMetaData: " + connection_error
-        
         scan = Scan(NTCP)
         x,y,w,h,angle    = scan.FrameGet()
         _,_,pixels,lines = scan.BufferGet()
         
-        self.disconnect(NTCP); 
-        
         return [x,y,w,h,angle,pixels,lines]
         
-    def checkEventFlags(self):
+    def checkEventFlags(self,NTCP=None):
         """
         This function is used when scanbot commands are threaded tasks. Global
         pause and running flags are used to pause and stop threaded tasks.
@@ -2421,21 +1950,20 @@ class scanbot():
             return 1                                                            # Running flag
         
         if(global_.pause.is_set()):
-            NTCP,connection_error = self.connect()                              # Connect to nanonis via TCP
-            if(connection_error):
-                self.interface.sendReply(connection_error)                      # Return error message if there was a problem connecting
-                return 1
-            scan = Scan(NTCP)
-            scan.Action(scan_action='pause')
-            
-            while global_.pause.is_set():
-                time.sleep(2)                                                   # Sleep for a bit
-                if(not global_.running.is_set()):
-                    self.disconnect(NTCP)
-                    return 1
-                
-            scan.Action(scan_action='resume')
-            self.disconnect(NTCP)
+            with NTCP or self.nanonis() as NTCP:                                # Connect to nanonis via TCP
+                try:
+                    scan = Scan(NTCP)
+                    scan.Action(scan_action='pause')
+                    
+                    while global_.pause.is_set():
+                        time.sleep(2)                                                   # Sleep for a bit
+                        if(not global_.running.is_set()):
+                            return 1
+                        
+                    scan.Action(scan_action='resume')
+                except Exception as e:
+                    self.interface.sendReply("Error during pause/resume: " + str(e))
+                    raise
             
     def safeCurrentCheck(self,NTCP):
         """
@@ -2507,14 +2035,9 @@ class scanbot():
 ###############################################################################
 # Nanonis TCP Connection
 ###############################################################################
-    def connect(self,creepIP=None,creepPORT=None):
+    def connect(self):
         """
         This function creats a nanonisTCP connection and returns the handle
-
-        Parameters
-        ----------
-        creepIP : (not used in this version)
-        creepPORT : (Not used in this version)
 
         Returns
         -------
@@ -2522,12 +2045,11 @@ class scanbot():
                      [1] Error message if there was an error. 0 if not
 
         """
-        IP   = creepIP
-        PORT = creepPORT
         try:                                                                    # Try to connect to nanonis via TCP
-            if(not IP):   IP   = self.interface.IP
-            if(not PORT): PORT = self.interface.portList.pop()
+            IP   = self.interface.IP
+            PORT = self.interface.portList[-1]
             NTCP = nanonisTCP(IP, PORT, version=self.interface.nanonis_version)
+            self.interface.portList.pop(-1)                                     # Remove the port from the list of available ports
             return [NTCP,0]
         except Exception as e:
             if(len(self.interface.portList)): return [0,str(e)]                 # If there are ports available then return the exception message
@@ -2545,3 +2067,19 @@ class scanbot():
         NTCP.close_connection()                                                 # Close the TCP connection
         self.interface.portList.append(NTCP.PORT)                               # Free up the port - put it back in the list of available ports
         time.sleep(0.2)                                                         # Give nanonis a bit of time to close the connection before attempting to reconnect using the same port (from experience)
+
+    @contextmanager
+    def nanonis(self):
+        NTCP, connection_error = self.connect()
+        if connection_error:
+            raise RuntimeError(connection_error)
+
+        try:
+            yield NTCP
+        finally:
+            try:
+                self.disconnect(NTCP)
+            except Exception as e:
+                self.interface.sendReply(
+                    f"Warning: failed to disconnect cleanly: {e}"
+                )

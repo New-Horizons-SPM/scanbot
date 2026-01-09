@@ -355,13 +355,14 @@ class scanbot_interface(object):
 ###############################################################################
     def moveArea(self,user_args,_help=False):
         arg_dict = {'-up'    : ['20',   lambda x: int(x),   "(int) Steps to go up before moving across. min 10"],
-                    '-upV'   : ['270',  lambda x: float(x), "(float) Controller amplitude during up motor steps"],
-                    '-upF'   : ['2100', lambda x: float(x), "(float) Controller frequency during up motor steps"],
+                    '-upV'   : ['200',  lambda x: float(x), "(float) Controller amplitude during up motor steps"],
+                    '-upF'   : ['1200', lambda x: float(x), "(float) Controller frequency during up motor steps"],
                     '-dir'   : ['Y+',   lambda x: str(x),   "(str) Direction to go across (either X+, X-, Y+, Y-)"],
                     '-steps' : ['10',   lambda x: int(x),   "(int) Steps to move across after moving -up number of steps"],
                     '-dirV'  : ['130',  lambda x: float(x), "(float) Controller amplitude during across motor steps"],
-                    '-dirF'  : ['2100', lambda x: float(x), "(float) Controller frequency during across motor steps"],
-                    '-zon'   : ['1',    lambda x: int(x),   "(int) Turn the z-controller on after approaching. 1=on, 0=off"]}
+                    '-dirF'  : ['1200', lambda x: float(x), "(float) Controller frequency during across motor steps"],
+                    '-zon'   : ['1',    lambda x: int(x),   "(int) Turn the z-controller on after approaching. 1=on, 0=off"],
+                    '-approach' : ['1', lambda x: int(x),   "(int) Auto approach after moving area. 1=on, 0=off"],}
         
         if(_help): return arg_dict
         
@@ -409,59 +410,6 @@ class scanbot_interface(object):
 ###############################################################################
 # Auto STM
 ###############################################################################
-    def autoInit(self,user_args,_help=False):
-        arg_dict = {'-light'      : ['0',   lambda x: int(x),   "(int) Flag to turn the light on/off before/after initialisation. This uses hk_light.turn_on() and hk_light.turn_off() functions. 0=Don't, 1=Do"],
-                    '-cameraPort' : ['0',   lambda x: int(x),   "(int) cv2 camera port - usually 0 for desktops or 1 for laptops with an inbuilt camera."],
-                    '-demo'       : ['0',   lambda x: int(x),   "(int) Load in an mp4 recording of the tip moving instead of using live feed"],}
-        
-        if(_help): return arg_dict
-        
-        arg_dict['-reactInit'] = ['0', lambda x: int(x), "(int) User-hidden flag when running in react mode. 1=running from react - use data in ./autoInit/"]
-        
-        error,user_arg_dict = self.userArgs(arg_dict,user_args)
-        if(error): return error + "\nRun ```help auto_init``` if you're unsure."
-        
-        args = self.unpackArgs(user_arg_dict)
-        
-        if(self.run_mode == 'react'):
-            return self.scanbot.autoInit(*args)
-        
-        func = lambda : self.scanbot.autoInit(*args)
-        return self.threadTask(func)
-    
-    def moveTipToSample(self,user_args,_help=False):
-        return self.moveTipToTarget(user_args,_help=_help,target="sample")
-    
-    def moveTipToClean(self,user_args,_help=False):
-        return self.moveTipToTarget(user_args,_help=_help,target="clean")
-    
-    def moveTipToTarget(self,user_args,_help=False,target=""):
-        arg_dict = {'-light'      : ['0',   lambda x: int(x),   "(int) Flag to turn the light on before moving and off after moving. This uses hk_light.turn_on() and hk_light.turn_off() functions. 0=Don't, 1=Do"],
-                    '-cameraPort' : ['0',   lambda x: int(x),   "(int) cv2 camera port - usually 0 for desktops or 1 for laptops with an inbuilt camera."],
-                    '-xStep'      : ['100', lambda x: int(x),   "(int) Number of motor steps in the X direction before updating tip position. More=Faster but might lose the tip"],
-                    '-zStep'      : ['250', lambda x: int(x),   "(int) Number of motor steps to move in +Z (upwards) before updating tip position. More=Faster but might lose the tip"],
-                    '-xV'         : ['130', lambda x: float(x), "(float) Piezo voltage when moving motor steps in x direction"],
-                    '-zV'         : ['180', lambda x: float(x), "(float) Piezo voltage when moving motor steps in z direction"],
-                    '-xF'         : ['1100',lambda x: float(x), "(float) Piezo frequency when moving motor steps in x direction"],
-                    '-zF'         : ['1100',lambda x: float(x), "(float) Piezo frequency when moving motor steps in z direction"],
-                    '-approach'   : ['1',   lambda x: int(x),   "(int) Approach when tip reaches target. 0=No,1=Yes"],
-                    '-tipshape'   : ['0',   lambda x: int(x),   "(int) Flag to initiate auto_tip_shape on approach (applies to move_tip_to_clean only)"],
-                    '-hk_tipShape': ['0',   lambda x: int(x),   "(int) Flag to call hk_tipShape when auto tip shaping. 1=Yes, 0=No"],
-                    '-return'     : ['0',   lambda x: int(x),   "(int) Return to sample after tipshaping (applies to move_tip_to_clean when -tipshape=1)"],
-                    '-run'        : ['',    lambda x: str(x),   "(str) Name of the command to run upon appraching sample (applies when -return=1). Can be one of 'survey' or 'survey2'."]}
-        
-        if(_help): return arg_dict
-        
-        if(self.run_mode != 'c' and self.run_mode != 'react'): return "This function is not available."
-        
-        error,user_arg_dict = self.userArgs(arg_dict,user_args)
-        if(error): return error + "\nRun ```help move_tip_to_" + target + "``` if you're unsure."
-        
-        args = self.unpackArgs(user_arg_dict)
-        
-        func = lambda : self.scanbot.moveTipToTarget(*args,target=target)
-        return self.threadTask(func)
-        
     def autoTipShape(self,user_args,_help=False):
         arg_dict = {'-n'    : ['10',        lambda x: int(x),   "(int) Max number of tip shapes to perform"],
                     '-wh'   : ['10e-9',     lambda x: float(x), "(float) Size of the square scan frame when imaging the clean surface"],
@@ -551,8 +499,9 @@ class scanbot_interface(object):
         return self.scanbot.plotChannel(*args)
     
     def getStatus(self,user_args,_help=False):
-        return ("Running flag: " + global_.running.is_set() + "\n" +
-                "Pause flag:   " + global_.pause.is_set())
+        return ("Running flag: " + str(global_.running.is_set()) + "\n" +
+                "Pause flag:   " + str(global_.pause.is_set()) + "\n" +
+                "Current action: " + str(self.getAction()))
     
     def setCrashSafety(self,user_args,_help=False):
         arg_dict = {'-c' : ['-1', lambda x: float(x), "(float) When moving the course piezos, a current above this value will be considered a crash and the tip will retract. -1 means no change"],
@@ -612,7 +561,7 @@ class scanbot_interface(object):
             print("Invalid command. Run *help* to see command list")
             return
 
-        self.commands[command](args)
+        print(self.commands[command](args))
         
        
     def sendPNG(self,pngFilename):
@@ -677,7 +626,9 @@ class scanbot_interface(object):
             
             if(args[0] == 1): self.scanbot.stop()
             
-            global_.tasks.join()
+            # before joining, we should check if global_.tasks exists and we are not trying to join from within the same thread
+            if hasattr(global_, 'tasks') and threading.current_thread() != global_.tasks:
+                global_.tasks.join()
         else:
             if(args[0] == 1): self.scanbot.stop()
             
@@ -690,6 +641,7 @@ class scanbot_interface(object):
         t.start()
         
     def _help(self,args):
+        print("Called help")
         if(not len(args)):
             helpStr = "Type ```help <command name>``` for more info\n"
             return helpStr + "\n". join([c for c in self.commands])
@@ -780,7 +732,7 @@ if('-c' in sys.argv and not finish):
             break
         handler_class.handle_message(message)
     
-    finish = True
+    exit()
 
 if('-react' in sys.argv and not finish):
     handler_class = scanbot_interface(run_mode='react')
